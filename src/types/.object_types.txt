@@ -1,0 +1,30 @@
+https://developers.hubspot.com/docs/api/crm/understanding-the-crm#object-type-id
+Object type IDs
+When using certain APIs, you'll need to use the objectTypeId field. Below are the ID values for each object or activity:
+
+Contacts: 0-1
+Companies:  0-2
+Deals: 0-3
+Tickets: 0-5
+Custom objects: to find the ID value for your custom object, make a GET request to /crm/v3/schemas. The value will look similar to 2-3453932. 
+Calls: 0-48
+Emails: 0-49
+Meetings: 0-47
+Notes: 0-46
+Tasks: 0-27
+Products: 0-7
+Invoices: 0-52
+Line items: 0-8
+Payments: 0-101
+Quotes: 0-14
+Subscriptions: 0-69
+Communications (SMS, LinkedIn, WhatsApp messages): 0-18
+Postal mail: 0-116
+Marketing events: 0-54
+Feedback submissions: 0-19
+Appointments: 0-421
+Courses: 0-410
+Listings: 0-420
+Services: 0-162
+--------
+https://developers.hubspot.com/docs/api/crm/associations#association-type-ids
