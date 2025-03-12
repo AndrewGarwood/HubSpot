@@ -7,4 +7,4 @@
 - src/utils/automation/flows.mjs: logic to retrieve and update HubSpot workflows
 - src/utils/crm/: logic to handle CRM objects (e.g. contacts, deals, line items)
 
-### TODO: translate code to TypeScript, more refactoring, more documentation, and more type annotations.
+TODO: translate code to TypeScript, more refactoring, more documentation, and more type annotations.
