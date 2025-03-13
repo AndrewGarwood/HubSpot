@@ -201,7 +201,7 @@ function recursiveReplace(obj, replacements) {
     if (typeof obj === "string") {
         let newStr = obj;
         replacements.forEach(r => {
-            // Replace all occurrences of rep.oldTerm with rep.newTerm
+            // Replace all occurrences of r.oldTerm with r.newTerm
             newStr = newStr.split(r.oldTerm).join(r.newTerm);
         });
         return newStr;

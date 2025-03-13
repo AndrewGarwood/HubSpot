@@ -1,6 +1,6 @@
 /** 
  * @file hubspot_types.js
- * @import { FilterOperatorEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from './enums.js';
+ * @import { FilterOperatorEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from './crm_enums.js';
  */
 
 /**
@@ -123,8 +123,8 @@
 
 /**
  *- type: {@link PropertyCreateTypeEnum}
- *- options: Array<{@link OptionInput}> 
  *- fieldType: {@link PropertyCreateFieldTypeEnum}
+ *- options: Array<{@link OptionInput}> 
  * 
  * @typedef {Object} PropertyCreate
  * @property {boolean} [hidden]
