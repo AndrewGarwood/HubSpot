@@ -83,7 +83,7 @@ async function setReportById(reportId, reportData) {
 
 /**
  * @warning be careful with global string replacement
- * @param {*} reportId 
+ * @param {string} reportId 
  */
 async function stringReplaceFormulaFieldOfReport(reportId) {
     try {

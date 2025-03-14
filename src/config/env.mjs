@@ -11,8 +11,9 @@ export const hubspotClient = new Client({
     numberOfApiCallRetries: 5, 
 });
 
-export const FLOWS_API_URL = `https://api.hubapi.com/automation/v4/flows`;
-
-export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const SEARCH_LIMIT = 200;
+export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+
+export const FLOWS_API_URL = `https://api.hubapi.com/automation/v4/flows`;

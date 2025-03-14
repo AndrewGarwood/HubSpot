@@ -1,18 +1,18 @@
 import { writeToJsonFile, printJson, getJsonFromFile } from '../io/io_utils.mjs';
-import '../../types/workflow_types.js';
-import '../../types/workflow_enums.js';
-import { ActionTypeEnum } from '../../types/workflow_enums.js';
 import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL } from '../../config/env.mjs';
-
+import { ActionTypeEnum } from '../../types/automation/ActionEnums.js';
+import '../../types/automation/Flow.js';
+import '../../types/automation/FilterBranch.js';
+import '../../types/automation/ListBranch.js';
 
 /**
- * @TODO decide whether or not flowId should be in a ParamObject or not. . .
- * @param {GetFlowConfig} ParamObject GetFlowConfig { flowId: string }
  * @param {string} flowId string 
  * @returns {Promise<Flow>} .{@link Flow}
  */
-export async function getFlowById({flowId}) {
+export async function getFlowById(flowId) {
     try {
+        const flowURL = `${FLOWS_API_URL}/${flowId}`;
+        console.log(flowURL);
         const response = await fetch(`${FLOWS_API_URL}/${flowId}`, {
             method: 'GET',
             headers: {
@@ -35,12 +35,11 @@ export async function getFlowById({flowId}) {
 }
 
 /**
- * @param {SetFlowConfig} ParamObject SetFlowConfig { flowId: string, flowDefinition: {@link Flow}  }
  * @param {string} flowId string
  * @param {Flow} flowDefinition {@link Flow}  
  * @returns {Promise<Flow>} .{@link Flow}
  */
-export async function setFlowById({flowId, flowDefinition}) {
+export async function setFlowById(flowId, flowDefinition) {
     try {
         const response = await fetch(`${FLOWS_API_URL}/${flowId}`, {
             method: 'PUT',
@@ -73,12 +72,12 @@ export function removeValuesFromFilter(filter, targetProperty, valuesToRemove) {
     if (!filter || !valuesToRemove || valuesToRemove.length === 0) {
         return filter;
     }
-    
     if (filter.property !== targetProperty || !filter.operation || !filter.operation.values) {
         return filter;
     }
-
-    filter.operation.values = filter.operation.values.filter(value => !valuesToRemove.includes(value));
+    filter.operation.values = filter.operation.values.filter(
+        value => !valuesToRemove.includes(value)
+    );
     return filter;
 }
 
@@ -92,7 +91,7 @@ export function addValuesToFilter(filter, targetProperty, valuesToAdd) {
     if (!filter || !valuesToAdd || valuesToAdd.length === 0) {
         return filter;
     }
-    if (filter.property !== targetProperty || !filter.operation || !filter.operation.values) {
+    if (filter.property !== targetProperty || !filter.operation) {
         return filter;
     }
     for (let value of valuesToAdd) {
@@ -124,16 +123,18 @@ export function setFlowFilterValues(filter, targetProperty, values) {
 /**
  * @param {FilterBranch} filterBranch {@link FilterBranch}
  * @param {string} targetProperty 
- * @param {Array<string>} valuesToRemove 
  * @param {Array<string>} valuesToAdd 
+ * @param {Array<string>} valuesToRemove 
  * @returns {FilterBranch}
  */
-export function updateFilterBranchFilterBranches(filterBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
+export function updateFilterBranchChildFilterBranches(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
-    for (let filterBranch of filterBranch.filterBranches) {
-        filterBranch = updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToRemove, valuesToAdd);
+    // console.log('in updateFilterBranchChildFilterBranches(), filterBranch.filterBranches.length:', filterBranch.filterBranches.length);
+    for (let childFilterBranch of filterBranch.filterBranches) {
+        // console.log('4. in updateFilterBranchChildFilterBranches(), calling updateFilterBranchFlowFilters()');
+        childFilterBranch = updateFilterBranchFlowFilters(childFilterBranch, targetProperty, valuesToAdd, valuesToRemove);
     }
     return filterBranch;
 }
@@ -141,18 +142,20 @@ export function updateFilterBranchFilterBranches(filterBranch, targetProperty, v
 /**
  * @param {FilterBranch} filterBranch {@link FilterBranch}
  * @param {string} targetProperty - string
- * @param {Array<string>} valuesToRemove - Array\<string>
  * @param {Array<string>} valuesToAdd - Array\<string>
+ * @param {Array<string>} valuesToRemove - Array\<string>
  * @returns {FilterBranch} filterBranch — {@link FilterBranch}
  */
-export function updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
+export function updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
+    // console.log('in updateFilterBranchFlowFilters(), filterBranch.filter.length:', filterBranch.filters.length);
     for (let flowFilter of filterBranch.filters) {
         if (flowFilter.property === targetProperty) {
-            flowFilter = removeValuesFromFilter(flowFilter, targetProperty, valuesToRemove);
+            // console.log('3. in updateFilterBranchFlowFilters(), calling addValuesToFilter() and removeValuesFromFilter()');
             flowFilter = addValuesToFilter(flowFilter, targetProperty, valuesToAdd);
+            flowFilter = removeValuesFromFilter(flowFilter, targetProperty, valuesToRemove);
         }
     }
     return filterBranch;
@@ -161,50 +164,38 @@ export function updateFilterBranchFlowFilters(filterBranch, targetProperty, valu
 /**
  * @param {FilterBranch} filterBranch {@link FilterBranch} 
  * @param {string} targetProperty 
- * @param {Array<string>} valuesToRemove - Array\<string>
  * @param {Array<string>} valuesToAdd - Array\<string>
+ * @param {Array<string>} valuesToRemove - Array\<string>
  * @returns {FilterBranch} filterBranch — {@link FilterBranch}
  */
-export function updateFilterBranch(filterBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
+export function updateFilterBranch(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
-    filterBranch = updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToRemove, valuesToAdd);
-    filterBranch = updateFilterBranchFilterBranches(filterBranch, targetProperty, valuesToRemove, valuesToAdd);
+    // console.log('2. in updateFilterBranch(), calling updateFilterBranchFlowFilters() and updateFilterBranchChildFilterBranches()');
+    filterBranch = updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToAdd, valuesToRemove);
+    filterBranch = updateFilterBranchChildFilterBranches(filterBranch, targetProperty, valuesToAdd, valuesToRemove);
     return filterBranch;
 }
-
-// /**@deprecated*/export function updateListBranch(listBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
-//     if (!listBranch || !listBranch.filterBranch) {
-//         return listBranch;
-//     }
-//     listBranch.filterBranch = updateFilterBranch(listBranch.filterBranch, targetProperty, valuesToRemove, valuesToAdd);
-//     return listBranch;
-// }
 
 /**
  * @param {Flow} flow {@link Flow}
  * @param {string} targetBranchName - string
  * @param {string} targetProperty - string
- * @param {Array<string>} valuesToRemove - Array\<string>
  * @param {Array<string>} valuesToAdd - Array\<string>
+ * @param {Array<string>} valuesToRemove - Array\<string>
  * @returns {Flow} flow — {@link Flow}
  */
-export function updateFlowByBranchName(flow, targetBranchName, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
+export function updateFlowByBranchName(flow, targetBranchName, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
     if (!flow || !flow.actions || flow.actions.length === 0) {
         return flow;
     }
-    let actions = flow.actions;
-    for (let action of actions) {
-        if (!action.type === ActionTypeEnum.LIST_BRANCH) {
-            continue;
-        }
-        for (let listBranch of action.listBranches) {
-            if (listBranch.branchName === targetBranchName && listBranch.filterBranch) {
-                listBranch.filterBranch = updateFilterBranch(listBranch, targetProperty, valuesToRemove, valuesToAdd);
-            }
-        }
+    /**@type {ListBranch} {@link ListBranch} */
+    let branch = getListBranchByName(flow, targetBranchName);
+    if (!branch) {
+        return flow;
     }
+    branch.filterBranch = updateFilterBranch(branch.filterBranch, targetProperty, valuesToAdd, valuesToRemove);
     return flow;
 }
 
@@ -218,32 +209,93 @@ export function batchUpdateFlowByBranchName(flow, updates) {
         return flow;
     }
     for (let u of updates) {
-        flow = updateFlowByBranchName(flow, u.targetBranchName, u.targetProperty, u.valuesToRemove, u.valuesToAdd);
+        flow = updateFlowByBranchName(
+            flow, u.targetBranchName, u.targetProperty, u.valuesToAdd, u.valuesToRemove
+        );
     }
     return flow;
 }
 
 /**
+ * gets first listBranch with matching branchName
  * @param {Flow} flow {@link Flow}
- * @param {string} branchName - string
+ * @param {string} targetBranchName - string
  * @returns {ListBranch} .{@link ListBranch}
  */
-export function getBranchByName(flow, branchName) {
+export function getListBranchByName(flow, targetBranchName) {
     if (!flow || !flow.actions || flow.actions.length === 0) {
         return null;
     }
     let actions = flow.actions;
     for (let action of actions) {
-        if (!action.type === ActionTypeEnum.LIST_BRANCH) {
+        if (!action.type === ActionTypeEnum.LIST_BRANCH || !action.listBranches) {
             continue;
         }
-        for (let listBranch of action.listBranches) {
-            if (listBranch.branchName === branchName) {
-                console.log('found branch at actionId:', action.actionId);
-                return listBranch;
-            }
+        let listBranch = Object.values(action.listBranches).find(
+            listBranch => listBranch.branchName === targetBranchName
+        );
+        if (listBranch) {
+            console.log('found branch at actionId:', action.actionId);
+            return listBranch;
         }
     }
-    console.log(`No branch found with name: ${branchName}`);
+    console.log(`No branch found with name: ${targetBranchName}`);
     return null;
 }
+
+/**
+ *- flow.action.listBranches - Array<{@link ListBranch}>
+ * @param {Flow} flow {@link Flow}
+ * @returns {boolean} boolean
+ */
+export function hasUniqueBranchNames(flow) {
+    if (!flow || !flow.actions || flow.actions.length === 0) {
+        return true;
+    }
+    let namesSeen = new Set();
+    let actions = flow.actions;
+    for (let action of actions) {
+        if (!action.type === ActionTypeEnum.LIST_BRANCH || !action.listBranches) {
+            continue;
+        }
+
+        for (let listBranch of Object.values(action.listBranches)) {
+            if (namesSeen.has(listBranch.branchName)) {
+                return false;
+            }
+            namesSeen.add(listBranch.branchName);
+        }
+    }
+    return true;
+}
+
+/**
+ * 
+ * @param {Flow} flow {@link Flow}
+ * @returns {Array<string>} branchNames: Array\<string>
+ */
+export function getAllBranchNames(flow) {
+    if (!flow || !flow.actions || flow.actions.length === 0) {
+        return [];
+    }
+    let branchNames = [];
+    let actions = flow.actions;
+    for (let action of actions) {
+        if (!action.type === ActionTypeEnum.LIST_BRANCH || !action.listBranches) {
+            continue;
+        }
+        for (let listBranch of Object.values(action.listBranches)) {
+            branchNames.push(listBranch.branchName);
+        }
+    }
+    return branchNames;
+}
+
+
+// export function updateListBranch(listBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
+//     if (!listBranch || !listBranch.filterBranch) {
+//         return listBranch;
+//     }
+//     listBranch.filterBranch = updateFilterBranch(listBranch.filterBranch, targetProperty, valuesToRemove, valuesToAdd);
+//     return listBranch;
+// }

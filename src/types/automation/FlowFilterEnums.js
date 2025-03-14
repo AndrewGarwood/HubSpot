@@ -7,9 +7,7 @@
 /**
  * @enum {string} FlowFilterTypeEnum
  * @readonly
- * @export
  *- PROPERTY
- *
  *
  */
 export const FlowFilterTypeEnum = {

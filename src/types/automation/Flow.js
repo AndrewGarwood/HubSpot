@@ -1,19 +1,26 @@
 /**
  * @file Flow.js
  * @module Flow
- * @import { Action } from './Action.js';
- * @import { FlowObjectTypeEnum 
- * } from './FlowEnums.js';
- * @import { ObjectTypeIdEnum 
- * } from '../hs_enums.js';
-*/
+ * @export { Flow }
+ */
+
+// Referenced Type Imports:
+/**
+ * @import { AutomationTypeEnum } from './AutomationEnums.js';
+ * @import { FlowObjectTypeEnum } from './FlowEnums.js';
+ * @import { ObjectTypeIdEnum } from '../hs_enums.js';
+ * @typedef {import('./Action.js').Action} Action
+ * @typedef {import('./Automation.js').EnrollmentCriteria} EnrollmentCriteria
+ */
 
 // Flow --------------------------------
 /**
  *- type: {@link FlowObjectTypeEnum}
  *- objectTypeId: {@link ObjectTypeIdEnum} 
- *- actions: Array<{@link Action}> 
+ *- actions: Array\<{@link Action}> 
+ * 
  * @typedef {Object} Flow
+ * 
  * @property {string} id
  * @property {FlowObjectTypeEnum} type
  * @property {string} revisionId
@@ -32,5 +39,6 @@
  * @property {Object.<string, any>} [customProperties]
  * @property {Array<string>} [suppressionListIds]
  * @property {boolean} [canEnrollFromSalesforce]
- * @property {ObjectTypeIdEnum | string} [objectTypeId]
+ * @property {ObjectTypeIdEnum} [objectTypeId]
+ * @export
  */

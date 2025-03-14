@@ -1,12 +1,12 @@
 /**
  * @file FilterBranchEnums.js
  * @module FilterBranchEnums
+ * @export {FilterBranchTypeEnum, FilterBranchOperatorEnum}
  */
 
 /**
  * @enum {string} FilterBranchTypeEnum
  * @readonly
- * @export
  *- AND
  *- OR
  *
@@ -19,7 +19,6 @@ export const FilterBranchTypeEnum = {
 /**
  * @enum {string} FilterBranchOperatorEnum
  * @readonly
- * @export
  *- AND
  *- OR
  *

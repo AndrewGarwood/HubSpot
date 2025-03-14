@@ -1,10 +1,10 @@
 import fs from 'fs';
-
+import xlsx from 'xlsx';
 
 /**
  * 
  * @param {string} filePath string
- * @returns {Array<string>} jsonData — Array<string>
+ * @returns {Array<string>} jsonData — Array\<string>
  */
 export function readFileLinesIntoArray(filePath) {
     const result = [];
@@ -25,7 +25,7 @@ export function readFileLinesIntoArray(filePath) {
 /**
  * 
  * @param {string} filePath string
- * @returns {Object.<string, any>} jsonData — Object.<string, any>
+ * @returns {Object.<string, any> | null} jsonData — Object.<string, any>
  */
 export function getJsonFromFile(filePath) {
     filePath = validateFileExtension({filePath: filePath, expectedExtension: 'json'}).validatedFilePath;
@@ -38,6 +38,17 @@ export function getJsonFromFile(filePath) {
         return null;
     }
 }
+
+
+/**
+ * 
+ *- isValid: boolean, - true if the filePath has the expected extension, false otherwise
+ *- validatedFilePath: string - the filePath with the expected extension if it was missing, otherwise the original filePath
+ * @typedef {Object} FileExtensionResult
+ * @property {boolean} isValid 
+ * @property {string} validatedFilePath 
+ */
+
 /**
  * 
  * @param {FileExtensionConfig} ParamObject FileExtensionConfig = { filePath, expectedExtension }
@@ -56,9 +67,37 @@ export function validateFileExtension({filePath, expectedExtension}={}) {
     return { isValid, validatedFilePath };
 }
 
+/**
+ * @param {string} filePath string
+ * @param {string} sheetName string
+ * @param {string} keyColumn string
+ * @param {string} valueColumn string
+ * @returns {Object.<string, Array<string>>} dict: Object.<string, Array\<string>> — key-value pairs where key is from keyColumn and value is an array of values from valueColumn
+ */
+export function parseExcelForOneToMany(filePath, sheetName, keyColumn, valueColumn) {
+    filePath = validateFileExtension({
+        filePath: filePath, 
+        expectedExtension: 'xlsx'
+    }).validatedFilePath;
+    const workbook = xlsx.readFile(filePath);
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = xlsx.utils.sheet_to_json(sheet);
+    const dict = {};
+    jsonData.forEach(row => {
+        let key = row[keyColumn];
+        key = `${key}`.trim().replace(/\.$/, '');
+        let val = row[valueColumn];
+        val = `${val}`.trim().replace(/\.$/, '');
+        if (!dict[key]) {
+            dict[key] = [];
+        }
+        dict[key].push(val);
+    });
+    return dict;
+}
 
 /**
- * 
+ * @TODO if escape === true, escape all special characters in char (i.e. append \\ to them)
  * @param {string} s string
  * @param {string} char string
  * @param {boolean} escape boolean

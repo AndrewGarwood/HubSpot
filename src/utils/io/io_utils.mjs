@@ -12,6 +12,7 @@ import {
     readFileLinesIntoArray,
     getJsonFromFile,
     validateFileExtension,
+    parseExcelForOneToMany,
     stripChar
 } from "./read_utils.mjs";
 
@@ -27,5 +28,6 @@ export {
     readFileLinesIntoArray,
     getJsonFromFile,
     validateFileExtension,
+    parseExcelForOneToMany,
     stripChar
 };

@@ -1,16 +1,26 @@
 /** 
  * @file Automation.js
- * @import { FilterBranch } from './FilterBranch.js';
- * @import { enrollmentCriteriaTypeEnum } from './EnrollmentCriteriaEnums.js';
+ * @module Automation
  */
+
+// Referenced Type Imports:
+/**
+ * @import { EnrollmentCriteriaTypeEnum, EdgeTypeEnum, PublicIndexedTimePointTimeTypeEnum, PublicIndexedTimePointIndexReferenceReferenceTypeEnum, PublicIndexedTimePointIndexReferenceDayOfWeekEnum } from './AutomationEnums.js';
+ * @typedef {import('./FilterBranch.js').FilterBranch} FilterBranch
+ * @typedef {import('./FlowFilter.js').FlowFilter} FlowFilter
+ * @typedef {import('./Action.js').Action} Action
+ */
+
+
 
 // FlowBranchUpdate --------------------------------
 /**
  * @typedef {Object} FlowBranchUpdate
+ * 
  * @property {string} targetBranchName
  * @property {string} targetProperty
- * @property {Array<string>} valuesToRemove
  * @property {Array<string>} valuesToAdd
+ * @property {Array<string>} valuesToRemove
  * @export
  */
 
@@ -18,7 +28,9 @@
 // Connection --------------------------------
 /**
  *- edgeType: {@link EdgeTypeEnum}
+ * 
  * @typedef {Object} Connection
+ * 
  * @property {EdgeTypeEnum} edgeType
  * @property {string} nextActionId
  * @export
@@ -26,7 +38,12 @@
 
 // EnrollmentCriteria --------------------------------
 /**
+ *- listFilterBranch: {@link FilterBranch}
+ *- reEnrollmentTriggersFilterBranches: Array\<{@link FilterBranch}> 
+ *- type: {@link EnrollmentCriteriaTypeEnum} 
+ * 
  * @typedef {Object} EnrollmentCriteria
+ * 
  * @property {boolean} shouldReEnroll
  * @property {FilterBranch} listFilterBranch
  * @property {boolean} unEnrollObjectsNotMeetingCriteria
@@ -40,7 +57,9 @@
  *- offset: {@link PublicIndexOffset} 
  *- indexReference: {@link PublicIndexedTimePointIndexReference} 
  *- timeType: {@link PublicIndexedTimePointTimeTypeEnum}
+ * 
  * @typedef {Object} PublicIndexedTimePoint
+ * 
  * @property {PublicIndexOffset} offset
  * @property {string} timezoneSource
  * @property {PublicIndexedTimePointIndexReference} indexReference
@@ -53,7 +72,9 @@
 /**
  *- referenceType: {@link PublicIndexedTimePointIndexReferenceReferenceTypeEnum}
  *- dayOfWeek: {@link PublicIndexedTimePointIndexReferenceDayOfWeekEnum} 
+ * 
  * @typedef {Object} PublicIndexedTimePointIndexReference
+ * 
  * @property {number} [hour]
  * @property {number} [millisecond]
  * @property {PublicIndexedTimePointIndexReferenceReferenceTypeEnum} referenceType

@@ -1,18 +1,26 @@
 /**
  * @file Action.js
  * @module Action
- * @import { ActionTypeEnum, ActionTypeIdEnum } from './ActionEnums.js';
- * @import { ListBranch } from './ListBranch.js';
- * @import { Connection } from './Automation.js';
+ * @export { Action }
  */
+
+// Referenced Type Imports:
+/**
+ * @import { ActionTypeEnum, ActionTypeIdEnum } from './ActionEnums.js';
+ * @typedef {@import('./ListBranch.js').ListBranch} ListBranch
+ * @typedef {@import('./Automation.js').Connection} Connection
+ * 
+*/
 
 // Action --------------------------------
 /**
- * @export
  *- type: {@link ActionTypeEnum}
  *- actionTypeId: {@link ActionTypeIdEnum}
- *- listBranches: Array<{@link ListBranch}>
+ *- listBranches: Array\<{@link ListBranch}>
+ *- defaultBranch: {@link Connection} 
+ * 
  * @typedef {Object} Action
+ * 
  * @property {string} actionId
  * @property {ActionTypeEnum} type
  * @property {number} [actionTypeVersion]

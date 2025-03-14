@@ -1,12 +1,12 @@
 /**
  * @file ActionEnums.js
  * @module ActionEnums
+ * @export { ActionTypeEnum, ActionTypeIdEnum }
  */
 
 /**
  * @enum {string} ActionTypeEnum
  * @readonly
- * @export
  *- LIST_BRANCH
  *- SINGLE_CONNECTION
  */
@@ -18,7 +18,6 @@ export const ActionTypeEnum = {
 /**
  * @enum {string} ActionTypeIdEnum
  * @readonly
- * @export
  *- DELAY_UNTIL_DATE - 0-35 - Delay until a preconfigured calendar date or date property of the enrolled record.
  *- DELAY_TIME - 0-1 - Delay for a preconfigured amount of time (e.g., 3 hours, 5 days, etc.), until a specific day (e.g., Tuesday), or time of day (12:00 AM EST).
  *- ADD_TO_LIST - 0-13 - Add or remove an enrolled contact to/from a static list.

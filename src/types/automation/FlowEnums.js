@@ -7,7 +7,6 @@
 /**
  * @enum {string} FlowObjectTypeEnum
  * @readonly
- * @export
  *- CONTACT_FLOW
  *- DEAL_FLOW
  *- TICKET_FLOW

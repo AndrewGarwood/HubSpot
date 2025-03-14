@@ -8,7 +8,6 @@
 /**
  * @enum {string} OperatorEnum
  * @readonly
- * @export
  *- IS_EQUAL_TO - "is equal to any of"
  *- IS_NOT_EQUAL_TO - "is not equal to any of"
  *- CONTAINS - "contains any of"
@@ -43,7 +42,6 @@ export const OperatorEnum = {
 /**
  * @enum {string} OperationTypeEnum
  * @readonly
- * @export
  *- ALL_PROPERTY
  *- STRING
  *- MULTISTRING

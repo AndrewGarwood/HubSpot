@@ -1,12 +1,21 @@
 /**
  * @file AutomationEnums.js
  * @module AutomationEnums
+ * @export { 
+ * AutomationTypeEnum, 
+ * EnrollmentCriteriaTypeEnum, 
+ * EdgeTypeEnum, 
+ * PublicTodayReferenceReferenceTypeEnum, 
+ * PublicIndexedTimePointTimeTypeEnum, 
+ * PublicIndexedTimePointIndexReferenceReferenceTypeEnum, 
+ * PublicIndexedTimePointIndexReferenceDayOfWeekEnum 
+ * }
  */
 
 /**
  * @enum {string} AutomationTypeEnum
  * @readonly
- * @export
+ *.
  *- WORKFLOW
  */
 export const AutomationTypeEnum = {
@@ -16,7 +25,7 @@ export const AutomationTypeEnum = {
 /**
  * @enum {string} EnrollmentCriteriaTypeEnum
  * @readonly
- * @export
+ *.
  *- LIST_BASED
  */
 export const EnrollmentCriteriaTypeEnum = {
@@ -27,7 +36,6 @@ export const EnrollmentCriteriaTypeEnum = {
 /**
  * @enum {string} EdgeTypeEnum
  * @readonly
- * @export
  *- STANDARD
  *- GOTO
  */
@@ -37,10 +45,9 @@ export const EdgeTypeEnum = {
 };
 
 /**
- * node_modules\@hubspot\api-client\lib\codegen\crm\lists\models\PublicTodayReference.d.ts
  * @enum {string} PublicTodayReferenceReferenceTypeEnum
  * @readonly
- * @export
+ *.
  *- TODAY
  */
 export const PublicTodayReferenceReferenceTypeEnum = {
@@ -50,7 +57,7 @@ export const PublicTodayReferenceReferenceTypeEnum = {
 /**
  * @enum {string} PublicIndexedTimePointTimeTypeEnum
  * @readonly
- * @export
+ *.
  *- Indexed
  */
 export const PublicIndexedTimePointTimeTypeEnum = {
@@ -60,8 +67,8 @@ export const PublicIndexedTimePointTimeTypeEnum = {
 /**
  * @enum {string} PublicIndexedTimePointIndexReferenceReferenceTypeEnum
  * @readonly
- * @export
- *- Month
+ *.
+ * - Month
  */
 export const PublicIndexedTimePointIndexReferenceReferenceTypeEnum = {
     Month: "MONTH"
@@ -70,7 +77,6 @@ export const PublicIndexedTimePointIndexReferenceReferenceTypeEnum = {
 /**
  * @enum {string} PublicIndexedTimePointIndexReferenceDayOfWeekEnum
  * @readonly
- * @export
  *- Monday = "MONDAY",
  *- Tuesday = "TUESDAY",
  *- Wednesday = "WEDNESDAY",
