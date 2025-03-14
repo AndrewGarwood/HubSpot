@@ -1,9 +1,16 @@
 import { writeToJsonFile, printJson, getJsonFromFile } from '../io/io_utils.mjs';
 import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL } from '../../config/env.mjs';
-import { ActionTypeEnum } from '../../types/automation/ActionEnums.js';
+import { ActionTypeEnum } from '../../types/automation/Action.js';
 import '../../types/automation/Flow.js';
+import { Flow } from '../../types/automation/Flow.js';
+import '../../types/automation/FlowFilter.js';
+import { FlowFilter } from '../../types/automation/FlowFilter.js';
+import '../../types/automation/Operation.js';
+import { Operation } from '../../types/automation/Operation.js';
 import '../../types/automation/FilterBranch.js';
+import { FilterBranch } from '../../types/automation/FilterBranch.js';
 import '../../types/automation/ListBranch.js';
+import { ListBranch } from '../../types/automation/ListBranch.js';
 
 /**
  * @param {string} flowId string 
@@ -122,19 +129,26 @@ export function setFlowFilterValues(filter, targetProperty, values) {
 
 /**
  * @param {FilterBranch} filterBranch {@link FilterBranch}
- * @param {string} targetProperty 
- * @param {Array<string>} valuesToAdd 
- * @param {Array<string>} valuesToRemove 
+ * @param {string} targetProperty - string
+ * @param {Array<string>} valuesToAdd - Array\<string>
+ * @param {Array<string>} valuesToRemove - Array\<string>
+ * @param {boolean} replacePreviousValues - boolean
  * @returns {FilterBranch}
  */
-export function updateFilterBranchChildFilterBranches(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
+export function updateFilterBranchChildFilterBranches(
+    filterBranch, 
+    targetProperty, 
+    valuesToAdd=[], 
+    valuesToRemove=[], 
+    replacePreviousValues=false
+) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
-    // console.log('in updateFilterBranchChildFilterBranches(), filterBranch.filterBranches.length:', filterBranch.filterBranches.length);
     for (let childFilterBranch of filterBranch.filterBranches) {
-        // console.log('4. in updateFilterBranchChildFilterBranches(), calling updateFilterBranchFlowFilters()');
-        childFilterBranch = updateFilterBranchFlowFilters(childFilterBranch, targetProperty, valuesToAdd, valuesToRemove);
+        childFilterBranch = updateFilterBranchFlowFilters(
+            childFilterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
+        );
     }
     return filterBranch;
 }
@@ -144,18 +158,27 @@ export function updateFilterBranchChildFilterBranches(filterBranch, targetProper
  * @param {string} targetProperty - string
  * @param {Array<string>} valuesToAdd - Array\<string>
  * @param {Array<string>} valuesToRemove - Array\<string>
+ * @param {boolean} replacePreviousValues - boolean
  * @returns {FilterBranch} filterBranch — {@link FilterBranch}
  */
-export function updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
+export function updateFilterBranchFlowFilters(
+    filterBranch, 
+    targetProperty, 
+    valuesToAdd=[], 
+    valuesToRemove=[], 
+    replacePreviousValues=false
+) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
-    // console.log('in updateFilterBranchFlowFilters(), filterBranch.filter.length:', filterBranch.filters.length);
     for (let flowFilter of filterBranch.filters) {
         if (flowFilter.property === targetProperty) {
-            // console.log('3. in updateFilterBranchFlowFilters(), calling addValuesToFilter() and removeValuesFromFilter()');
-            flowFilter = addValuesToFilter(flowFilter, targetProperty, valuesToAdd);
-            flowFilter = removeValuesFromFilter(flowFilter, targetProperty, valuesToRemove);
+            if (replacePreviousValues) {
+                flowFilter = setFlowFilterValues(flowFilter, targetProperty, valuesToAdd);
+            } else {
+                flowFilter = addValuesToFilter(flowFilter, targetProperty, valuesToAdd);
+                flowFilter = removeValuesFromFilter(flowFilter, targetProperty, valuesToRemove);
+            }
         }
     }
     return filterBranch;
@@ -166,15 +189,25 @@ export function updateFilterBranchFlowFilters(filterBranch, targetProperty, valu
  * @param {string} targetProperty 
  * @param {Array<string>} valuesToAdd - Array\<string>
  * @param {Array<string>} valuesToRemove - Array\<string>
+ * @param {boolean} replacePreviousValues - boolean
  * @returns {FilterBranch} filterBranch — {@link FilterBranch}
  */
-export function updateFilterBranch(filterBranch, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
+export function updateFilterBranch(
+    filterBranch, 
+    targetProperty, 
+    valuesToAdd=[], 
+    valuesToRemove=[], 
+    replacePreviousValues=false
+) {
     if (!filterBranch || !filterBranch.filters) {
         return filterBranch;
     }
-    // console.log('2. in updateFilterBranch(), calling updateFilterBranchFlowFilters() and updateFilterBranchChildFilterBranches()');
-    filterBranch = updateFilterBranchFlowFilters(filterBranch, targetProperty, valuesToAdd, valuesToRemove);
-    filterBranch = updateFilterBranchChildFilterBranches(filterBranch, targetProperty, valuesToAdd, valuesToRemove);
+    filterBranch = updateFilterBranchFlowFilters(
+        filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
+    );
+    filterBranch = updateFilterBranchChildFilterBranches(
+        filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
+    );
     return filterBranch;
 }
 
@@ -184,9 +217,17 @@ export function updateFilterBranch(filterBranch, targetProperty, valuesToAdd=[],
  * @param {string} targetProperty - string
  * @param {Array<string>} valuesToAdd - Array\<string>
  * @param {Array<string>} valuesToRemove - Array\<string>
+ * @param {boolean} replacePreviousValues - boolean
  * @returns {Flow} flow — {@link Flow}
  */
-export function updateFlowByBranchName(flow, targetBranchName, targetProperty, valuesToAdd=[], valuesToRemove=[]) {
+export function updateFlowByBranchName(
+    flow, 
+    targetBranchName, 
+    targetProperty, 
+    valuesToAdd=[], 
+    valuesToRemove=[], 
+    replacePreviousValues=false
+) {
     if (!flow || !flow.actions || flow.actions.length === 0) {
         return flow;
     }
@@ -195,7 +236,15 @@ export function updateFlowByBranchName(flow, targetBranchName, targetProperty, v
     if (!branch) {
         return flow;
     }
-    branch.filterBranch = updateFilterBranch(branch.filterBranch, targetProperty, valuesToAdd, valuesToRemove);
+    let previousValuesLength = branch.filterBranch.filters[0].operation.values.length;
+    branch.filterBranch = updateFilterBranch(
+        branch.filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
+    );
+    let updatedValuesLength = branch.filterBranch.filters[0].operation.values.length;
+    console.log(`Updated branch \"${targetBranchName}\" with targetProperty: ${targetProperty}` +
+        // `\n\tValues to add: ${valuesToAdd}, Values to remove: ${valuesToRemove}` +
+        `\n\tPrevious values length: ${previousValuesLength}, Updated values length: ${updatedValuesLength}`
+    );
     return flow;
 }
 
@@ -210,14 +259,15 @@ export function batchUpdateFlowByBranchName(flow, updates) {
     }
     for (let u of updates) {
         flow = updateFlowByBranchName(
-            flow, u.targetBranchName, u.targetProperty, u.valuesToAdd, u.valuesToRemove
+            flow, u.targetBranchName, u.targetProperty, u.valuesToAdd, u.valuesToRemove, u.replacePreviousValues
         );
     }
     return flow;
 }
 
 /**
- * gets first listBranch with matching branchName
+ * Gets first listBranch with matching branchName.
+ * Log branchName to console and return listBranch if found else, log not found and return null.
  * @param {Flow} flow {@link Flow}
  * @param {string} targetBranchName - string
  * @returns {ListBranch} .{@link ListBranch}
@@ -235,7 +285,7 @@ export function getListBranchByName(flow, targetBranchName) {
             listBranch => listBranch.branchName === targetBranchName
         );
         if (listBranch) {
-            console.log('found branch at actionId:', action.actionId);
+            console.log(`Found branch \"${targetBranchName}\" at actionId: ${action.actionId}`);
             return listBranch;
         }
     }
@@ -258,7 +308,6 @@ export function hasUniqueBranchNames(flow) {
         if (!action.type === ActionTypeEnum.LIST_BRANCH || !action.listBranches) {
             continue;
         }
-
         for (let listBranch of Object.values(action.listBranches)) {
             if (namesSeen.has(listBranch.branchName)) {
                 return false;
@@ -270,7 +319,7 @@ export function hasUniqueBranchNames(flow) {
 }
 
 /**
- * 
+ * Get all {@link ListBranch} names from a {@link Flow} object.
  * @param {Flow} flow {@link Flow}
  * @returns {Array<string>} branchNames: Array\<string>
  */
@@ -291,11 +340,26 @@ export function getAllBranchNames(flow) {
     return branchNames;
 }
 
-
-// export function updateListBranch(listBranch, targetProperty, valuesToRemove=[], valuesToAdd=[]) {
-//     if (!listBranch || !listBranch.filterBranch) {
-//         return listBranch;
-//     }
-//     listBranch.filterBranch = updateFilterBranch(listBranch.filterBranch, targetProperty, valuesToRemove, valuesToAdd);
-//     return listBranch;
-// }
+/**
+ * adds childFilterBranch to first listBranch with matching branchName.
+ * @param {Flow} flow - {@link Flow}
+ * @param {string} targetBranchName - string
+ * @param {FilterBranch} childFilterBranch - {@link FilterBranch}
+ * @returns {Flow} flow - {@link Flow}
+ */
+export function addChildFilterBranchToListBranchByName(
+    flow, 
+    targetBranchName, 
+    childFilterBranch
+) {
+    if (!flow || !flow.actions || flow.actions.length === 0 || !childFilterBranch) {
+        return flow;
+    }
+    /**@type {ListBranch} {@link ListBranch} */
+    let branch = getListBranchByName(flow, targetBranchName);
+    if (!branch) {
+        return flow;
+    }
+    branch.filterBranch.filterBranches.push(childFilterBranch);
+    return flow;
+}

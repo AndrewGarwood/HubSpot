@@ -8,7 +8,6 @@
 // Referenced Type Imports:
 /**
  * @typedef {import('./FlowFilter.js').FlowFilter} FlowFilter
- * @import { FilterBranchTypeEnum, FilterBranchOperatorEnum } from './FilterBranchEnums.js';
  */
 
 // FilterBranch --------------------------------
@@ -16,16 +15,55 @@
 // but that's how HubSpot's API is structured.
 
 /**
- *
- *- filters: Array\<{@link FlowFilter}>
- *- filterBranchType: {@link FilterBranchTypeEnum}
- *- filterBranchOperator: {@link FilterBranchOperatorEnum}
- * 
  * @typedef {Object} FilterBranch
- * 
  * @property {Array<FilterBranch>} filterBranches
  * @property {Array<FlowFilter>} filters
  * @property {FilterBranchTypeEnum} filterBranchType
  * @property {FilterBranchOperatorEnum} filterBranchOperator
  */
 
+/**
+ * @param {Array<FilterBranch>} filterBranches - Array\<{@link FilterBranch}>
+ * @param {Array<FlowFilter>} filters - Array\<{@link FlowFilter}>
+ * @param {FilterBranchTypeEnum} filterBranchType - {@link FilterBranchTypeEnum}
+ * @param {FilterBranchOperatorEnum} filterBranchOperator - {@link FilterBranchOperatorEnum}
+ * @returns {FilterBranch} - .{@link FilterBranch}
+ */
+export function FilterBranch(
+    filterBranches=[], 
+    filters=[], 
+    filterBranchType=FilterBranchTypeEnum.AND, 
+    filterBranchOperator=FilterBranchOperatorEnum.AND
+) {
+    return {
+        filterBranches: filterBranches,
+        filters: filters,
+        filterBranchType: filterBranchType,
+        filterBranchOperator: filterBranchOperator,
+    };
+}
+
+
+/**
+ * @enum {string} FilterBranchTypeEnum
+ * @readonly
+ *- AND
+ *- OR
+ *
+ */
+export const FilterBranchTypeEnum = {
+    AND: 'AND',
+    OR: 'OR',
+};
+
+/**
+ * @enum {string} FilterBranchOperatorEnum
+ * @readonly
+ *- AND
+ *- OR
+ *
+ */
+export const FilterBranchOperatorEnum = {
+    AND: 'AND',
+    OR: 'OR',
+};

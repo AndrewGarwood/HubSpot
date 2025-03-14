@@ -17,6 +17,7 @@ import {
 } from './utils/auotmation/flows.mjs';
 import { TEST_FLOW_ID } from './config/constants.mjs';
 import './types/automation/Flow.js';
+import { Flow } from './types/automation/Flow.js';
 import './types/automation/FilterBranch.js';
 import './types/automation/ListBranch.js';
 
