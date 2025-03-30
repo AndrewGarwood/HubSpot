@@ -16,7 +16,7 @@ Option 2 - Javascript JSDoc Factory Function With Constructor Tag, Typedef
 ![Option 2 - Javascript JSDoc Factory Function With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocFunctionWithConstructorTagThenTypedef.png)
 
 Option 3 - Javascript JSDoc Class Constructor, Typedef
-![Option 3 - Javascript JSDoc Class With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocClassWithConstructorTagThenTypedef.png)
+![Option 3 - Javascript JSDoc Class With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocClassWithConstructorThenTypedef.png)
 
 Option 4 - Typescript Interface
 ![Option 4 - Typescript Interface and JSDoc](./type_hint_screenshots/d.tsFileImport.png)
