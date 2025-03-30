@@ -3,7 +3,7 @@
  * @module FilterBranch
  */
 
-// Testing type hint tooltip when use an interface in a .d.ts file
+// Testing type hint tooltip when use 'export type ObjectName = {}' in a .d.ts file
 
 
 import { FlowFilter } from './FlowFilter';
@@ -38,7 +38,7 @@ export declare enum FilterBranchOperatorEnum {
  * @property {FilterBranchTypeEnum} filterBranchType - The type of filter branch (AND/OR)
  * @property {FilterBranchOperatorEnum} filterBranchOperator - The operator for the filter branch (AND/OR)
  */
-export interface FilterBranch {
+export type FilterBranch = {
     filterBranches: Array<FilterBranch>;
     filters: Array<FlowFilter>;
     filterBranchType: FilterBranchTypeEnum;

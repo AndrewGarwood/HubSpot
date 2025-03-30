@@ -83,14 +83,14 @@ export class Operation {
     /**
      * @constructor
      * @param {OperatorEnum} operator - The operator to apply
+     * @param {OperationTypeEnum} operationType - The type of operation
      * @param {boolean} [includeObjectsWithNoValueSet=false] - Whether to include objects with no value set
      * @param {Array<string>} [values=[]] - Values to use in the operation
-     * @param {OperationTypeEnum} operationType - The type of operation
      */
     constructor(
         operator: OperatorEnum, 
+        operationType: OperationTypeEnum,
         includeObjectsWithNoValueSet?: boolean,
-        values?: Array<string>,
-        operationType: OperationTypeEnum
+        values?: Array<string>
     );
 }
