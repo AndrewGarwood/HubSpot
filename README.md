@@ -10,7 +10,7 @@
 - ./type_hint_screenshots/: images examining how different type definition methods are translated to tooltips by VSCode. (e.g. using JSDoc comments and tags such as @typedef, using a factory function, using a class, and using typescript).
 
 Option 1 - Javascript JSDoc Factory Function, Typedef
-![Option 1 - Javascript JSDoc Factory Function and Typedef Tag](./type_hint_screenshots/jsFileJSDocFunctionThenTypedef.png)
+![Option 1 - Javascript JSDoc Factory Function and Typedef Tag](./type_hint_screenshots/jsFileJSdocFunctionThenTypedef.png)
 
 Option 2 - Javascript JSDoc Factory Function With Constructor Tag, Typedef
 ![Option 2 - Javascript JSDoc Factory Function With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocFunctionWithConstructorTagThenTypedef.png)
