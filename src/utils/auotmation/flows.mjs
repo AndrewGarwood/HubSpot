@@ -1,5 +1,6 @@
 import { writeToJsonFile, printJson, getJsonFromFile } from '../io/io_utils.mjs';
 import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL } from '../../config/env.mjs';
+import { FlowBranchUpdate } from '../../types/automation/Automation.js';
 import { ActionTypeEnum } from '../../types/automation/Action.js';
 import '../../types/automation/Flow.js';
 import { Flow } from '../../types/automation/Flow.js';
