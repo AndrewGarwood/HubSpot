@@ -16,12 +16,12 @@ export declare enum FlowFilterTypeEnum {
 }
 
 /**
- * @interface FlowFilter
+ * @typedefn FlowFilter
  * @property {string} property - The property to filter on
  * @property {Operation} operation - (See {@link Operation}) The operation to perform on the property
- * @property {FlowFilterTypeEnum} filterType - The type of filter
+ * @property {FlowFilterTypeEnum} filterType - The type of filter, see {@link FlowFilterTypeEnum}
  */
-export interface FlowFilter {
+export type FlowFilter = {
     property: string;
     operation: Operation;
     filterType: FlowFilterTypeEnum;

@@ -31,12 +31,11 @@ export declare enum FilterBranchOperatorEnum {
 }
 
 /**
- * @interface FilterBranch
- * @description This interface represents a filter branch that can contain other filter branches and filters.
- * @property {Array\<FilterBranch>} filterBranches - (see {@link FilterBranch})
- * @property {Array\<FlowFilter>} filters - (see {@link FlowFilter})
- * @property {FilterBranchTypeEnum} filterBranchType - The type of filter branch (AND/OR)
- * @property {FilterBranchOperatorEnum} filterBranchOperator - The operator for the filter branch (AND/OR)
+ * @typedefn FilterBranch
+ * @property {Array\<FilterBranch>} filterBranches - {@link FilterBranch}
+ * @property {Array\<FlowFilter>} filters - {@link FlowFilter}
+ * @property {FilterBranchTypeEnum} filterBranchType - The type of filter branch, {@link FilterBranchTypeEnum}
+ * @property {FilterBranchOperatorEnum} filterBranchOperator - The operator for the filter branch, {@link FilterBranchOperatorEnum}
  */
 export type FilterBranch = {
     filterBranches: Array<FilterBranch>;

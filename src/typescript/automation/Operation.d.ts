@@ -46,51 +46,64 @@ export declare enum OperationTypeEnum {
     PROPERTY = 'PROPERTY'
 }
 
-
 /**
- * @class Operation
- * @description This class represents an operation that can be performed on a property in a HubSpot workflow filter.
+ * @typedefn Operation
  * @property {OperatorEnum} operator - The operator to apply
  * @property {boolean} includeObjectsWithNoValueSet - Whether to include objects with no value set
  * @property {Array\<string>} values - Values to use in the operation
  * @property {OperationTypeEnum} operationType - The type of operation
  */
-export class Operation {
-    /**
-     * The operator to apply
-     * @type {OperatorEnum}
-     */
+export type Operation = {
     operator: OperatorEnum;
-    
-    /**
-     * Whether to include objects with no value set
-     * @type {boolean}
-     */
     includeObjectsWithNoValueSet: boolean;
-    
-    /**
-     * Values to use in the operation
-     * @type {Array<string>}
-     */
     values: Array<string>;
-    
-    /**
-     * The type of operation
-     * @type {OperationTypeEnum}
-     */
     operationType: OperationTypeEnum;
-
-    /**
-     * @constructor
-     * @param {OperatorEnum} operator - The operator to apply
-     * @param {OperationTypeEnum} operationType - The type of operation
-     * @param {boolean} [includeObjectsWithNoValueSet=false] - Whether to include objects with no value set
-     * @param {Array<string>} [values=[]] - Values to use in the operation
-     */
-    constructor(
-        operator: OperatorEnum, 
-        operationType: OperationTypeEnum,
-        includeObjectsWithNoValueSet?: boolean,
-        values?: Array<string>
-    );
 }
+
+// /**
+//  * @class Operation
+//  * @description This class represents an operation that can be performed on a property in a HubSpot workflow filter.
+//  * @property {OperatorEnum} operator - The operator to apply
+//  * @property {boolean} includeObjectsWithNoValueSet - Whether to include objects with no value set
+//  * @property {Array\<string>} values - Values to use in the operation
+//  * @property {OperationTypeEnum} operationType - The type of operation
+//  */
+// export class Operation {
+//     /**
+//      * The operator to apply
+//      * @type {OperatorEnum}
+//      */
+//     operator: OperatorEnum;
+    
+//     /**
+//      * Whether to include objects with no value set
+//      * @type {boolean}
+//      */
+//     includeObjectsWithNoValueSet: boolean;
+    
+//     /**
+//      * Values to use in the operation
+//      * @type {Array<string>}
+//      */
+//     values: Array<string>;
+    
+//     /**
+//      * The type of operation
+//      * @type {OperationTypeEnum}
+//      */
+//     operationType: OperationTypeEnum;
+
+//     /**
+//      * @constructor
+//      * @param {OperatorEnum} operator - The operator to apply
+//      * @param {OperationTypeEnum} operationType - The type of operation
+//      * @param {boolean} [includeObjectsWithNoValueSet=false] - Whether to include objects with no value set
+//      * @param {Array<string>} [values=[]] - Values to use in the operation
+//      */
+//     constructor(
+//         operator: OperatorEnum, 
+//         operationType: OperationTypeEnum,
+//         includeObjectsWithNoValueSet?: boolean,
+//         values?: Array<string>
+//     );
+// }
