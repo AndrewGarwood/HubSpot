@@ -1,14 +1,14 @@
 /**
  * @file ActionFields.js
  * @module ActionFields
- * @export { ActionFields, ActionFieldsValue }
- */
-/**
- * @typedef {import('./Action.js').Action} Action
- * @import { PublicSubscriptionChannelEnum, PublicSubscriptionStatusLegalBasisEnum } from '../hs_enums.js'
+ * @export { ActionFields }
  */
 
-import { ObjectTypeIdEnum } from '../hs_enums.js';
+/**
+ * @typedef {import('./Action.js').Action} Action
+ */
+
+import { ObjectTypeIdEnum,PublicSubscriptionChannelEnum, PublicSubscriptionStatusLegalBasisEnum } from '../HubSpot.js';
 import { ActionTypeIdEnum } from './Action.js';
 
 /**
@@ -29,10 +29,11 @@ import { ActionTypeIdEnum } from './Action.js';
  *  - if type is STATIC_VALUE, this is the value to be set.
  * @property {string} [staticValue]
  * @property {ActionFieldsValueTypeEnum} type
+ */
 /**
  * @enum {string} ActionFieldsValueTypeEnum
  * @readonly
- * - STATIC_VALUE
+ * @property {string} STATIC_VALUE
  */
 export const ActionFieldsValueTypeEnum = {
     STATIC_VALUE: 'STATIC_VALUE'
@@ -94,8 +95,11 @@ export const ActionFieldsValueTypeEnum = {
 /**
  * @enum {string} PublicSubscriptionOptStateEnum
  * @readonly
- * - OPT_IN
- * - OPT_OUT
+ * @property {string} OPT_IN
+ * @property {string} OPT_OUT
+ * @property {string} SUBSCRIBED
+ * @property {string} UNSUBSCRIBED
+ * @property {string} UNKNOWN
  */
 export const PublicSubscriptionOptStateEnum = {
     OPT_IN: "OPT_IN",

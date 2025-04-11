@@ -15,6 +15,14 @@
 // but that's how HubSpot's API is structured.
 
 /**
+ * @typedef {Object} FilterBranch
+ * @property {Array<FilterBranch>} filterBranches
+ * @property {Array<FlowFilter>} filters
+ * @property {FilterBranchTypeEnum} filterBranchType
+ * @property {FilterBranchOperatorEnum} filterBranchOperator
+ */
+
+/**
  * @param {Array<FilterBranch>} filterBranches - Array\<{@link FilterBranch}>
  * @param {Array<FlowFilter>} filters - Array\<{@link FlowFilter}>
  * @param {FilterBranchTypeEnum} filterBranchType - {@link FilterBranchTypeEnum}
@@ -35,20 +43,12 @@ export function FilterBranch(
     };
 }
 
-/**
- * @typedef {Object} FilterBranch
- * @property {Array<FilterBranch>} filterBranches
- * @property {Array<FlowFilter>} filters
- * @property {FilterBranchTypeEnum} filterBranchType
- * @property {FilterBranchOperatorEnum} filterBranchOperator
- */
-
 
 /**
  * @enum {string} FilterBranchTypeEnum
  * @readonly
- *- AND
- *- OR
+ * @property {string} AND
+ * @property {string} OR
  *
  */
 export const FilterBranchTypeEnum = {
@@ -59,8 +59,8 @@ export const FilterBranchTypeEnum = {
 /**
  * @enum {string} FilterBranchOperatorEnum
  * @readonly
- *- AND
- *- OR
+ * @property {string} AND
+ * @property {string} OR
  *
  */
 export const FilterBranchOperatorEnum = {

@@ -110,3 +110,36 @@ export function stripChar(s, char, escape=false) {
     const regex = new RegExp(`^${char}+|${char}+$`, 'g');
     return s.replace(regex, '');
 }
+
+/**
+ * @description Parse an Excel file and return a dictionary of key-value pairs. originally used to map territories to zipcode lists, hence the padStart(5, '0') for the values.
+ * @param {string} filePath string
+ * @param {string} sheetName string
+ * @param {string} keyColumn string
+ * @param {string} valueColumn string
+ * @returns {Object.<string, Array<string>>} dict: Object.<string, Array\<string>> — key-value pairs where key is from keyColumn and value is an array of values from valueColumn
+ */
+export function parseExcelForOneToMany(filePath, sheetName, keyColumn, valueColumn) {
+    filePath = validateFileExtension({
+        filePath: filePath, 
+        expectedExtension: 'xlsx'
+    }).validatedFilePath;
+    const workbook = xlsx.readFile(filePath);
+    const sheet = workbook.Sheets[sheetName];
+    const jsonData = xlsx.utils.sheet_to_json(sheet);
+    /**@type {Object.<string, Array<string>>} */
+    const dict = {};
+    jsonData.forEach(row => {
+        let key = row[keyColumn];
+        key = `${key}`.trim().replace(/\.$/, '');
+        let val = row[valueColumn];
+        val = `${val}`.trim().replace(/\.$/, '').padStart(5, '0');
+        if (!dict[key]) {
+            dict[key] = [];
+        }
+        if (!dict[key].includes(val)) {
+            dict[key].push(val);
+        }
+    });
+    return dict;
+}

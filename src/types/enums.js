@@ -3,46 +3,26 @@
  */
 
 // node_modules\@hubspot\api-client\lib\src\discovery\crm\CrmDiscovery.d.ts
-/**
- * @enum {string}
- * @readonly
- * @export
- *- contacts
- *- deals
- *- companies
- *- products
- *- lineItems
- *- properties
- *- tickets
- */
-export const ObjectTypeEnum = {
-    Contacts: 'contacts',
-    Deals: 'deals',
-    Companies: 'companies',
-    Products: 'products',
-    LineItems: 'lineItems',
-    Properties: 'properties',
-    Tickets: 'tickets'
-};
+
 
 /**
  * @enum {string}
  * @readonly
  * @export
- *-    LT - Less than the specified value.
- *-    LTE - Less than or equal to the specified value.
- *-    GT - Greater than the specified value.
- *-    GTE - Greater than or equal to the specified value.
- *-    EQ - Equal to the specified value.
- *-    NEQ - Not equal to the specified value.
- *-    BETWEEN - Within the specified range. In your request, use key-value pairs to set highValue and value. Refer to the example below the table.
- *-    IN - Included within the specified list. Searches by exact match. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase. Refer to the example below the table.
- *-    NOT_IN - Not included within the specified list. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase.
- *--  IN / NOT_IN for enumeration properties only?
- *-    HAS_PROPERTY - Has a value for the specified property.
- *-    NOT_HAS_PROPERTY - Doesn't have a value for the specified property.
- *-    CONTAINS_TOKEN - Contains a token. In your request, you can use wildcards (*) to complete a partial search. For example, use the value *@hubspot.com to retrieve contacts with a HubSpot email address.
- *-    NOT_CONTAINS_TOKEN - Doesn't contain a token.
+ * @property {string} LT - Less than the specified value.
+ * @property {string} LTE - Less than or equal to the specified value.
+ * @property {string} GT - Greater than the specified value.
+ * @property {string} GTE - Greater than or equal to the specified value.
+ * @property {string} EQ - Equal to the specified value.
+ * @property {string} NEQ - Not equal to the specified value.
+ * @property {string} BETWEEN - Within the specified range. In your request, use key-value pairs to set highValue and value. Refer to the example below the table.
+ * @property {string} IN - Included within the specified list. Searches by exact match. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase. Refer to the example below the table.
+ * @property {string} NOT_IN - Not included within the specified list. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase.
+ * --  IN / NOT_IN for enumeration properties only?
+ * @property {string} HAS_PROPERTY - Has a value for the specified property.
+ * @property {string} NOT_HAS_PROPERTY - Doesn't have a value for the specified property.
+ * @property {string} CONTAINS_TOKEN - Contains a token. In your request, you can use wildcards (*) to complete a partial search. For example, use the value *@hubspot.com to retrieve contacts with a HubSpot email address.
+ * @property {string} NOT_CONTAINS_TOKEN - Doesn't contain a token.
  *
  * 
  */
@@ -66,12 +46,12 @@ export const FilterOperatorEnum = {
  * @enum {string}
  * @readonly
  * @export
- *-    String - A string property.
- *-    Number - A number property.
- *-    Date - A date property. 
- *-    Datetime - A datetime property.
- *-    Enumeration - An enumeration property.
- *-    Bool - A boolean property.
+ * @property {string} String - A string property.
+ * @property {string} Number - A number property.
+ * @property {string} Date - A date property. 
+ * @property {string} Datetime - A datetime property.
+ * @property {string} Enumeration - An enumeration property.
+ * @property {string} Bool - A boolean property.
  */
 export const PropertyCreateTypeEnum = {
     String: 'string',
@@ -86,16 +66,16 @@ export const PropertyCreateTypeEnum = {
  * @enum {string}
  * @readonly
  * @export
- *-    textarea - A text area field.
- *-    text - A single line text field.
- *-    date - A date field. 
- *-    file - A file field.
- *-    number - A number field.
- *-    select - A select field.
- *-    radio - A radio button field.
- *-    checkbox - A checkbox field.
- *-    booleancheckbox - A boolean checkbox field.
- *-    calculation_equation - A calculation equation field.
+ * @property {string} textarea - A text area field.
+ * @property {string} text - A single line text field.
+ * @property {string} date - A date field. 
+ * @property {string} file - A file field.
+ * @property {string} number - A number field.
+ * @property {string} select - A select field.
+ * @property {string} radio - A radio button field.
+ * @property {string} checkbox - A checkbox field.
+ * @property {string} booleancheckbox - A boolean checkbox field.
+ * @property {string} calculation_equation - A calculation equation field.
  */
 export const PropertyCreateFieldTypeEnum = {
     Textarea: 'textarea',

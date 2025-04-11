@@ -7,7 +7,7 @@ import { VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "./utils/crm_utils/proper
 import { sortDealsChronologically, updateSkuHistory } from './read_deals_of_contact.mjs';
 import dotenv from 'dotenv';
 dotenv.config();
-import './types/types.js';
+import './types/Types.js';
 
 import { hubspotClient, SEARCH_LIMIT, delay, DATA_DIR } from './config/env.mjs';
 const MAX_NUM_SEARCHES = 1;
@@ -474,8 +474,8 @@ function extractCategoryInfo({sku, categoriesBought, dealId}) {
 
 /**
  * 
- * @param {Array<any>} arr Array<any>
- * @param {Number} batchSize Number
+ * @param {Array<any>} arr Array\<any>
+ * @param {number} batchSize number
  * @returns {Array<Array<any>>} batches — Array<Array\<any>>
  */
 function partitionArrayBySize(arr, batchSize) {

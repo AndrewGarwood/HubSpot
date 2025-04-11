@@ -4,7 +4,8 @@
 
 import '../../types/types.js';
 import '../../types/enums.js';
-import { FilterOperatorEnum, ObjectTypeEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from '../../types/enums.js';
+import { FilterOperatorEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from '../../types/enums.js';
+import { CrmObjectTypeEnum } from '../../types/crm/CrmEnums.js';
 import '../../types/hubspot_types.js';
 import { hubspotClient, PATCH_DELAY, delay } from '../../config/env.mjs';
 
@@ -13,23 +14,23 @@ import { hubspotClient, PATCH_DELAY, delay } from '../../config/env.mjs';
 
 
 /**
- * To include multiple filter criteria, you can group filters within filterGroups:
+ * "To include multiple filter criteria, you can group filters within filterGroups:
  *- To apply AND logic, include a comma-separated list of conditions within one set of filters.
  *- To apply OR logic, include multiple filters within a filterGroup.
  *- You can include a maximum of five filterGroups with up to 6 filters in each group, 
  * with a maximum of 18 filters in total. If you've included too many groups 
- * or filters, you'll receive a VALIDATION_ERROR error response.
+ * or filters, you'll receive a VALIDATION_ERROR error response."
  * 
- *- note: filterGroups: Array<{@link FilterGroup}> = Array<Array<{@link Filter}>>
- *- return: searchResult: {@link SearchResult} = { objectIds: Array\<string>, objects: Array<{@link SimplePublicObject}>, after: number, total: number }
+ *- filterGroups: Array<{@link FilterGroup}> = Array<Array<{@link Filter}>>
+ *-
  * @param {SearchConfig} ParamObject
- * @param {ObjectTypeEnum} objectType ObjectTypeEnum, string
+ * @param {CrmObjectTypeEnum} objectType {@link CrmObjectTypeEnum}
  * @param {Array<FilterGroup>} filterGroups Array\<FilterGroup>
  * @param {Array<string>} responseProperties Array\<string> — default=['hs_object_id', 'name']
  * @param {number} searchLimit number <=200 — default=200
  * @param {number} after number — default=0
  * 
- * @returns {Promise<SearchResult>}
+ * @returns {Promise<SearchResult>} searchResult: Promise<{@link SearchResult}> = { objectIds: Array\<string>, objects: Array\<{@link SimplePublicObject}>, after: number, total: number }
  */
 export async function searchObjectByProperty({
     objectType,
@@ -46,7 +47,7 @@ export async function searchObjectByProperty({
         after: after
     };
     try {
-        const apiResponseExample = await hubspotClient.crm.products.searchApi.doSearch(publicObjectSearchRequest);
+        // const apiResponseExample = await hubspotClient.crm.products.searchApi.doSearch(publicObjectSearchRequest);
 
         /**@type {CollectionResponseWithTotalSimplePublicObjectForwardPaging} */
         const apiResponse = await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
@@ -66,7 +67,7 @@ export async function searchObjectByProperty({
         return searchResult;
     } catch (e) {
         e.message === 'HTTP request failed'
-            ? console.error(JSON.stringify(e.response, null, 2))
+            ? console.error(JSON.stringify(e.response, null, 4))
             : console.error(`<< Error in searchObjectByProperty() ${objectType}:`, e);
     }
 }
@@ -78,7 +79,7 @@ export async function searchObjectByProperty({
  * TODO: {@link PropertyCreate}
  * TODO: refactor params into PropertyCreate object
  * @param {CreatePropertyConfig} ParamObject CreatePropertyConfig = { objectType, groupName, name, label, type, fieldType, options }
- * @param {ObjectTypeEnum} objectType, string
+ * @param {CrmObjectTypeEnum} objectType {@link CrmObjectTypeEnum}
  * @param {string} groupName string
  * @param {string} name string
  * @param {string} label string
@@ -107,10 +108,10 @@ export async function createProperty({
     };
     try {
         const apiResponse = await hubspotClient.crm.properties.coreApi.create(objectType, property);
-        console.log(JSON.stringify(apiResponse, null, 2));
+        console.log(JSON.stringify(apiResponse, null, 4));
     } catch (e) {
         e.message === 'HTTP request failed'
-            ? console.error(JSON.stringify(e.response, null, 2))
+            ? console.error(JSON.stringify(e.response, null, 4))
             : console.error('<< Error in createProperty()', e);
     }
 }
@@ -118,7 +119,7 @@ export async function createProperty({
 
 /**
  * @param {SetPropertyConfig} ParamObject SetPropertyConfig = { objectType, objectId, properties, idProperty }
- * @param {ObjectTypeEnum} objectType, string
+ * @param {CrmObjectTypeEnum} objectType {@link CrmObjectTypeEnum}
  * @param {string} objectId string
  * @param {Object.<string, string>} properties Object\<string, string> for each key in properties, set object.key = value
  * @param {string | undefined} idProperty string | undefined
@@ -142,13 +143,13 @@ export async function setPropertyByObjectId({
         return apiResponse;
     } catch (e) {
         e.message === 'HTTP request failed'
-            ? console.error(JSON.stringify(e.response, null, 2))
+            ? console.error(JSON.stringify(e.response, null, 4))
             : console.error('<< Error in setPropertyByObjectId():', e.body.message)
     }
 }
 /**
  * @param {BatchSetPropertyConfig} ParamObject BatchSetPropertyConfig = { objectType, objectIds, properties, idProperty }
- * @param {ObjectTypeEnum} objectType, string
+ * @param {CrmObjectTypeEnum} objectType {@link CrmObjectTypeEnum}
  * @param {Array<string>} objectIds Array\<string>
  * @param {Object.<string, string>} properties Object.<string, string> for each key in properties, set object.key = value
  * @param {string | undefined} idProperty string | undefined
@@ -176,7 +177,7 @@ export async function batchSetPropertyByObjectId({
         console.log(`<< Batch Set ${count} ${objectType} with ${JSON.stringify(properties)} >>`);
     } catch (e) {
         e.message === 'HTTP request failed'
-            ? console.error(JSON.stringify(e.response, null, 2))
+            ? console.error(JSON.stringify(e.response, null, 4))
             : console.error('<< Error in batchSetPropertyValues():', e)
     }
 }

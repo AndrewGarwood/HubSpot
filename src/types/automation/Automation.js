@@ -3,7 +3,7 @@
  * @module Automation
  */
 
-// Referenced Type Imports:
+
 /**
  * @typedef {import('./FilterBranch.js').FilterBranch} FilterBranch
  * @typedef {import('./FlowFilter.js').FlowFilter} FlowFilter
@@ -11,9 +11,7 @@
  */
 
 
-
 // FlowBranchUpdate --------------------------------
-
 
 /**
  * @param {string} targetBranchName - string
@@ -21,15 +19,24 @@
  * @param {Array<string>} valuesToAdd - Array\<string>
  * @param {Array<string>} valuesToRemove - Array\<string>
  * @param {boolean} replacePreviousValues - boolean
+ * @param {boolean} enforceMaxValues - boolean
  * @returns {FlowBranchUpdate} - .{@link FlowBranchUpdate}
  */
-export function FlowBranchUpdate(targetBranchName, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues) {
+export function FlowBranchUpdate(
+    targetBranchName, 
+    targetProperty, 
+    valuesToAdd=[], 
+    valuesToRemove=[], 
+    replacePreviousValues=false,
+    enforceMaxValues=false,
+) {
     return {
         targetBranchName: targetBranchName,
         targetProperty: targetProperty,
-        valuesToAdd: valuesToAdd || [],
-        valuesToRemove: valuesToRemove || [],
-        replacePreviousValues: replacePreviousValues || false,
+        valuesToAdd: valuesToAdd,
+        valuesToRemove: valuesToRemove,
+        replacePreviousValues: replacePreviousValues,
+        enforceMaxValues: enforceMaxValues,
     };
 }
 
@@ -41,6 +48,7 @@ export function FlowBranchUpdate(targetBranchName, targetProperty, valuesToAdd, 
  * @property {Array<string>} valuesToAdd
  * @property {Array<string>} valuesToRemove
  * @property {boolean} replacePreviousValues
+ * @property {boolean} enforceMaxValues
  * @export
  */
 
@@ -69,9 +77,9 @@ export function Connection(edgeType=EdgeTypeEnum.STANDARD, nextActionId) {
 
 // EnrollmentCriteria --------------------------------
 /**
- *- listFilterBranch: {@link FilterBranch}
- *- reEnrollmentTriggersFilterBranches: Array\<{@link FilterBranch}> 
- *- type: {@link EnrollmentCriteriaTypeEnum} 
+ * @property {string} listFilterBranch: {@link FilterBranch}
+ * @property {string} reEnrollmentTriggersFilterBranches: Array\<{@link FilterBranch}> 
+ * @property {string} type: {@link EnrollmentCriteriaTypeEnum} 
  * 
  * @typedef {Object} EnrollmentCriteria
  * 
@@ -85,9 +93,9 @@ export function Connection(edgeType=EdgeTypeEnum.STANDARD, nextActionId) {
 
 // PublicIndexedTimePoint --------------------------------
 /**
- *- offset: {@link PublicIndexOffset} 
- *- indexReference: {@link PublicIndexedTimePointIndexReference} 
- *- timeType: {@link PublicIndexedTimePointTimeTypeEnum}
+ * @property {string} offset: {@link PublicIndexOffset} 
+ * @property {string} indexReference: {@link PublicIndexedTimePointIndexReference} 
+ * @property {string} timeType: {@link PublicIndexedTimePointTimeTypeEnum}
  * 
  * @typedef {Object} PublicIndexedTimePoint
  * 
@@ -101,8 +109,8 @@ export function Connection(edgeType=EdgeTypeEnum.STANDARD, nextActionId) {
 
 // PublicIndexedTimePointIndexReference --------------------------------
 /**
- *- referenceType: {@link PublicIndexedTimePointIndexReferenceReferenceTypeEnum}
- *- dayOfWeek: {@link PublicIndexedTimePointIndexReferenceDayOfWeekEnum} 
+ * @property {string} referenceType: {@link PublicIndexedTimePointIndexReferenceReferenceTypeEnum}
+ * @property {string} dayOfWeek: {@link PublicIndexedTimePointIndexReferenceDayOfWeekEnum} 
  * 
  * @typedef {Object} PublicIndexedTimePointIndexReference
  * 
@@ -136,7 +144,7 @@ export function Connection(edgeType=EdgeTypeEnum.STANDARD, nextActionId) {
  * @enum {string} AutomationTypeEnum
  * @readonly
  *.
- *- WORKFLOW
+ * @property {string} WORKFLOW
  */
 export const AutomationTypeEnum = {
     WORKFLOW: 'WORKFLOW',
@@ -146,7 +154,7 @@ export const AutomationTypeEnum = {
  * @enum {string} EnrollmentCriteriaTypeEnum
  * @readonly
  *.
- *- LIST_BASED
+ * @property {string} LIST_BASED
  */
 export const EnrollmentCriteriaTypeEnum = {
     LIST_BASED: 'LIST_BASED',
@@ -156,8 +164,8 @@ export const EnrollmentCriteriaTypeEnum = {
 /**
  * @enum {string} EdgeTypeEnum
  * @readonly
- *- STANDARD
- *- GOTO
+ * @property {string} STANDARD
+ * @property {string} GOTO
  */
 export const EdgeTypeEnum = {
     STANDARD: 'STANDARD',
@@ -168,7 +176,7 @@ export const EdgeTypeEnum = {
  * @enum {string} PublicTodayReferenceReferenceTypeEnum
  * @readonly
  *.
- *- TODAY
+ * @property {string} TODAY
  */
 export const PublicTodayReferenceReferenceTypeEnum = {
     TODAY: 'TODAY',
@@ -178,7 +186,7 @@ export const PublicTodayReferenceReferenceTypeEnum = {
  * @enum {string} PublicIndexedTimePointTimeTypeEnum
  * @readonly
  *.
- *- Indexed
+ * @property {string} Indexed
  */
 export const PublicIndexedTimePointTimeTypeEnum = {
     Indexed: "INDEXED"
@@ -197,13 +205,13 @@ export const PublicIndexedTimePointIndexReferenceReferenceTypeEnum = {
 /**
  * @enum {string} PublicIndexedTimePointIndexReferenceDayOfWeekEnum
  * @readonly
- *- Monday = "MONDAY",
- *- Tuesday = "TUESDAY",
- *- Wednesday = "WEDNESDAY",
- *- Thursday = "THURSDAY",
- *- Friday = "FRIDAY",
- *- Saturday = "SATURDAY",
- *- Sunday = "SUNDAY"
+ * @property {string} Monday = "MONDAY",
+ * @property {string} Tuesday = "TUESDAY",
+ * @property {string} Wednesday = "WEDNESDAY",
+ * @property {string} Thursday = "THURSDAY",
+ * @property {string} Friday = "FRIDAY",
+ * @property {string} Saturday = "SATURDAY",
+ * @property {string} Sunday = "SUNDAY"
  */
 export const PublicIndexedTimePointIndexReferenceDayOfWeekEnum = {
     Monday: "MONDAY",

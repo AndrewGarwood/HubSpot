@@ -6,13 +6,37 @@
 
 // Referenced Type Imports:
 /**
- * @import { ObjectTypeIdEnum } from '../hs_enums.js';
+ * @import { ObjectTypeIdEnum } from '../HubSpotEnums.js';
  * @import { AutomationTypeEnum } from './Automation.js';
  * @typedef {import('./Action.js').Action} Action
  * @typedef {import('./Automation.js').EnrollmentCriteria} EnrollmentCriteria
  */
 
 
+/**
+ * @typedef {Object} Flow
+ * 
+ * @property {string} id
+ * @property {FlowObjectTypeEnum} type
+ * @property {string} revisionId
+ * @property {Array<Action>} actions
+ * @property {string} [nextAvailableActionId]
+ * @property {boolean} [isEnabled]
+ * @property {AutomationTypeEnum} [flowType]
+ * @property {string} [name]
+ * @property {string} [description]
+ * @property {Date | string} [createdAt]
+ * @property {Date | string} [updatedAt]
+ * @property {string} [startActionId]
+ * @property {EnrollmentCriteria} [enrollmentCriteria]
+ * @property {Array<TimeWindow>} [timeWindows]
+ * @property {Array<string>} [blockedDates]
+ * @property {Object.<string, any>} [customProperties]
+ * @property {Array<string>} [suppressionListIds]
+ * @property {boolean} [canEnrollFromSalesforce]
+ * @property {ObjectTypeIdEnum} objectTypeId
+ * @export
+ */
 
 /** 
  * @param {string} id - string - The unique identifier for the flow.
@@ -80,37 +104,13 @@ export function Flow(
     }
 }
 
-/**
- * @typedef {Object} Flow
- * 
- * @property {string} id
- * @property {FlowObjectTypeEnum} type
- * @property {string} revisionId
- * @property {Array<Action>} actions
- * @property {string} [nextAvailableActionId]
- * @property {boolean} [isEnabled]
- * @property {AutomationTypeEnum} [flowType]
- * @property {string} [name]
- * @property {string} [description]
- * @property {Date | string} [createdAt]
- * @property {Date | string} [updatedAt]
- * @property {string} [startActionId]
- * @property {EnrollmentCriteria} [enrollmentCriteria]
- * @property {Array<TimeWindow>} [timeWindows]
- * @property {Array<string>} [blockedDates]
- * @property {Object.<string, any>} [customProperties]
- * @property {Array<string>} [suppressionListIds]
- * @property {boolean} [canEnrollFromSalesforce]
- * @property {ObjectTypeIdEnum} objectTypeId
- * @export
- */
 
 /**
  * @enum {string} FlowObjectTypeEnum
  * @readonly
- *- CONTACT_FLOW
- *- DEAL_FLOW
- *- TICKET_FLOW
+ * @property {string} CONTACT_FLOW
+ * @property {string} DEAL_FLOW
+ * @property {string} TICKET_FLOW
  */
 export const FlowObjectTypeEnum = {
     CONTACT_FLOW: 'CONTACT_FLOW',

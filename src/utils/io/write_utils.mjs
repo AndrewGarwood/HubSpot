@@ -50,13 +50,22 @@ export function writeListsToCsv({
     });
 }
 
+
+/**
+ * @typedef {Object} WriteJsonConfig
+ * @property {Record<string, any>} data - The data to write
+ * @property {string} [filePath] - Output file path
+ * @property {number} [indent=4] - JSON indentation
+ * @property {boolean} [enableOverwrite=false] - Whether to overwrite existing files
+ */
+
 /**
  * Output JSON data to a file
- * @param {WriteJsonConfig} ParamObject WriteJsonConfig = { data, filePath, indent, enableOverwrite }
- * @param {Object.<string, any>} data Object.<string, any> 
- * @param {string} filePath string - optional, default=process.env.DEFAULT_OUTPUT_DIR/output.json
- * @param {number} indent number - optional, default=4
- * @param {boolean} enableOverwrite boolean - optional, default=false
+ * @param {WriteJsonConfig} ParamObject {@link WriteJsonConfig} = { data, filePath, indent, enableOverwrite }
+ * @param {Record<string, any>} ParamObject.data Record.<string, any>
+ * @param {string} ParamObject.filePath string - optional, default=process.env.DEFAULT_OUTPUT_DIR
+ * @param {number} ParamObject.indent number - optional, default=4
+ * @param {boolean} ParamObject.enableOverwrite boolean - optional, default=false
  */
 export function writeToJsonFile({
     data, 
@@ -79,7 +88,6 @@ export function writeToJsonFile({
             }
         });
     };
-
 }
 
 /**

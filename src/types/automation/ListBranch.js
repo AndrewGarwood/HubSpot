@@ -11,23 +11,28 @@
  */
 
 /**
- * @param {FilterBranch} filterBranch - {@link FilterBranch}
- * @param {string} branchName - string
- * @param {Connection} [connection] - {@link Connection}
- * @returns {ListBranch} - .{@link ListBranch}
- */
-export function ListBranch(filterBranch, branchName, connection) {
-    return {
-        filterBranch: filterBranch,
-        branchName: branchName,
-        connection: connection,
-    };
-}
-
-/**
  * @typedef {Object} ListBranch
  * 
  * @property {FilterBranch} filterBranch
  * @property {string} branchName
  * @property {Connection} [connection]
  */
+
+/**
+ * @param {FilterBranch} filterBranch - {@link FilterBranch}
+ * @param {string} branchName - string
+ * @param {Connection} [connection] - {@link Connection}
+ * @returns {ListBranch} - .{@link ListBranch}
+ */
+export function ListBranch(filterBranch, branchName, connection) {
+    let listBranch = {
+        filterBranch: filterBranch,
+        branchName: branchName,
+    };
+    if (connection) {
+        listBranch.connection = connection;
+    }
+    return listBranch;
+}
+
+

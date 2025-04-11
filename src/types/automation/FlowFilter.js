@@ -5,6 +5,15 @@
  * @export { FlowFilter }
  */
 
+export const MAX_VALUES_PER_FILTER = 5000;
+
+/**
+ * @typedef {Object} FlowFilter
+ * 
+ * @property {string} property
+ * @property {Operation} operation
+ * @property {FlowFilterTypeEnum} filterType
+ */
 
 /**
  * @param {string} property - string
@@ -20,18 +29,11 @@ export function FlowFilter(property, operation, filterType) {
     };
 }
 
-/**
- * @typedef {Object} FlowFilter
- * 
- * @property {string} property
- * @property {Operation} operation
- * @property {FlowFilterTypeEnum} filterType
- */
 
 /**
  * @enum {string} FlowFilterTypeEnum
  * @readonly
- *- PROPERTY
+ * @property {string} PROPERTY
  *
  */
 export const FlowFilterTypeEnum = {
