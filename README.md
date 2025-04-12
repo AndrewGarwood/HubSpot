@@ -34,4 +34,4 @@ export type ObjectName = {
   prop1: string
 }
 
-### Based on the appearance and usefulness of the tooltip, I prefer options 1 and 5. However, I think it's better practice to use interfaces.
+### Based on the appearance and usefulness of the tooltip, I prefer options 1 and 5. However, I think the accepted best practice is to use interfaces when working with APIs.
