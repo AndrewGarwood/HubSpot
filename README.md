@@ -4,8 +4,8 @@
 -   https://developers.hubspot.com/docs/reference/api/automation/create-manage-workflows
 
 ## Points of Interest:
-- ~/src/types/automation/, ~/src/utils/automation/flows.mjs, ~/src/WorkflowManager.mjs: logic to retrieve and update HubSpot workflows
-- ~/src/utils/crm/: logic to handle CRM objects (e.g. contacts, deals, line items)
+- ./src/types/automation/, ./src/utils/automation/flows.mjs, ./src/WorkflowManager.mjs: logic to retrieve and update HubSpot workflows
+- ./src/utils/crm/: logic to handle CRM objects (e.g. contacts, deals, line items)
 
 - ./type_hint_screenshots/: images examining how different type definition methods are translated to tooltips by VSCode. (e.g. using JSDoc comments and tags such as @typedef, using a factory function, using a class, and using typescript).
 
