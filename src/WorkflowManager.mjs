@@ -23,8 +23,15 @@ import {
     batchGeneratePropertyContainsStringChildFilterBranch
 } from './utils/auotmation/flows.mjs';
 
-import { TEST_FLOW_ID, TERRITORY_BRANCH_NAME_DICT } from './config/constants.mjs';
-
+import { 
+    TEST_FLOW_ID, 
+    TERRITORY_BRANCH_NAME_DICT, 
+    ALL_TERRITORIES_ZIP_DICT, 
+    ALL_REGIONS_ZIP_DICT, 
+    TERRITORY_ZIP_PROPS, 
+    REGION_ZIP_PROPS 
+} from './config/constants.mjs';
+import { STOP_RUNNING } from './config/env.mjs';
 import './types/automation/Automation.js';
 import {FlowBranchUpdate} from './types/automation/Automation.js';
 import './types/ConsecutiveIntegerSequence.js';
@@ -44,7 +51,129 @@ async function main() {
     /**@type {Flow} {@link Flow}*/
     let flow = await getFlowById(flowId);
     console.log('hasUniqueBranchNames(flow): ', hasUniqueBranchNames(flow));
-    // code goes here
+    
+    /** @example 1, update flow object in place*/
+    await updateTerritoryBranches([TEST_FLOW_ID]);
+    await updateRegionBranches([TEST_FLOW_ID]);
+    
+    /** @example 2, update flow object by replacing one a substructure in the flow object*/
+    let eastBranch = getListBranchByName(flow, 'East');
+    let westBranch = getListBranchByName(flow, 'West');
+    eastBranch.filterBranch.filterBranches = [
+        generatePropertyContainsStringChildFilterBranch(EAST_ZIPS, REGION_ZIP_PROPS[0])
+    ];
+    westBranch.filterBranch.filterBranches = [
+        generatePropertyContainsStringChildFilterBranch(WEST_ZIPS, REGION_ZIP_PROPS[0])
+    ];
+    let result = await setFlowById(TEST_FLOW_ID, flow);
+    writeToJsonFile({data: result, filePath: OUTPUT_DIR + '/backup_flow_after_update.json', enableOverwrite: true});
+
+}
+
+
+/**
+ * 
+ * @param {Array<string> | string} flowIds - Array\<string> of flow IDs to update, or a single string
+ * @param {Object.<string, Array<string>>} [territoryZipDict] - Object\<string, Array<string>> mapping territory names to zip codes, defaults to {@link ALL_TERRITORIES_ZIP_DICT}
+ * @param {Array<string>} [targetProps] - Array\<string> of property names to update, defaults to ['zip', 'unific_shipping_postal_code'] = {@link TERRITORY_ZIP_PROPS}
+ * @param {Array<string>} [targetTerritories] - (optional) (if only want to process subset of territories) Array\<string> of territory names to update their corresponding branches. defaults to empty array, resulting in all territories in territoryZipDict being processed
+ * @returns {Promise<Array<Flow>>} results = Promise<Array\<{@link Flow}>> of updated flows
+ */
+export async function updateTerritoryBranches(
+    flowIds, 
+    territoryZipDict=ALL_TERRITORIES_ZIP_DICT,
+    targetProps=TERRITORY_ZIP_PROPS,
+    targetTerritories=[]
+) {
+    if (flowIds && typeof flowIds === 'string') {
+        flowIds = [flowIds];
+    }
+    let results = [];
+    for (let flowId of flowIds) {
+        /**@type {Flow} {@link Flow}*/
+        let flow = await getFlowById(flowId);
+        if (!flowExistsAndHasUniqueBranches(flow, flowId)) {
+            STOP_RUNNING();
+        }
+        let updateArr = generateFlowBranchUpdateByReplaceArray(
+            (Array.isArray(targetTerritories) && targetTerritories.length > 0 ? targetTerritories : Object.keys(territoryZipDict)), 
+            targetProps, 
+            TERRITORY_BRANCH_NAME_DICT, 
+            territoryZipDict
+        );
+        flow = batchUpdateFlowByBranchName(flow, updateArr);
+        results.push(await setFlowById(flowId, flow));
+    }
+    return results;
+}
+
+/**
+ * @description Updates the branches of the specified flows with the given region zip codes.
+ *
+ * @param {Array<string> | string} flowIds - Array\<string> of flow IDs to update
+ * @param {Object.<string, Array<string>>} [regionZipDict] - Object\<string, Array<string>> mapping region names to zip codes, defaults to {@link ALL_REGIONS_ZIP_DICT}
+ * @param {Array<string>} [targetProps] - Array\<string> of property names to update  defaults to ['unific_shipping_postal_code'] = {@link REGION_ZIP_PROPS}
+ * @param {Array<string>} [targetRegions] - (optional) region names to update its corresponding branches (e.g., ['East', 'West']) defaults to empty array, resulting in all regions in regionZipDict being processed
+ * @returns {Promise<Array<Flow>>} results = Promise<Array\<{@link Flow}>> of updated flows
+ */
+export async function updateRegionBranches(
+    flowIds, 
+    regionZipDict=ALL_REGIONS_ZIP_DICT, 
+    targetProps=REGION_ZIP_PROPS,
+    targetRegions=[]
+) {
+    if (flowIds && typeof flowIds === 'string') {
+        flowIds = [flowIds];
+    }
+    let results = [];
+    for (let flowId of flowIds) {
+        /**@type {Flow} {@link Flow}*/
+        let flow = await getFlowById(flowId);
+        if (!flowExistsAndHasUniqueBranches(flow, flowId)) {
+            STOP_RUNNING();
+        }    
+        let updateArr = generateFlowBranchUpdateByReplaceArray(
+            (Array.isArray(targetRegions) && targetRegions.length > 0 ? targetRegions : Object.keys(regionZipDict)), 
+            targetProps, 
+            TERRITORY_BRANCH_NAME_DICT, 
+            regionZipDict
+        );
+        flow = batchUpdateFlowByBranchName(flow, updateArr);
+    
+        results.push(await setFlowById(flowId, flow));
+    }
+    return results;
+}
+
+/**
+ * @description Generates Array of FlowBranchUpdate objects for the specified territories and properties.
+ * Will overwrite the branches previous values with the new values from TERRITORY_ZIPS_DICT.
+ * @param {Array<string>} targetTerritories - Array\<string> of territory (or region) names to update their corresponding branches
+ * @param {Array<string>} targetProps - Array\<string> of property names to update (e.g., ['zip', 'unific_shipping_postal_code'])
+ * @param {Object.<string, string>} branchNameDict - Object\<string, string> mapping territory (and region) names to the flow's actual branch names
+ * @param {Object.<string, Array<string>>} zipDict - Object\<string, Array<string>> mapping territory names to zip codes
+ * @returns {Array<FlowBranchUpdate>} Array\<{@link FlowBranchUpdate}>
+ */
+function generateFlowBranchUpdateByReplaceArray(targetTerritories, targetProps, branchNameDict, zipDict) {
+    
+    /**@type {Array<FlowBranchUpdate>} @see {@link FlowBranchUpdate} */
+    let updates = [];
+    targetTerritories.forEach(territory => {
+        if (!branchNameDict[territory]) {
+            console.error(`Branch name not found for territory: ${territory}`);
+            STOP_RUNNING();
+        }
+        targetProps.forEach(prop => {
+            updates.push({
+                targetBranchName: branchNameDict[territory],
+                targetProperty: prop,
+                valuesToAdd: zipDict[territory],
+                valuesToRemove: [],
+                replacePreviousValues: true
+            });
+        });
+    });
+    return updates;
 }
 
 /**
@@ -61,7 +190,7 @@ async function main() {
  * - remainingValues: Array\<string> of non-consecutive values (i.e. the zip code contains non-numeric characters)
  */
 export function findConsecutiveIntegerSequences(valuesArr, maxNumSequences=MAX_NUM_SEQUENCES) {
-    /**@type {FindConsecutiveIntegerSequencesResult} see {@link FindConsecutiveIntegerSequencesResult} */
+    /**@type {FindConsecutiveIntegerSequencesResult}, see {@link FindConsecutiveIntegerSequencesResult} */
     let result = {
         sequences: [],
         remainingValues: []
@@ -79,7 +208,6 @@ export function findConsecutiveIntegerSequences(valuesArr, maxNumSequences=MAX_N
     });
     
     let currentSequence = null;
-    
     for (let i = 0; i < valuePairs.length; i++) {
         let [originalValue, numericValue] = valuePairs[i];
         

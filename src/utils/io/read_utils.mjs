@@ -67,34 +67,6 @@ export function validateFileExtension({filePath, expectedExtension}={}) {
     return { isValid, validatedFilePath };
 }
 
-/**
- * @param {string} filePath string
- * @param {string} sheetName string
- * @param {string} keyColumn string
- * @param {string} valueColumn string
- * @returns {Object.<string, Array<string>>} dict: Object.<string, Array\<string>> — key-value pairs where key is from keyColumn and value is an array of values from valueColumn
- */
-export function parseExcelForOneToMany(filePath, sheetName, keyColumn, valueColumn) {
-    filePath = validateFileExtension({
-        filePath: filePath, 
-        expectedExtension: 'xlsx'
-    }).validatedFilePath;
-    const workbook = xlsx.readFile(filePath);
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = xlsx.utils.sheet_to_json(sheet);
-    const dict = {};
-    jsonData.forEach(row => {
-        let key = row[keyColumn];
-        key = `${key}`.trim().replace(/\.$/, '');
-        let val = row[valueColumn];
-        val = `${val}`.trim().replace(/\.$/, '');
-        if (!dict[key]) {
-            dict[key] = [];
-        }
-        dict[key].push(val);
-    });
-    return dict;
-}
 
 /**
  * @TODO if escape === true, escape all special characters in char (i.e. append \\ to them)

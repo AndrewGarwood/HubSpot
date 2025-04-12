@@ -20,8 +20,6 @@ import { FlowBranchUpdate } from '../../types/automation/Automation.js';
  */
 export async function getFlowById(flowId) {
     try {
-        const flowURL = `${FLOWS_API_URL}/${flowId}`;
-        // console.log(flowURL);
         const response = await fetch(`${FLOWS_API_URL}/${flowId}`, {
             method: 'GET',
             headers: {
@@ -136,6 +134,32 @@ export function setFlowFilterValues(filter, targetProperty, values) {
     filter.operation.values = values;
     return filter;
 }
+
+/**
+ * @description Sets flow.actions[indexOfTargetBranch].filterBranch.filterBranches to newChildFilterBranches.
+ * @param {Flow} flow - {@link Flow}
+ * @param {string} targetBranchName 
+ * @param {Array.<FilterBranch>} newChildFilterBranches - Array\<{@link FilterBranch}>
+ * @returns {Flow} flow - {@link Flow}
+ */
+export function setChildFilterBranchesByListBranchName(
+    flow,
+    targetBranchName,
+    newChildFilterBranches,
+) {
+    if (!flow || !flow.actions || flow.actions.length === 0) {
+        console.log(`\t Exiting setChildFilterBranchesByListBranchName() input flow was undefined or had no actions.`);
+        return flow;
+    }
+    let listBranch = getListBranchByName(flow, targetBranchName);
+    if (!listBranch) {
+        console.log(`\t Exiting setChildFilterBranchesByListBranchName() input listBranch was undefined.`);
+        return flow;
+    }
+    listBranch = setChildFilterBranchesOfListBranch(listBranch, newChildFilterBranches);
+    return flow;
+}
+
 
 /**
  * @param {FilterBranch} filterBranch {@link FilterBranch}
@@ -306,7 +330,7 @@ export function updateFlowByBranchName(
         // else, the updatedChildFilterBranches will be the same length as childFilterBranchesWithTargetProperty.concat(childFilterBranchesWithOtherProperty)
         if (partitionedValuesToAdd.length > childrenWithTargetProperty.length) {
             updatedChildFilterBranches.push(
-                ...batchGeneratePropertyContainsStringChildFilterBranch(
+                    ...batchGeneratePropertyContainsStringChildFilterBranch(
                     partitionedValuesToAdd.slice(childrenWithTargetProperty.length),
                     targetProperty
                 ));
