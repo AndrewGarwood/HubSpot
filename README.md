@@ -4,9 +4,9 @@
 -   https://developers.hubspot.com/docs/reference/api/automation/create-manage-workflows
 
 ## Points of Interest:
-### ./src/types/automation/, ./src/utils/automation/flows.mjs, ./src/WorkflowManager.mjs
+### [./src/utils/automation/flows.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/src/utils/auotmation/flows.mjs), [./src/WorkflowManager.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/src/WorkflowManager.mjs), [./src/types/automation/](https://github.com/AndrewGarwood/HubSpot/tree/master/src/utils/auotmation)
 - logic to retrieve and update HubSpot workflows
-### ./src/utils/crm/ 
+### [./src/utils/crm/](https://github.com/AndrewGarwood/HubSpot/tree/master/src/utils/crm) 
 - logic to handle CRM objects (e.g. contacts, deals, line items)
 
 --------
