@@ -4,8 +4,8 @@
 -   https://developers.hubspot.com/docs/reference/api/automation/create-manage-workflows
 
 ## Points of Interest:
-- ./src/utils/automation/flows.mjs: logic to retrieve and update HubSpot workflows
-- ./src/utils/crm/: logic to handle CRM objects (e.g. contacts, deals, line items)
+- ~/src/types/automation/, ~/src/utils/automation/flows.mjs, ~/src/WorkflowManager.mjs: logic to retrieve and update HubSpot workflows
+- ~/src/utils/crm/: logic to handle CRM objects (e.g. contacts, deals, line items)
 
 - ./type_hint_screenshots/: images examining how different type definition methods are translated to tooltips by VSCode. (e.g. using JSDoc comments and tags such as @typedef, using a factory function, using a class, and using typescript).
 
@@ -31,4 +31,4 @@ export type ObjectName = {
   prop1: string
 }
 
-Based on appearance alone, I prefer options 1 and 5. 
+Based on the appearance and usefulness of the tooltip, I prefer options 1 and 5. However, I think it's better practice to use interfaces.
