@@ -19,7 +19,7 @@ export function writeListsToCsv({
     delimiter=',',
     delimiterColumn='',  
 } = {}) {
-    const fileExtension = '';
+    let fileExtension = '';
     if (delimiter === ',') {
         fileExtension = 'csv';
     } else if (delimiter === '\t') {

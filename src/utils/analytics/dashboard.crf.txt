@@ -1,0 +1,87 @@
+// Cutting Room Floor
+const OLD_PROPERTY_NAME ="OLD_PROPERTY_NAME_HERE";
+const NEW_PROPERTY_NAME ="NEW_PROPERTY_NAME_HERE";
+
+// refactor into a UpdateObject
+const oldExpressionInput = "expression1";
+const newExpressionInput = "expression2";
+const oldExpressionLabel = "label1";
+const newExpressionLabel = "label2";
+
+
+/**
+ * @warning be careful with global string replacement
+ * @param {string | number} reportId 
+ */
+async function stringReplaceFormulaFieldOfReport(reportId) {
+    try {
+        let reportData = await getReportById(reportId); 
+        const reportString = JSON.stringify(reportData);
+        const updatedString = reportString
+        reportData = JSON.parse(updatedString);
+        await setReportById(reportId, reportData);
+    } catch (error) {
+        console.error(`Error in stringReplaceFormulaFieldOfReport(reportId: ${reportId}):`, error);
+    }
+}
+
+// safer way to modify stuff
+/**@TODO refactor + add types*/
+async function updateFormulaFieldOfReport(reportId) {
+    try {
+        let modified = false;
+        let reportData = await getReportById(reportId);
+        let expressionAlias = null;
+        reportData.reportDefinition.expressions.forEach(expression => {
+            if (expression && expression.input && (expression.input.replace(/\s/g, '') === oldExpressionInput.replace(/\s/g, '') || expression.input.replace(/\s/g, '') === newExpressionInput.replace(/\s/g, ''))) {
+                if (expression.expression.right.type === "PROPERTY") {
+                    expression.input = newExpressionInput;
+                    expression.label = newExpressionLabel;
+                    expression.expression.right.name = NEW_PROPERTY_NAME;
+                } else if (expression.expression.right.type === "FUNCTION_CALL") {
+                    expression.input.replace(oldExpressionLabel, newExpressionLabel);
+                }
+                expressionAlias = expression.alias;
+                return;
+            }
+        });
+        if (expressionAlias) {
+            // Update columns that reference the expression alias
+            let columns = reportData.reportDefinition.columns;
+            Object.keys(columns).forEach(key => {
+                let col = columns[key];
+                if (col.field && col.field.source === "EXPRESSION" && col.field.name === expressionAlias) {
+                    if (col.field.expression && col.field.expression.right && col.field.expression.right.name === OLD_PROPERTY_NAME) {
+                        col.field.expression.right.name = NEW_PROPERTY_NAME;
+                        modified = true;
+                    }
+                }
+            });
+            if (reportData.reportDefinition.filtering && reportData.reportDefinition.filtering.groups) {
+                reportData.reportDefinition.filtering.groups.forEach(group => {
+                    if (group.filters && Array.isArray(group.filters)) {
+                        group.filters.forEach(filter => {
+                            if (filter.field && filter.field.source === "EXPRESSION" && filter.field.name === expressionAlias) {
+                                if (filter.field.expression && filter.field.expression.right && filter.field.expression.right.name === OLD_PROPERTY_NAME) {
+                                    filter.field.expression.right.name = NEW_PROPERTY_NAME;
+                                    modified = true;
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        if (modified && reportData) {
+            console.log(`Updating Expression in Report Name: ${reportData.name}`);
+            let updateRes = await setReportById(reportId, reportData);
+            console.log('Report Updated:', updateRes);
+            console.log(`Report ${reportId} updated:`, updateRes);
+        } else {
+            console.log(`No matching expression found for report ${reportId}`);
+        }
+    } catch (error) {
+        console.error(`Error in updateFormulaFieldOfReport(reportId: ${reportId}):`, error);
+    }
+}
