@@ -1,21 +1,22 @@
+/**
+ * @file write_utils.mjs
+ */
 import fs from 'fs';
-import dotenv from 'dotenv';
-import { getCurrentPacificTime } from './date_utils.mjs';
-import { validateFileExtension } from './read_utils.mjs';
-
-dotenv.config();
+import { getCurrentPacificTime, validateFileExtension } from './io_utils.mjs';
+import { DEFAULT_OUTPUT_DIR } from '../../config/env.mjs';
 
 /**
- * @param {ListToCSVConfig} ParamObject ListToCSVConfig = { listData, additionalDelimiter, fileName, filePath }
+ * @param {ListToCSVConfig} ParamObject ListToCSVConfig = { listData, fileName, filePath, delimiter, delimiterColumn }
  * @param {Object.<string, Array<string>>} listData Object.<string, Array\<string>> map col names to col values
- * @param {string} additionalDelimiter string
  * @param {string} fileName string
  * @param {string} filePath string
+ * @param {string} delimiter string - optional, default=','
+ * @param {string} delimiterColumn string - optional, default=''
  */
 export function writeListsToCsv({
     listData,
-    fileName='csv_output',
-    filePath=process.env.DEFAULT_OUTPUT_DIR,
+    fileName='',
+    filePath=DEFAULT_OUTPUT_DIR,
     delimiter=',',
     delimiterColumn='',  
 } = {}) {
@@ -63,13 +64,13 @@ export function writeListsToCsv({
  * Output JSON data to a file
  * @param {WriteJsonConfig} ParamObject {@link WriteJsonConfig} = { data, filePath, indent, enableOverwrite }
  * @param {Record<string, any>} ParamObject.data Record.<string, any>
- * @param {string} ParamObject.filePath string - optional, default=process.env.DEFAULT_OUTPUT_DIR
+ * @param {string} ParamObject.filePath string - optional, default=DEFAULT_OUTPUT_DIR
  * @param {number} ParamObject.indent number - optional, default=4
  * @param {boolean} ParamObject.enableOverwrite boolean - optional, default=false
  */
-export function writeToJsonFile({
+export function writeObjectToJson({
     data, 
-    filePath=`${process.env.DEFAULT_OUTPUT_DIR}/output.json`,
+    filePath=`${DEFAULT_OUTPUT_DIR}/output.json`,
     indent=4,
     enableOverwrite=false
 } = {}) {
@@ -113,7 +114,7 @@ export function printJson({data, indent=4}={}) {
  * @param {number} numTabs number - optional, default=1
  * @param {boolean} printToConsole boolean - optional, default=true
  * @param {boolean} printToFile boolean - optional, default=true
- * @param {string} filePath string - optional, default=process.env.DEFAULT_OUTPUT_PATH
+ * @param {string} filePath string - optional, default=DEFAULT_OUTPUT_PATH
  */
 export function printConsoleGroup({
     label = 'Group Name', 
@@ -122,7 +123,7 @@ export function printConsoleGroup({
     numTabs = 0,
     printToConsole = true,
     printToFile = true,
-    filePath = `${process.env.DEFAULT_OUTPUT_DIR}/DEFAULT_LOG.txt`,
+    filePath = `${DEFAULT_OUTPUT_DIR}/DEFAULT_LOG.txt`,
     enableOverwrite = false
 } = {}) {
     let labelOffset = '\t'.repeat(numTabs);

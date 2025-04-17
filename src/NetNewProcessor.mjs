@@ -1,19 +1,17 @@
-import { printConsoleGroup, writeToJSONFile, getJsonFromFile, toPacificTime } from './utils/io/io_utils.mjs';
+import { printConsoleGroup, writeObjectToJson, readJsonFileAsObject as readJsonFileAsObject, toPacificTime } from './utils/io/io_utils.mjs';
 import { setPropertyByObjectId, batchSetPropertyByObjectId, searchObjectByProperty } from "./utils/crm_utils/properties.mjs";
 import { getContactById, getDealById, getLineItemById } from './utils/crm_utils/crm_object_utils.mjs';
 import { extractSkuFromLineItem, isValidLineItem } from "./utils/crm_utils/crm_objects/line_items.mjs";
 import { CATEGORY_TO_SKU_DICT } from './data/item_lists.mjs';
 import { VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "./utils/crm_utils/property_constants.mjs";
 import { sortDealsChronologically, updateSkuHistory } from './read_deals_of_contact.mjs';
-import dotenv from 'dotenv';
-dotenv.config();
 import './types/Types.js';
 
-import { hubspotClient, SEARCH_LIMIT, delay, DATA_DIR } from './config/env.mjs';
+import { SEARCH_LIMIT, delay, DATA_DIR } from './config/env.mjs';
 const MAX_NUM_SEARCHES = 1;
 
 // if have existing data stored locally
-const processedData = getJsonFromFile(DATA_DIR + '/net_new_line_items.json');
+const processedData = readJsonFileAsObject(DATA_DIR + '/net_new_line_items.json');
 
 /**@type {Array<string>}*/
 let processedNetNewLineItems = processedData.netNewLineItems;
@@ -345,7 +343,7 @@ async function main() {
     let filePath = `Path to json file`;
 
     /**@type {Array<string>} */
-    let contactIds = getJsonFromFile(filePath).contactIds;
+    let contactIds = readJsonFileAsObject(filePath).contactIds;
     console.log(`contactIds.length: ${contactIds.length}`);
     let contactIdSubset = contactIds.slice(1, 3);
     await updateContactLineItems(contactIdSubset, true);
@@ -421,8 +419,8 @@ function saveNetNewDataToLocalFile({
         recurringLineItems: Array.from(new Set(compositeData.recurringLineItems)), 
         unassociatedLineItems: Array.from(new Set(compositeData.unassociatedLineItems)) 
     };
-    writeToJSONFile({data: compositeData.processedContacts, filePath: contactDataFilePath, enableOverwrite: true});
-    writeToJSONFile({data: lineItemOutputData, filePath: lineItemFilePath, enableOverwrite: true});
+    writeObjectToJson({data: compositeData.processedContacts, filePath: contactDataFilePath, enableOverwrite: true});
+    writeObjectToJson({data: lineItemOutputData, filePath: lineItemFilePath, enableOverwrite: true});
 }
 
 /**

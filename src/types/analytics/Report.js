@@ -1,9 +1,18 @@
 /** 
  * @file Report.js
- * @import { HubSpotUser, BusinessUnit, PermissionSentence 
- * } from '../hs_types.js';
- * @import { ResolveTypeEnum, PermissionLevelEnum,
- * } from '../hs_enums.js';
+ * @module Report
+ * @export { Report, ReportChartTypeEnum, ReportDefinition, ReportDefinitionTypeEnum, ReportSourceEnum, ReportHydrationOptionEnum, ReportDashboardInfo, ReportDefinitionVisualTypeEnum }
+ */
+
+/**
+ * @typedef {import('./Table.js').Table} Table
+ * @typedef {import('./Column.js').Column} Column
+ * @typedef {import('../HubSpot.js').HubSpotUser} HubSpotUser
+ * @typedef {import('../HubSpot.js').BusinessUnit} BusinessUnit
+ * @typedef {import('../HubSpot.js').PermissionSentence} PermissionSentence
+ * @typedef {import('../HubSpot.js').AccessClassificationEnum} AccessClassificationEnum
+ * @typedef {import('../HubSpot.js').ResolveTypeEnum} ResolveTypeEnum
+ * @typedef {import('../HubSpot.js').PermissionLevelEnum} PermissionLevelEnum
  */
 
 // Report ----------------

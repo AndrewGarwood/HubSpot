@@ -2,11 +2,11 @@
  * @file properties.mjs
  */
 
-import '../../types/types.js';
-import '../../types/enums.js';
-import { FilterOperatorEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from '../../types/enums.js';
+import '../../types/Types.js';
+import '../../types/Enums.js';
+import { FilterOperatorEnum, PropertyCreateTypeEnum, PropertyCreateFieldTypeEnum } from '../../types/Enums.js';
 import { CrmObjectTypeEnum } from '../../types/crm/CrmEnums.js';
-import '../../types/hubspot_types.js';
+import '../../types/HubSpot.js';
 import { hubspotClient, PATCH_DELAY, delay } from '../../config/env.mjs';
 
 

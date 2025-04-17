@@ -1,4 +1,4 @@
-import { writeToJsonFile, printJson, getJsonFromFile } from '../io/io_utils.mjs';
+import { writeToJsonFile, printJson, readJsonFileAsObject } from '../io/io_utils.mjs';
 import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL } from '../../config/env.mjs';
 import { APPLICATION_JSON } from '../../config/constants.mjs';
 import { ActionTypeEnum, ActionTypeIdEnum } from '../../types/automation/Action.js';

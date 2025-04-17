@@ -1,9 +1,9 @@
 import { 
-    getJsonFromFile, 
+    readJsonFileAsObject, 
     readFileLinesIntoArray, 
     printJson, 
     printConsoleGroup, 
-    writeToJsonFile,
+    writeObjectToJson,
     validateFileExtension,
     parseExcelForOneToMany
 } from './utils/io/io_utils.mjs';
@@ -35,7 +35,7 @@ import { STOP_RUNNING } from './config/env.mjs';
 import './types/automation/Automation.js';
 import {FlowBranchUpdate} from './types/automation/Automation.js';
 import './types/ConsecutiveIntegerSequence.js';
-import { ConsecutiveIntegerSequence } from './types/ConsecutiveIntegerSequence.js';
+import { ConsecutiveIntegerSequence, MAX_NUM_SEQUENCES } from './types/ConsecutiveIntegerSequence.js';
 import './types/automation/Operation.js';
 import { Operation, NumericOperatorEnum, OperationTypeEnum, OperatorEnum } from './types/automation/Operation.js';
 import './types/automation/Flow.js';
@@ -66,7 +66,7 @@ async function main() {
         generatePropertyContainsStringChildFilterBranch(WEST_ZIPS, REGION_ZIP_PROPS[0])
     ];
     let result = await setFlowById(TEST_FLOW_ID, flow);
-    writeToJsonFile({data: result, filePath: OUTPUT_DIR + '/backup_flow_after_update.json', enableOverwrite: true});
+    writeObjectToJson({data: result, filePath: OUTPUT_DIR + '/backup_flow_after_update.json', enableOverwrite: true});
 
 }
 

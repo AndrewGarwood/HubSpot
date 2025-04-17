@@ -2,6 +2,8 @@ import { Client } from '@hubspot/api-client';
 import dotenv from 'dotenv';
 dotenv.config();
 
+export const DEFAULT_OUTPUT_DIR = process.env.DEFAULT_OUTPUT_DIR || 'MISSING_ENV_VAR-DEFAULT_OUTPUT_DIR';
+
 export const HUBSPOT_ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 export const HUBSPOT_DEVELOPER_API_KEY = process.env.DEVELOPER_API_KEY;
 

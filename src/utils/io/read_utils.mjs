@@ -1,3 +1,7 @@
+/**
+ * @file read_utils.mjs
+ */
+
 import fs from 'fs';
 import xlsx from 'xlsx';
 
@@ -27,7 +31,7 @@ export function readFileLinesIntoArray(filePath) {
  * @param {string} filePath string
  * @returns {Object.<string, any> | null} jsonData — Object.<string, any>
  */
-export function getJsonFromFile(filePath) {
+export function readJsonFileAsObject(filePath) {
     filePath = validateFileExtension({filePath: filePath, expectedExtension: 'json'}).validatedFilePath;
     try {
         const data = fs.readFileSync(filePath, 'utf8');

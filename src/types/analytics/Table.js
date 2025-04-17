@@ -1,18 +1,16 @@
 /**
  * @file Table.js
- * @import { TablePrimaryObjectNameEnum, TablePrimaryObjectTypeEnum, TableJoinTypeEnum 
- * } from './TableEnums.js';
- * @import { ObjectTypeIdEnum } from '../hs_enums.js';
+ * @import { ObjectTypeIdEnum } from '../HubSpot.js';
  */
 
 // Table ----------------
 /**
  * @typedef {Object} Table
- * @property {TablePrimaryObjectNameEnum} name
- * @property {TablePrimaryObjectTypeEnum} type
+ * @property {TablePrimaryObjectNameEnum} name {@link TablePrimaryObjectNameEnum}
+ * @property {TablePrimaryObjectTypeEnum} type {@link TablePrimaryObjectTypeEnum}
  * @property {number} [datasetId]
- * @property {ObjectTypeIdEnum} [objectTypeId]
- * @property {Array<TableJoin>} [join]
+ * @property {ObjectTypeIdEnum} [objectTypeId] {@link ObjectTypeIdEnum}
+ * @property {Array<TableJoin>} [join] {@link TableJoin}
  * @export
  */
 
@@ -20,7 +18,7 @@
 /**
  * @typedef {Object} TableJoin
  * @property {Table} target
- * @property {TableJoinTypeEnum} [joinType]
+ * @property {TableJoinTypeEnum} [joinType] {@link TableJoinTypeEnum}
  * @export
  */
 
@@ -28,14 +26,14 @@
  * @enum {string} TablePrimaryObjectNameEnum
  * @readonly
  * @export
- *- DATASET
- *- CONTACT
- *- COMPANY
- *- DEAL
- *- LINE_ITEM
- *- TICKET
- *- LEAD
- *- PRODUCT
+ * @property {string} DATASET
+ * @property {string} CONTACT
+ * @property {string} COMPANY
+ * @property {string} DEAL
+ * @property {string} LINE_ITEM
+ * @property {string} TICKET
+ * @property {string} LEAD
+ * @property {string} PRODUCT
  */
 export const TablePrimaryObjectNameEnum = {
     DATASET: '__DATASET__',
@@ -52,8 +50,8 @@ export const TablePrimaryObjectNameEnum = {
  * @enum {string} TablePrimaryObjectTypeEnum
  * @readonly
  * @export
- *- HUBSPOT_OBJECT
- *- HUBSPOT_DATASET
+ * @property {string} HUBSPOT_OBJECT
+ * @property {string} HUBSPOT_DATASET
  */
 export const TablePrimaryObjectTypeEnum = {
     HUBSPOT_OBJECT: 'HUBSPOT_OBJECT',
@@ -66,13 +64,13 @@ export const TablePrimaryObjectTypeEnum = {
  * @enum {string} TableJoinTypeEnum
  * @readonly
  * @export
- *- INNER
- *- LEFT
- *- RIGHT
- *- FULL
- *- CROSS
- *- SELF
- *- UNION
+ * @property {string} INNER
+ * @property {string} LEFT
+ * @property {string} RIGHT
+ * @property {string} FULL
+ * @property {string} CROSS
+ * @property {string} SELF
+ * @property {string} UNION
 */
 export const TableJoinTypeEnum = {
     INNER: 'INNER',

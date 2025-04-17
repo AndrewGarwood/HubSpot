@@ -1,7 +1,5 @@
 /** 
- * @file hs_types.js
- * @import { PermissionLevelEnum, UserSetTypeEnum } from './hs_enums.js';
- * @import { AnalyticsObjectTypeEnum } from './analytics_enums.js';
+ * @file HubSpot.js
  */
 
 
