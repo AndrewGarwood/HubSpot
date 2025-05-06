@@ -4,25 +4,25 @@
 -   https://developers.hubspot.com/docs/reference/api/automation/create-manage-workflows
 
 ## Points of Interest:
-### [./src/utils/automation/flows.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/src/utils/auotmation/flows.mjs), [./src/WorkflowManager.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/src/WorkflowManager.mjs), [./src/types/automation/](https://github.com/AndrewGarwood/HubSpot/tree/master/src/utils/auotmation)
+### [./javascript_archive/src/utils/automation/flows.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/javascript_archive/src/utils/auotmation/flows.mjs), [./javascript_archive/src/WorkflowManager.mjs](https://github.com/AndrewGarwood/HubSpot/blob/master/src/javascript_archive/WorkflowManager.mjs), [./javascript_archive/src/types/automation/](https://github.com/AndrewGarwood/HubSpot/tree/master/src/utils/auotmation)
 - logic to retrieve and update HubSpot workflows
-### [./src/utils/crm/](https://github.com/AndrewGarwood/HubSpot/tree/master/src/utils/crm) 
+### [./javascript_archive/src/utils/crm/](https://github.com/AndrewGarwood/HubSpot/tree/master/javascript_archive/src/utils/crm) 
 - logic to handle CRM objects (e.g. contacts, deals, line items)
 
 --------
-### ./type_hint_screenshots/: images examining how different type definition methods are translated to tooltips by VSCode. (e.g. using JSDoc comments and tags such as @typedef, using a factory function, using a class, and using typescript).
+### ./javascript_archive/type_hint_screenshots/: images examining how different type definition methods are translated to tooltips by VSCode. (e.g. using JSDoc comments and tags such as @typedef, using a factory function, using a class, and using typescript).
 
 #### Option 1 - Javascript JSDoc Factory Function, Typedef
-![Option 1 - Javascript JSDoc Factory Function and Typedef Tag](./type_hint_screenshots/jsFileJSDocFunctionThenTypedef.png)
+![Option 1 - Javascript JSDoc Factory Function and Typedef Tag](./javascript_archive/type_hint_screenshots/jsFileJSDocFunctionThenTypedef.png)
 
 #### Option 2 - Javascript JSDoc Factory Function With Constructor Tag, Typedef
-![Option 2 - Javascript JSDoc Factory Function With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocFunctionWithConstructorTagThenTypedef.png)
+![Option 2 - Javascript JSDoc Factory Function With Constructor Tag and Typedef Tag](./javascript_archive/type_hint_screenshots/jsFileJSDocFunctionWithConstructorTagThenTypedef.png)
 
 #### Option 3 - Javascript JSDoc Class Constructor, Typedef
-![Option 3 - Javascript JSDoc Class With Constructor Tag and Typedef Tag](./type_hint_screenshots/jsFileJSDocClassWithConstructorThenTypedef.png)
+![Option 3 - Javascript JSDoc Class With Constructor Tag and Typedef Tag](./javascript_archive/type_hint_screenshots/jsFileJSDocClassWithConstructorThenTypedef.png)
 
 #### Option 4 - Typescript Interface
-![Option 4 - Typescript Interface and JSDoc](./type_hint_screenshots/d.tsFileImport.png)
+![Option 4 - Typescript Interface and JSDoc](./javascript_archive/type_hint_screenshots/d.tsFileImport.png)
 
 #### Option 5 - Typescript Type (No picture. Results in similar if not identical tooltip as Option 1)
 Essentially the same method as Option 3, but use the 'type' keyword instead of 'interface'

@@ -1,4 +1,5 @@
 /**
+ * @deprecated
  * @file constants.mjs
  */
 

@@ -1,0 +1,138 @@
+/** Matches "Inc.", "LLC", "Corp.", "Ltd.", "Limited", "Corporation", "Limited Liability Company"  */
+const COMPANY_PATTERN = new RegExp(
+    /(INC|P?\.?L\.?L\.?C|L\.?P|CORP|CO|GLOBAL|WORLDWIDE|INTERNATIONAL|PRINT|P\.?C|TECHNOLOGIES|LTD|LIMITED|CORPORATION|LIMITED LIABILITY COMPANY|SERVICE(S)?|MEDICAL|CONSULTING|PARTNERS|TRAINING|ASSOCIATES|SOLUTIONS|HEALTH|HEALTHCARE|STORE|\.COM|SPA|INDUSTRIES)\.?/, 
+    'i'
+); 
+
+
+/** Matches "MSPA", "BSN", "FNP-C", "LME", "DOO", "PA-C", "MSN-RN", "RN", "NP", "CRNA", "FNP", "PA", "NMD", "MD", "DO", "LE", "CMA", "OM"  */
+const JOB_TITLE_SUFFIX_PATTERN = new RegExp(/MSPA|BSN|FNP-C|LME|DOO|PA-C|MSN-RN|RN|NP|CRNA|FAAD|FNP|PA|NMD|MD|M\.D|DO|LE|CMA|OM\.?,?/, 'i'); 
+
+/** Matches "Mr.", "Ms.", "Mrs.", "Dr.", "Prof." followed by optional space  */
+const SALUTATION_PREFIX_PATTERN = /^(Mr|Ms|Mrs|Dr|Prof)\.?\s/; 
+ // Matches "John Doe" or "John D."
+const PERSON_NAME_PATTERN = /^[A-Z][a-z]+( [A-Z][a-z]+)?( [A-Z]\.)?$/;
+ // Matches "John D. Doe"
+const PERSON_NAME_WITH_MIDDLE_INITIAL_PATTERN = /^[A-Z][a-z]+ [A-Z]\. [A-Z][a-z]+$/;
+
+const COMPILED_PERSON_PATTERN = new RegExp(
+    `^(${SALUTATION_PREFIX_PATTERN.source})?\\s*(${PERSON_NAME_PATTERN.source}|${PERSON_NAME_WITH_MIDDLE_INITIAL_PATTERN.source}),?\\s*(${JOB_TITLE_SUFFIX_PATTERN.source})*$`, 
+    'i'
+);
+
+/**
+ * Parses a delimited text file (CSV/TSV) and maps columns to new names
+ * @param filePath Path to the file
+ * @param columnMapping Dictionary for column name mapping {@link ColumnMapping}
+ * @param valueMapping Optional mapping for specific values {@link ValueMapping}
+ * @param fileType File type ('csv', 'tsv', or 'auto' for detection) {@link DelimitedFileTypeEnum}
+ * @returns {Promise<MappedRow<T>[]>} Promise with array of mapped objects {@link MappedRow}
+ * @throws Error if file reading or parsing fails
+ * @example
+ * const filePath = 'path/to/file.csv';
+ * const columnMapping = {
+ *     'First Name': 'firstname',
+ *     'Last Name': 'lastname',
+ *     'Email Address': 'email',
+ * };
+ * const csvData = await parseDelimitedFileWithMapping(filePath, columnMapping, DelimitedFileTypeEnum.CSV);
+ * console.log(csvData); // prints the mapped data below
+ * // [
+ * //    { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+ * //    { firstname: 'Jane', lastname: 'Smith', email: 'jane@example.com' },
+ * // ]
+ */
+export async function parseDelimitedFileWithMapping<T extends ColumnMapping>(
+    filePath: string,
+    fileType: DelimitedFileTypeEnum = DelimitedFileTypeEnum.AUTO,
+    columnMapping: T,
+    valueMapping?: ValueMapping
+): Promise<MappedRow<T>[]> {
+    return new Promise((resolve, reject) => {
+        const results: MappedRow<T>[] = [];
+        // Helper function to parse and transform values
+        const transformValue = (originalValue: string): FieldValue => {
+            // Apply value mapping if exists
+            if (valueMapping && originalValue in valueMapping) {
+                return valueMapping[originalValue];
+            }
+            try {
+                // Try parsing booleans
+                if (['true', 'yes'].includes(originalValue.toLowerCase())) return true;
+                if (['false', 'no'].includes(originalValue.toLowerCase())) return false;
+                
+                // Try parsing dates
+                const parsedDate = new Date(originalValue);
+                if (!isNaN(parsedDate.getTime())) return parsedDate;
+                
+                // Return original string if no conversions apply
+                return originalValue.trim();
+            } catch (error) {
+                console.warn(`parseDelimitedFileWithMapping(), transformValue(originalValue) Could not parse originalValue: ${originalValue}`);
+                return originalValue.trim();
+            }
+        };
+
+        // Create transform stream for mapping columns
+        const mapper = new Transform({
+            objectMode: true,
+            transform(row: Record<string, string>, _, callback) {
+                try {
+                    const mappedRow = Object.entries(columnMapping).reduce(
+                        (acc, [originalKey, newKeys]) => {
+                            const rawValue = row[originalKey]?.trim() || '';
+                            const transformedValue = transformValue(rawValue);
+                            const destinations = Array.isArray(newKeys) ? newKeys : [newKeys];
+                            
+                            for (const newKey of destinations) {
+                                if (newKey in acc) {
+                                    console.log(`parseDelimitedFileWithMapping(), mappedRow = Object.entries(columnMapping).reduce(...) Overwriting existing field: ${newKey}`);
+                                }
+                                acc[newKey] = transformedValue;
+                            }             
+                            return acc;
+                        },
+                        {} as Record<string, FieldValue>
+                    );
+            
+                    this.push(mappedRow);
+                    callback();
+                } catch (error) {
+                    callback(error as Error);
+                }
+            },
+        });
+        const delimiter = getDelimiterFromFilePath(filePath, fileType);
+        /**{@link CsvOptions} */
+        // let csvParserOptions: CsvOptions = { separator: delimiter };
+        pipeline(
+            fs.createReadStream(filePath),
+            csv(
+                { separator: delimiter }
+            ),
+            mapper,
+            (error) => error && reject(error)
+        );
+        mapper
+            .on('data', (data) => results.push(data))
+            .on('end', () => resolve(results))
+            .on('error', reject);
+    });
+}
+
+
+/*
+Here's a detailed comparison of using csv-parser options vs your Transform stream:
+
+Feature	csv-parser Options	Transform Stream
+Execution Phase	During parsing	Post-parsing
+Memory Efficiency	Higher (single pass)	Lower (extra processing step)
+Header Transformation	Native support	Manual handling
+Value Transformation	Per-cell basis	Full-row context
+Complex Mappings	Limited	Full flexibility
+Type Safety	Challenging with dynamic maps	Easier to maintain
+Code Complexity	Lower	Higher
+Error Handling	Integrated with parser	Separate handling
+Multi-field Mapping	Not supported	Supported
+
+*/

@@ -1,3 +1,7 @@
+/**
+ * @deprecated
+ * @file env.mjs
+ */
 import { Client } from '@hubspot/api-client';
 import dotenv from 'dotenv';
 dotenv.config();

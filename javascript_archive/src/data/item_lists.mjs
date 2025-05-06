@@ -1,7 +1,9 @@
 /**
+ * @deprecated
  * @file item_lists.mjs
  */
-
+console.log();
+/** Set<string> */
 const CATEGORY_A_ITEMS = new Set([
     'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10'
 ]);

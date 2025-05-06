@@ -1,0 +1,218 @@
+/**
+ * 
+ * @param {Array<FlowFilter>} flowFilters - `Array<`{@link FlowFilter}`>`
+ * @param {FilterBranchTypeEnum} [filterBranchType] - {@link FilterBranchTypeEnum}
+ * @param {FilterBranchOperatorEnum} [filterBranchOperator] - {@link FilterBranchOperatorEnum}
+ * @returns {FilterBranch} `filterBranch` - {@link FilterBranch}
+ */
+export function generateNumericFilterBranch(
+    flowFilters, 
+    filterBranchType=FilterBranchTypeEnum.AND, 
+    filterBranchOperator=FilterBranchOperatorEnum.AND
+) {
+    let filterBranch = FilterBranch(
+        [],
+        flowFilters,
+        filterBranchType,
+        filterBranchOperator
+    )
+    return filterBranch;
+}
+/**
+
+ * @param {string} numericTargetProperty - `string`
+ * @param {number} minimum - `number`
+ * @param {number} maximum - `number`
+ * @returns {FilterBranch} `filterBranch` - {@link FilterBranch}
+ */
+export function numberIsBetweenFilterBranch(numericTargetProperty, minimum, maximum){
+    let inclusiveRangeFilterBranch = generateNumericFilterBranch(
+        generateNumericRangeFlowFilterPair(
+            numericTargetProperty,
+            NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO,
+            NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO,
+            minimum,
+            maximum
+        ),
+        FilterBranchTypeEnum.AND,
+        FilterBranchOperatorEnum.AND
+    )
+    return inclusiveRangeFilterBranch;
+}
+
+/**
+ * @param {string} numericTargetProperty - `string`
+ * @param {NumericOperatorEnum} lowerBoundOperator - {@link NumericOperatorEnum}
+ * @param {NumericOperatorEnum} upperBoundOperator - {@link NumericOperatorEnum}
+ * @param {number} minimum - `number`
+ * @param {number} maximum - `number`
+ * @returns {Array<FlowFilter>} `flowFilters` - `Array<`{@link FlowFilter}`>`
+ */
+export function generateNumericRangeFlowFilterPair(numericTargetProperty, lowerBoundOperator, upperBoundOperator, minimum, maximum){
+    if (!numericTargetProperty || !minimum || !maximum) {
+        console.log(`\tSkipping generateInclusiveNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
+        return [];
+    }
+    if (minimum > maximum) {
+        console.log(`\tSkipping generateInclusiveNumericRangeFlowFilterPair() b/c minimum > maximum.`);
+        return [];
+    }
+    if (![NumericOperatorEnum.IS_GREATER_THAN, NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO].includes(lowerBoundOperator)) {
+        console.log(`\tSkipping generateInclusiveNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
+        return [];
+    }
+    if (![NumericOperatorEnum.IS_LESS_THAN, NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO].includes(upperBoundOperator)) {
+        console.log(`\tSkipping generateInclusiveNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
+        return [];
+    }
+    let lowerBoundFlowFilter = generateNumericComparisonFlowFilter(
+        numericTargetProperty,
+        lowerBoundOperator,
+        minimum,
+    )
+    let upperBoundFlowFilter = generateNumericComparisonFlowFilter(
+        numericTargetProperty,
+        upperBoundOperator,
+        maximum,
+    )
+    return [lowerBoundFlowFilter, upperBoundFlowFilter];
+}
+
+/**
+ * 
+ * @param {string} targetProperty 
+ * @param {NumericOperatorEnum} operator 
+ * @param {number} value 
+ * @returns {FlowFilter} flowFilter - {@link FlowFilter}
+ */
+export function generateNumericComparisonFlowFilter(
+    targetProperty,
+    operator,
+    value,
+) {
+    if (!targetProperty || !operator || !value) {
+        console.log(`\tSkipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
+        return null;
+    }
+    let flowFilter = FlowFilter(
+        targetProperty,
+        Operation(
+            operator,
+            false,
+            value,
+            OperationTypeEnum.NUMBER
+        ),
+        FlowFilterTypeEnum.PROPERTY
+    );
+    return flowFilter;
+}
+/**
+ * 
+ * @param {ListBranch} listBranch - {@link ListBranch}
+ * @param {string} targetProperty 
+ * @returns {ListBranch} partitionedListBranch — {@link ListBranch}
+ */
+export function distributeFilterValuesOfListBranch(
+    listBranch,
+    targetProperty,
+    maxValuesPerFilter = MAX_VALUES_PER_FILTER,
+) {
+    if (!listBranch || !listBranch.filterBranch) {
+        return listBranch;
+    }
+    let filterBranches = listBranch.filterBranch.filterBranches;
+    if (!filterBranches || filterBranches.length === 0) {
+        return listBranch;
+    }
+    let newFilterBranches = [];
+    for (let filterBranch of filterBranches) {
+        let flowFilters = filterBranch.filters;
+        if (!flowFilters || flowFilters.length === 0) {
+            continue;
+        }
+        for (let flowFilter of flowFilters) {
+            /**if it's a numeric or non-string filter, don't partition it */
+            let isNotStringFilter = (  
+                flowFilter.operation 
+                && (Object.values(NumericOperatorEnum).includes(flowFilter.operation.operationType) 
+                    || flowFilter.operation.operationType !== OperationTypeEnum.MULTISTRING
+                )
+            );
+            /** @type {boolean}if it's a string filter and has less than maxValuesPerFilter values, don't partition it */
+            let isCompliantStringFilter = ( 
+                flowFilter.operation 
+                && flowFilter.operation.operationType === OperationTypeEnum.MULTISTRING
+                && flowFilter.operation.values
+                && flowFilter.operation.values.length
+                && flowFilter.operation.values.length <= maxValuesPerFilter
+            )
+            if (!flowFilter
+                || flowFilter.property !== targetProperty
+                || isNotStringFilter
+                || isCompliantStringFilter
+            ) {
+                newFilterBranches.push(filterBranch);
+                continue;
+            }
+            let batches = partitionArrayByNumSubarrays(
+                flowFilter.operation.values,
+                Math.ceil(flowFilter.operation.values.length / maxValuesPerFilter),
+                maxValuesPerFilter
+            );
+            newFilterBranches.push(
+                ...batchGeneratePropertyContainsStringChildFilterBranch(batches, targetProperty)
+            );
+        }
+    }
+    console.log(`Number of filter branches after distribution: ${newFilterBranches.length}`);
+    listBranch.filterBranch.filterBranches = newFilterBranches;
+    return listBranch;
+}
+
+/**
+ * 
+ * @param {Array.<string>} valueArray 
+ * @param {string} targetProperty 
+ * @returns {FilterBranch} filterBranch - {@link FilterBranch}
+ */
+export function generatePropertyContainsStringChildFilterBranch(valueArray, targetProperty) {
+    if (!valueArray || valueArray.length === 0) {
+        return null;
+    }
+    let filterBranch = FilterBranch(
+        [],
+        [FlowFilter(
+            targetProperty,
+            Operation(
+                OperatorEnum.CONTAINS,
+                false,
+                valueArray,
+                OperationTypeEnum.MULTISTRING
+            ),
+            FlowFilterTypeEnum.PROPERTY
+        )],
+        FilterBranchTypeEnum.AND,
+        FilterBranchOperatorEnum.AND
+    );
+    return filterBranch;
+}
+
+
+/**
+ * @param {Array<Array<string>>} valueBatches - Array<Array<string>>
+ * @param {string} targetProperty - string
+ * @returns {Array<FilterBranch>} filterBranches - `Array<`{@link FilterBranch}`>`
+ */
+export function batchGeneratePropertyContainsStringChildFilterBranch(valueBatches, targetProperty) {
+    if (!valueBatches || valueBatches.length === 0) {
+        return [];
+    }
+    let filterBranches = [];
+    for (let batch of valueBatches) {
+        let filterBranch = generatePropertyContainsStringChildFilterBranch(batch, targetProperty);
+        if (filterBranch) {
+            filterBranches.push(filterBranch);
+        }
+    }
+    return filterBranches;
+}
