@@ -1,3 +1,6 @@
+/**
+ * @file src/utils/automation/flows.ts
+ */
 
 import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR } from '../../config/env'
 import path from 'node:path';
