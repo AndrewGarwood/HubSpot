@@ -1,6 +1,68 @@
 /**
  * @file src/utils/crm/types/Crm.ts
  */
+import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
+
+// @reference \node_modules\@hubspot\api-client\lib\codegen\crm\objects\models\Filter.d.ts
+/**
+ * @interface Filter
+ * @property {string} propertyName - `string` - The name of the property to filter by.
+ * @property {FilterOperatorEnum} operator - see {@link FilterOperatorEnum}
+ * @property {string} [value] - `string`
+ * @property {string} [highValue] - `string`
+ * @property {Array<string>} [values] - `Array<string>`
+ */
+export declare interface Filter {
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+    highValue?: string;
+    values?: Array<string>;
+}
+
+/**
+ * @interface FilterGroup
+ * @property {Array<Filter>} filters `Array<`{@link Filter}`>`
+ */
+export declare interface FilterGroup {
+    filters: Array<Filter>;
+}
+
+
+/**
+ * @interface PublicObjectSearchRequest
+ * @property {string} [query] `string`
+ * @property {number} [limit] `number`
+ * @property {string | number} [after] `string | number`
+ * @property {Array<string>} [sorts] `Array<string>`
+ * @property {Array<string>} [properties] `Array<string>`
+ * @property {Array<FilterGroup>} [filterGroups] `Array<`{@link FilterGroup}`>` = `Array<Array<`{@link Filter}`>>`    
+ */
+export declare interface PublicObjectSearchRequest {
+    query?: string;
+    limit?: number;
+    after?: string | number;
+    sorts?: Array<string>;
+    properties?: Array<string>;
+    filterGroups?: Array<FilterGroup>;
+}
+/**
+ * To include multiple filter criteria, you can group filters within filterGroups:
+ * To apply AND logic, include a comma-separated list of conditions within one set of filters.
+ * To apply OR logic, include multiple filters within a filterGroup.
+ * You can include a maximum of five filterGroups with up to 6 filters in each group, 
+ * with a maximum of 18 filters in total. If you've included too many groups 
+ * or filters, you'll receive a VALIDATION_ERROR error response.
+ * */
+/**
+ * @typedefn `{Object}` `PublicObjectSearchResponse`
+ */
+export type PublicObjectSearchResponse = {
+    objectIds: Array<string>;
+    objects: Array<SimplePublicObject>;
+    after: string | number;
+    total: number;
+}
 
 /**
  * strings used as dictionary keys to access different parts of the CRM API with `hubspotClient`.
@@ -46,49 +108,6 @@ export enum CrmAssociationObjectEnum {
 }
 
 /**
- * @interface Filter
- * @property {string} propertyName
- * @property {FilterOperatorEnum} operator - see {@link FilterOperatorEnum}
- * @property {string} [value]
- * @property {string} [highValue]
- * @property {Array<string>} [values]
- */
-export declare interface Filter {
-    propertyName: string;
-    operator: FilterOperatorEnum;
-    value?: string;
-    highValue?: string;
-    values?: Array<string>;
-}
-
-/**
- * @interface FilterGroup
- * @property {Array<Filter>} filters `Array<`{@link Filter}`>`
- */
-export declare interface FilterGroup {
-    filters: Array<Filter>;
-}
-
-
-/**
- * @interface PublicObjectSearchRequest
- * @property {string} [query]
- * @property {number} [limit]
- * @property {string} [after]
- * @property {Array<string>} [sorts]
- * @property {Array<string>} [properties]
- * @property {Array<FilterGroup>} [filterGroups] `Array<`{@link FilterGroup}`>`
- */
-export declare interface PublicObjectSearchRequest {
-    query?: string;
-    limit?: number;
-    after?: string | number;
-    sorts?: Array<string>;
-    properties?: Array<string>;
-    filterGroups?: Array<FilterGroup>;
-}
-
-/**
  * @enum {string} `FilterOperatorEnum`
  * @readonly
  * @property {string} LESS_THAN - Less than the specified value.
@@ -106,13 +125,13 @@ export declare interface PublicObjectSearchRequest {
  * @property {string} CONTAINS_TOKEN - Contains a token. In your request, you can use wildcards (*) to complete a partial search. For example, use the value *@hubspot.com to retrieve contacts with a HubSpot email address.
  * @property {string} NOT_CONTAINS_TOKEN - Doesn't contain a token.
  */
-export declare enum FilterOperatorEnum {
-    LESS_THAN = 'LESS_THAN',
-    LESS_THAN_OR_EQUAL_TO = 'LESS_THAN_OR_EQUAL_TO',
-    GREATER_THAN = 'GREATER_THAN',
-    GREATER_THAN_OR_EQUAL_TO = 'GREATER_THAN_OR_EQUAL_TO',
-    EQUAL_TO = 'EQUAL_TO',
-    NOT_EQUAL_TO = 'NOT_EQUAL_TO',
+export enum FilterOperatorEnum {
+    LESS_THAN = 'LT',
+    LESS_THAN_OR_EQUAL_TO = 'LTE',
+    GREATER_THAN = 'GT',
+    GREATER_THAN_OR_EQUAL_TO = 'GTE',
+    EQUAL_TO = 'EQ',
+    NOT_EQUAL_TO = 'NEQ',
     BETWEEN = 'BETWEEN',
     IN = 'IN',
     NOT_IN = 'NOT_IN',

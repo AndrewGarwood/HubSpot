@@ -27,7 +27,9 @@ import {
     CrmAssociationObjectEnum, 
     Filter, 
     FilterGroup, 
-    FilterOperatorEnum 
+    FilterOperatorEnum,
+    PublicObjectSearchRequest,
+    PublicObjectSearchResponse,
 } from './types/Crm';
 export {
     // constants.ts
@@ -53,7 +55,9 @@ export {
     // types/Crm.ts
     CrmObjectWithBasicApiEndpointEnum,
     CrmAssociationObjectEnum,
-    // Filter,
-    // FilterGroup,
+    Filter,
+    FilterGroup,
     FilterOperatorEnum,
+    PublicObjectSearchRequest,
+    PublicObjectSearchResponse,
 }

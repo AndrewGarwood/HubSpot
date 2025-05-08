@@ -5,9 +5,11 @@ import { hubspotClient, DELAY } from "../../config/env";
 import { 
     CrmObjectWithBasicApiEndpointEnum as BasicCrmObjectEnum, 
     CrmAssociationObjectEnum, 
-    FilterOperatorEnum 
+    FilterOperatorEnum, 
+    PublicObjectSearchResponse
 } from "./types/Crm";
-import { PublicObjectSearchRequest, Filter, FilterGroup } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { PublicObjectSearchRequest as HS_PublicObjectSearchRequest, Filter as HS_Filter, FilterGroup as HS_FilterGroup } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { PublicObjectSearchRequest, Filter, FilterGroup } from './types/Crm';
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { SimplePublicObjectInput } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { CollectionResponseWithTotalSimplePublicObjectForwardPaging } from "@hubspot/api-client/lib/codegen/crm/objects";
@@ -89,29 +91,13 @@ export async function batchSetPropertyByObjectId(
 
 
 
-/**
- * To include multiple filter criteria, you can group filters within filterGroups:
- * To apply AND logic, include a comma-separated list of conditions within one set of filters.
- * To apply OR logic, include multiple filters within a filterGroup.
- * You can include a maximum of five filterGroups with up to 6 filters in each group, 
- * with a maximum of 18 filters in total. If you've included too many groups 
- * or filters, you'll receive a VALIDATION_ERROR error response.
- * */
-/**
- * @typedefn `{Object}` `PublicObjectSearchResponse`
- */
-export type PublicObjectSearchResponse = {
-    objectIds: Array<string>;
-    objects: Array<SimplePublicObject>;
-    after: string | number;
-    total: number;
-}
+
 /** 
  * @param {BasicCrmObjectEnum} objectType {@link BasicCrmObjectEnum}
- * @param {Array<FilterGroup>} filterGroups `Array<`{@link FilterGroup}`>`
- * @param {Array<string>} responseProperties `Array<string>` — default=['hs_object_id', 'name']
- * @param {number} searchLimit `number <= 200` — default=200
- * @param {number | string} after `number` — default=0
+ * @param {Array<FilterGroup>} filterGroups `Array<`{@link FilterGroup}`>` = `Array<Array<`{@link Filter}`>>`
+ * @param {Array<string>} responseProperties `Array<string>` — default=`['hs_object_id', 'name']`
+ * @param {number} searchLimit `number <= 200` — default=`200`
+ * @param {number | string} after `number` — default=`0`
  * 
  * @returns {Promise<PublicObjectSearchResponse | undefined>}
  */
@@ -130,7 +116,7 @@ export async function searchObjectByProperty(
     };
     try {
         const apiResponse = await hubspotClient.crm[objectType].searchApi.doSearch(
-            searchRequest
+            searchRequest as HS_PublicObjectSearchRequest
         ) as CollectionResponseWithTotalSimplePublicObjectForwardPaging;
         
         let resData: PublicObjectSearchResponse = {
@@ -140,13 +126,13 @@ export async function searchObjectByProperty(
             total: apiResponse.total
         };
         if (!resData || resData.total === 0 || !resData.objectIds) {
-            console.log(`No ${objectType} found with these filterGroups:`, filterGroups);
+            console.log(`No ${objectType} found with these filterGroups:`, JSON.stringify(filterGroups));
             return;
         }
-        console.log(`Found ${resData.total} ${objectType}(s) with the search filter:\n`, filterGroups);
+        console.log(`\t Found ${resData.total} ${objectType}(s) with the search filter:`, JSON.stringify(filterGroups));
         return resData;
     } catch (e) {
-        console.error(`searchObjectByProperty() Error searching ${objectType} with filterGroups:`, filterGroups, e);
+        console.error(`ERROR in searchObjectByProperty() when searching for ${objectType}` , (e as any).body); // );//
         return undefined;
     }
 }

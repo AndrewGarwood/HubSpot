@@ -16,6 +16,7 @@ import {
     readFileLinesIntoArray,
     validateFileExtension,
     parseExcelForOneToMany,
+    parseCsvForOneToMany,
     readJsonFileAsObject,
 } from './reading'
 import {
@@ -56,6 +57,7 @@ export {
     readFileLinesIntoArray,
     validateFileExtension,
     parseExcelForOneToMany,
+    parseCsvForOneToMany,
     readJsonFileAsObject,
 
     // regex.ts
@@ -69,7 +71,7 @@ export {
     PHONE_REGEX,
     KOREA_PHONE_REGEX,
     JAPAN_PHONE_REGEX,
-    applyPhoneRegex as testPhoneRegex,
+    applyPhoneRegex,
 
     // writing.ts
     writeListsToCsv,

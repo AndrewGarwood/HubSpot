@@ -8,33 +8,90 @@ import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } 
 import { CATEGORY_TO_SKU_DICT } from "../../../config/loadData";
 
 /**
- * @param lineItemId `hs_object_id`
- * @param properties defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
- * @param propertiesWithHistory 
- * @param associations defaults to [{@link Associations.DEALS}].
- * @param archived defaults to `false`.
+ * @property {string} lineItemId `string` = `hs_object_id`
+ * @property {string[]} properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
+ * @property {string[]} propertiesWithHistory `string[]`
+ * @property {Array<Associations.DEALS | Associations.PRODUCTS>} associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
+ * @property {boolean} archived `boolean` defaults to `false`.
+ */
+export type GetLineItemByIdParams = {
+    lineItemId: string | number;
+    properties?: string[];
+    propertiesWithHistory?: string[];
+    associations?: Array<Associations.DEALS | Associations.PRODUCTS>;
+    archived?: boolean;
+};
+
+/**
+ * @param lineItemId `string` = `hs_object_id`
+ * @param properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
+ * @param propertiesWithHistory `string[]`
+ * @param associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
+ * @param archived `boolean` defaults to `false`.
  * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
- * - The lineItem with the specified ID, or undefined if not found.
+ * - The line item with the specified ID, or undefined if not found.
  */
 export async function getLineItemById(
     lineItemId: string | number,
-    properties: string[] = DEFAULT_LINE_ITEM_PROPERTIES,
+    properties?: string[],
     propertiesWithHistory?: string[],
-    associations: Array<Associations.DEALS | Associations.PRODUCTS> = [Associations.DEALS],
-    archived: boolean = false,
+    associations?: Array<Associations.DEALS | Associations.PRODUCTS>,
+    archived?: boolean
+): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined>;
+
+/**
+ * @see {@link GetLineItemByIdParams}
+ * @param params.lineItemId `string` = `hs_object_id`
+ * @param params.properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
+ * @param params.propertiesWithHistory `string[]`
+ * @param params.associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
+ * @param params.archived `boolean` defaults to `false`.
+ * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
+ * - The line item with the specified ID, or undefined if not found.
+ */
+export async function getLineItemById(
+    params: GetLineItemByIdParams
+): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined>;
+
+export async function getLineItemById(
+    lineItemIdOrParams: string | number | GetLineItemByIdParams,
+    properties?: string[],
+    propertiesWithHistory?: string[],
+    associations?: Array<Associations.DEALS | Associations.PRODUCTS>,
+    archived?: boolean
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
-    try {
-        let response = await getObjectById(
-            BasicCrmObjects.LINE_ITEMS,
-            lineItemId,
+    // Normalize parameters into a single object
+    const params = typeof lineItemIdOrParams === 'object' && 'lineItemId' in lineItemIdOrParams
+        ? lineItemIdOrParams
+        : {
+            lineItemId: lineItemIdOrParams,
             properties,
             propertiesWithHistory,
             associations,
-            archived,
+            archived
+        };
+
+    // Apply defaults and destructure
+    const {
+        lineItemId,
+        properties: props = DEFAULT_LINE_ITEM_PROPERTIES,
+        propertiesWithHistory: historyProps,
+        associations: assoc = [Associations.DEALS],
+        archived: arch = false
+    } = params;
+
+    try {
+        const response = await getObjectById(
+            BasicCrmObjects.LINE_ITEMS,
+            lineItemId,
+            props,
+            historyProps,
+            assoc,
+            arch
         );
         return response;
     } catch (e) {
-        console.error(`\t getLineItemById() Error retrieving lineItem with ID: ${lineItemId}`);
+        console.error(`\t getLineItemById() Error retrieving line item with ID: ${lineItemId}`);
         return undefined;
     }
 }
