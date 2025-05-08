@@ -2,25 +2,16 @@ import {
     FileExtensionResult
 } from './Reading'
 import {
-    ColumnMapping,
-    MappedRow, 
-    ValueMapping, 
-    ValueMappingEntry, 
-    isValueMappingEntry,
+
     DelimitedFileTypeEnum,
-    DelimiterEnum,
-} from './CsvMapping'
+    DelimiterCharacterEnum,
+} from './Csv'
 
 export {
     // Reading.ts
     FileExtensionResult,
     
-    // CsvMapping.ts
-    ColumnMapping,
-    MappedRow, 
-    ValueMapping, 
-    ValueMappingEntry, 
+    // Csv.ts
     DelimitedFileTypeEnum,
-    DelimiterEnum, 
-    isValueMappingEntry,
+    DelimiterCharacterEnum, 
 }
