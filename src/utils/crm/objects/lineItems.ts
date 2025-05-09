@@ -1,7 +1,7 @@
 /**
  * @file src/utils/crm/objects/lineItems.ts
  */
-import { CrmObjectWithBasicApiEndpointEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations } from "../types/Crm";
+import { CrmObjectEnum, CrmAssociationObjectEnum as Associations } from "../types/Crm";
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getObjectById } from "./objects";
 import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
@@ -82,7 +82,7 @@ export async function getLineItemById(
 
     try {
         const response = await getObjectById(
-            BasicCrmObjects.LINE_ITEMS,
+            CrmObjectEnum.LINE_ITEMS,
             lineItemId,
             props,
             historyProps,

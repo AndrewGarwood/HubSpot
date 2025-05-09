@@ -1,7 +1,10 @@
 /**
  * @file src/utils/crm/types/Crm.ts
  */
-import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { 
+    SimplePublicObject as HS_SimplePublicObject, 
+    SimplePublicObjectWithAssociations as HS_SimplePublicObjectWithAssociations 
+} from "@hubspot/api-client/lib/codegen/crm/objects";
 
 // @reference \node_modules\@hubspot\api-client\lib\codegen\crm\objects\models\Filter.d.ts
 /**
@@ -12,7 +15,7 @@ import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot
  * @property {string} [highValue] - `string`
  * @property {Array<string>} [values] - `Array<string>`
  */
-export declare interface Filter {
+export interface Filter {
     propertyName: string;
     operator: FilterOperatorEnum;
     value?: string;
@@ -22,9 +25,9 @@ export declare interface Filter {
 
 /**
  * @interface FilterGroup
- * @property {Array<Filter>} filters `Array<`{@link Filter}`>`
+ * @property {Array<Filter>} filters = `Array<`{@link Filter}`>`
  */
-export declare interface FilterGroup {
+export interface FilterGroup {
     filters: Array<Filter>;
 }
 
@@ -36,9 +39,9 @@ export declare interface FilterGroup {
  * @property {string | number} [after] `string | number`
  * @property {Array<string>} [sorts] `Array<string>`
  * @property {Array<string>} [properties] `Array<string>`
- * @property {Array<FilterGroup>} [filterGroups] `Array<`{@link FilterGroup}`>` = `Array<Array<`{@link Filter}`>>`    
+ * @property {Array<FilterGroup>} [filterGroups] = `Array<`{@link FilterGroup}`>` = `Array<Array<`{@link Filter}`>>`    
  */
-export declare interface PublicObjectSearchRequest {
+export interface PublicObjectSearchRequest {
     query?: string;
     limit?: number;
     after?: string | number;
@@ -56,6 +59,10 @@ export declare interface PublicObjectSearchRequest {
  * */
 /**
  * @typedefn `{Object}` `PublicObjectSearchResponse`
+ * @property {Array<string>} objectIds `Array<string>`
+ * @property {Array<SimplePublicObject>} objects `Array<`{@link SimplePublicObject}`>`
+ * @property {string | number} after `string | number`
+ * @property {number} total `number`
  */
 export type PublicObjectSearchResponse = {
     objectIds: Array<string>;
@@ -64,13 +71,152 @@ export type PublicObjectSearchResponse = {
     total: number;
 }
 
+
+/**
+ * @interface SimplePublicObject
+ * @property {Date} createdAt
+ * @property {boolean} [archived]
+ * @property {Date} [archivedAt]
+ * @property {Record<string, Array<ValueWithTimestamp>>} [propertiesWithHistory] `Record<string`, `Array<`{@link ValueWithTimestamp}`>>`
+ * @property {string} id
+ * @property {Record<string, string | null>} properties
+ * @property {Date} updatedAt
+ */
+export interface SimplePublicObject {
+    createdAt: Date;
+    archived?: boolean;
+    archivedAt?: Date;
+    propertiesWithHistory?: Record<string, Array<ValueWithTimestamp>>;
+    id: string;
+    properties: Record<string, string | null>;
+    updatedAt: Date;
+}
+
+
+
+
+
+
+
+/**
+ * @interface CollectionResponseWithTotalSimplePublicObjectForwardPaging
+ * @property {number} total
+ * @property {ForwardPaging} [paging] {@link ForwardPaging}
+ * @property {Array<SimplePublicObject>} results `Array<`{@link SimplePublicObject}`>`
+ */
+export interface CollectionResponseWithTotalSimplePublicObjectForwardPaging {
+    total: number;
+    paging?: ForwardPaging;
+    results: Array<SimplePublicObject>;
+}
+
+/**
+ * @interface SimplePublicObjectWithAssociations `extends` {@link SimplePublicObject}
+ * @property {Record<string, CollectionResponseAssociatedId>} [associations] see {@link CollectionResponseAssociatedId}
+ * @property {Date} createdAt
+ * @property {boolean} [archived]
+ * @property {Date} [archivedAt]
+ * @property {Record<string, Array<ValueWithTimestamp>>} [propertiesWithHistory] `Record<string`, `Array<`{@link ValueWithTimestamp}`>>`
+ * @property {string} id
+ * @property {Record<string, string | null>} properties
+ * @property {Date} updatedAt
+ */
+export interface SimplePublicObjectWithAssociations extends SimplePublicObject {
+    associations?: Record<string, CollectionResponseAssociatedId>;
+    createdAt: Date;
+    archived?: boolean;
+    archivedAt?: Date;
+    propertiesWithHistory?: Record<string, Array<ValueWithTimestamp>>;
+    id: string;
+    properties: Record<string, string | null>;
+    updatedAt: Date;
+}
+
+/**
+ * @interface CollectionResponseAssociatedId
+ * @property {Paging} [paging] {@link Paging} 
+ * @property {Array<AssociatedId>} results `Array<`{@link AssociatedId}`>`
+ */
+export interface CollectionResponseAssociatedId {
+    paging?: Paging;
+    results: Array<AssociatedId>;
+}
+
+/**
+ * @interface ValueWithTimestamp
+ * @property {string} sourceId
+ * @property {string} sourceType
+ * @property {string} sourceLabel
+ * @property {number} updatedByUserId
+ * @property {string} value
+ * @property {Date} timestamp 
+ */
+export interface ValueWithTimestamp {
+    sourceId: string;
+    sourceType: string;
+    sourceLabel: string;
+    updatedByUserId: number;
+    value: string;
+    timestamp: Date;
+}
+
+/**
+ * @interface AssociatedId
+ * @property {string} id
+ * @property {string} type
+ */
+export interface AssociatedId {
+    id: string;
+    type: string;
+}
+
+/**
+ * @interface Paging
+ * @property {NextPage} next {@link NextPage}
+ * @property {PreviousPage} prev {@link PreviousPage}
+ */
+export interface Paging {
+    next: NextPage;
+    prev: PreviousPage;
+}
+
+
+/**
+ * @interface ForwardPaging
+ * @property {NextPage} next {@link NextPage}
+ */
+export interface ForwardPaging {
+    next: NextPage;
+}
+
+/**
+ * @interface NextPage
+ * @property {string} [link]
+ * @property {string} after
+ */
+export interface NextPage {
+    link?: string;
+    after: string;
+}
+
+/**
+ * @interface PreviousPage
+ * @property {string} [link]
+ * @property {string} before
+ */
+export interface PreviousPage {
+    link?: string;
+    before: string;
+}
+
+
 /**
  * strings used as dictionary keys to access different parts of the CRM API with `hubspotClient`.
  * @example 
- * hubspotClient.crm[CrmObjectWithBasicApiEndpointEnum.CONTACTS].basicApi 
+ * hubspotClient.crm[CrmObjectEnum.CONTACTS].basicApi 
  * // is equivalent to 
  * hubspotClient.crm.contacts.basicApi
- * @enum {string} `CrmObjectWithBasicApiEndpointEnum`
+ * @enum {string} `CrmObjectEnum`
  * @readonly
  * @property {string} CONTACTS
  * @property {string} DEALS
@@ -79,7 +225,7 @@ export type PublicObjectSearchResponse = {
  * @property {string} LINE_ITEMS - `lineItems`
  * @property {string} TICKETS
  */
-export enum CrmObjectWithBasicApiEndpointEnum {
+export enum CrmObjectEnum {
     CONTACTS = 'contacts',
     DEALS = 'deals',
     COMPANIES = 'companies',
@@ -89,6 +235,7 @@ export enum CrmObjectWithBasicApiEndpointEnum {
 }
 
 /**
+ * @note redundant with {@link CrmObjectEnum} except for differing `LINE_ITEMS` property
  * @enum {string} `CrmAssociationObjectEnum`
  * @readonly
  * @property {string} CONTACTS
@@ -119,7 +266,7 @@ export enum CrmAssociationObjectEnum {
  * @property {string} BETWEEN - Within the specified range. In your request, use key-value pairs to set highValue and value. Refer to the example below the table.
  * @property {string} IN - Included within the specified list. Searches by exact match. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase. Refer to the example below the table.
  * @property {string} NOT_IN - Not included within the specified list. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase.
- *--  IN / NOT_IN for enumeration properties only?
+ * > `IN / NOT_IN` for enumeration properties only?
  * @property {string} HAS_PROPERTY - Has a value for the specified property.
  * @property {string} NOT_HAS_PROPERTY - Doesn't have a value for the specified property.
  * @property {string} CONTAINS_TOKEN - Contains a token. In your request, you can use wildcards (*) to complete a partial search. For example, use the value *@hubspot.com to retrieve contacts with a HubSpot email address.

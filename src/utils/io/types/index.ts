@@ -1,17 +1,5 @@
-import {
-    FileExtensionResult
-} from './Reading'
-import {
-
-    DelimitedFileTypeEnum,
-    DelimiterCharacterEnum,
-} from './Csv'
-
-export {
-    // Reading.ts
-    FileExtensionResult,
-    
-    // Csv.ts
-    DelimitedFileTypeEnum,
-    DelimiterCharacterEnum, 
-}
+/**
+ * @file src/utils/io/types/index.ts
+ */
+export * from './Reading'
+export * from './Csv'

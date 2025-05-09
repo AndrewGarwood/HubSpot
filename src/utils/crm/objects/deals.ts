@@ -1,10 +1,13 @@
 /**
  * @file src/utils/crm/objects/deals.ts
  */
-import { CrmObjectWithBasicApiEndpointEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations } from "../types/Crm";
+import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponse, PublicObjectSearchRequest } from "../types/Crm";
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getObjectById } from "./objects";
 import { DEFAULT_DEAL_PROPERTIES } from "../constants";
+import { DELAY, STOP_RUNNING } from "../../../config/env";
+import { searchObjectByProperty } from "../properties";
+import { mainLogger as log } from "../../../config/setupLog";
 
 
 /**
@@ -95,4 +98,52 @@ export async function getDealById(
         console.error(`\t getDealById() Error retrieving deal with ID: ${dealId}`);
         return undefined;
     }
+}
+
+const DEAL_ORDER_NUM_PROP = 'unific_order_number';
+
+export async function getDealByOrderNumber(
+    orderNumber: string | number,
+    properties?: string[],
+    propertiesWithHistory?: string[],
+    associations?: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>,
+    archived?: boolean
+): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
+    const filterGroups: FilterGroup[] = [
+        {
+            filters: [
+                {
+                    propertyName: DEAL_ORDER_NUM_PROP,
+                    operator: FilterOperatorEnum.EQUAL_TO,
+                    value: orderNumber,
+                } as Filter,
+            ] as Filter[],
+        } as FilterGroup,
+    ]
+    const searchRequest: PublicObjectSearchRequest = {
+        query: undefined,
+        limit: 5,
+        after: undefined,
+        sorts: undefined,
+        properties: properties || DEFAULT_DEAL_PROPERTIES,
+        filterGroups: filterGroups,
+    }
+    const searchRes = await searchObjectByProperty(
+        CrmObjectEnum.DEALS, 
+        searchRequest,
+        ['hs_object_id']
+    ) as PublicObjectSearchResponse;
+    await DELAY(1000);
+    const responseIsInvalid: boolean = !searchRes || !searchRes.objectIds || searchRes.objectIds.length === 0;
+    if (responseIsInvalid) {
+        log.info(`searchResponse is undefined or No deal was found for order number "${orderNumber}".`);
+        return;
+    } 
+    if (searchRes.objectIds.length > 1) {
+        log.warn(`Multiple deals found for order number "${orderNumber}". searchResponse.objectIds.length = ${searchRes.objectIds.length}`);
+    }
+    const dealId = searchRes.objectIds[0];
+    return await getDealById(
+        dealId, properties, propertiesWithHistory, associations, archived
+    ) as SimplePublicObject | SimplePublicObjectWithAssociations | undefined;
 }

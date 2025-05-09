@@ -10,53 +10,6 @@ import { printConsoleGroup as print, toPacificTime } from "../io";
 
 /**
  * 
- * @param {string | number} contactId string | number
- * @returns {Record<string, SkuData> } `skuHistory` `Record<string, `{@link SkuData}`>`
- */
-export async function loadSkuHistoryOfContact(contactId: string | number): Promise<{ [k: string]: SkuData; }> {
-    let contactResponse = await getContactById({
-        contactId: contactId, 
-        propertiesWithHistory: []
-    }) as SimplePublicObjectWithAssociations;
-    if (!contactResponse || !contactResponse.properties || !contactResponse.associations || !contactResponse.associations.deals) {
-        console.log(`Contact with ID ${contactId} not found or has no associated deals.`);
-        return {};
-    }
-    let contactData = contactResponse.properties;
-    let contactName = `${contactData.firstname} ${contactData.lastname}`;
-    let skuHistory = {};
-    let associatedDealsOfContact = contactResponse.associations.deals.results;
-    let chronologicalDealIds = 
-        await sortDealsChronologically(associatedDealsOfContact.map((deal: Record<string, any>) => deal.id));
-    console.log(`Reading deals of contact: ${contactName}... ${chronologicalDealIds.length} deals found.`);
-    for (let dealId of chronologicalDealIds) {
-        let dealResponse = await getDealById({ dealId: dealId }) as SimplePublicObjectWithAssociations;
-        if (!dealResponse || !dealResponse.properties || !dealResponse.associations || !dealResponse.associations['line items']) {
-            console.log(`Deal with ID ${dealId} not found is either undefined or has no line items.`);
-            continue;
-        }
-        let dealProps = dealResponse.properties;
-        let lineItemIdList = dealResponse.associations['line items']
-            .results.map(associatedLineItem => associatedLineItem.id);
-        for (let lineItemId of lineItemIdList) { 
-            let lineItemResponse = await getLineItemById({ lineItemId: lineItemId });
-            if (!lineItemResponse || !lineItemResponse.properties) {
-                console.log(`Line item with ID ${lineItemId} not found.`);
-                continue;
-            }
-            let lineItemProps = lineItemResponse.properties;
-            let sku = lineItemProps?.hs_sku;
-            if (sku && !sku.startsWith('MM')) {
-                skuHistory = updateSkuHistory(skuHistory, sku, lineItemProps, dealProps);
-            }
-        }
-    }
-    console.log(`\n skuHistory: `, skuHistory);
-    return skuHistory;
-}
-
-/**
- * 
  * @param {Record<string, SkuData>} skuHistory `Record<string, `{@link SkuData}`>`
  * @param {string} sku `string`
  * @param {Record<string, any>} lineItemData `Record<string, any>}`
@@ -64,7 +17,13 @@ export async function loadSkuHistoryOfContact(contactId: string | number): Promi
  * @param {boolean} enableConsoleLog `boolean`
  * @returns {Record<string, SkuData>} `updatedSkuHistory` — `Record<string, `{@link SkuData}`>`
  */
-export function updateSkuHistory(skuHistory: Record<string, SkuData>, sku: string, lineItemData: { [k: string]: any; }, dealData: { [k: string]: any; }, enableConsoleLog: boolean=false): { [k: string]: SkuData; } {
+export function updateSkuHistory(
+    skuHistory: Record<string, SkuData>, 
+    sku: string, 
+    lineItemData: Record<string, any>, 
+    dealData: Record<string, any>, 
+    enableConsoleLog: boolean=false
+): Record<string, SkuData> {    
     if (sku && !skuHistory.hasOwnProperty(sku) && lineItemData.amount > 0) {
         skuHistory[sku] = {
             sku: sku,
@@ -136,4 +95,52 @@ export async function sortDealsChronologically(dealIdList: Array<string>): Promi
         .sort((a, b) => new Date(a.dealDate || 0).getTime() - new Date(b.dealDate || 0).getTime())
         .map(deal => deal.dealId);
     return chronologicalDealIds
+}
+
+
+/**
+ * 
+ * @param {string | number} contactId string | number
+ * @returns {Record<string, SkuData> } `skuHistory` `Record<string, `{@link SkuData}`>`
+ */
+export async function loadSkuHistoryOfContact(contactId: string | number): Promise<Record<string, SkuData>> {
+    let contactResponse = await getContactById({
+        contactId: contactId, 
+        propertiesWithHistory: []
+    }) as SimplePublicObjectWithAssociations;
+    if (!contactResponse || !contactResponse.properties || !contactResponse.associations || !contactResponse.associations.deals) {
+        console.log(`Contact with ID ${contactId} not found or has no associated deals.`);
+        return {};
+    }
+    let contactData = contactResponse.properties;
+    let contactName = `${contactData.firstname} ${contactData.lastname}`;
+    let skuHistory = {};
+    let associatedDealsOfContact = contactResponse.associations.deals.results;
+    let chronologicalDealIds = 
+        await sortDealsChronologically(associatedDealsOfContact.map((deal: Record<string, any>) => deal.id));
+    console.log(`Reading deals of contact: ${contactName}... ${chronologicalDealIds.length} deals found.`);
+    for (let dealId of chronologicalDealIds) {
+        let dealResponse = await getDealById({ dealId: dealId }) as SimplePublicObjectWithAssociations;
+        if (!dealResponse || !dealResponse.properties || !dealResponse.associations || !dealResponse.associations['line items']) {
+            console.log(`Deal with ID ${dealId} not found is either undefined or has no line items.`);
+            continue;
+        }
+        let dealProps = dealResponse.properties;
+        let lineItemIdList = dealResponse.associations['line items']
+            .results.map(associatedLineItem => associatedLineItem.id);
+        for (let lineItemId of lineItemIdList) { 
+            let lineItemResponse = await getLineItemById({ lineItemId: lineItemId });
+            if (!lineItemResponse || !lineItemResponse.properties) {
+                console.log(`Line item with ID ${lineItemId} not found.`);
+                continue;
+            }
+            let lineItemProps = lineItemResponse.properties;
+            let sku = lineItemProps?.hs_sku;
+            if (sku && !sku.startsWith('MM')) {
+                skuHistory = updateSkuHistory(skuHistory, sku, lineItemProps, dealProps);
+            }
+        }
+    }
+    console.log(`\n skuHistory: `, skuHistory);
+    return skuHistory;
 }

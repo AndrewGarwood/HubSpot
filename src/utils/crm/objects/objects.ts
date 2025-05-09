@@ -3,21 +3,21 @@
  */
 
 import { hubspotClient } from "../../../config/env";
-import { CrmObjectWithBasicApiEndpointEnum as BasicCrmObjectEnum, CrmAssociationObjectEnum } from "../types/Crm";
+import { CrmObjectEnum, CrmAssociationObjectEnum } from "../types/Crm";
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { CollectionResponseSimplePublicObjectWithAssociationsForwardPaging } from "@hubspot/api-client/lib/codegen/crm/objects";
 /**
  * 
- * @param objectType see {@link BasicCrmObjectEnum}
+ * @param objectType see {@link CrmObjectEnum}
  * @param objectId `hs_object_id`
- * @param properties 
- * @param propertiesWithHistory 
+ * @param properties `string[]`
+ * @param propertiesWithHistory `string[]` 
  * @param associations see {@link CrmAssociationObjectEnum}
- * @param archived 
+ * @param archived `boolean`
  * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` - The object with the specified ID, or undefined if not found.
  */
 export async function getObjectById(
-    objectType: BasicCrmObjectEnum,
+    objectType: CrmObjectEnum,
     objectId: string | number,
     properties?: string[],
     propertiesWithHistory?: string[],
@@ -32,10 +32,10 @@ export async function getObjectById(
         console.error(`getObjectById() Invalid objectId provided. Expected a string or number.`);
         return undefined;
     }
-    if (Object.keys(BasicCrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
-        objectType = BasicCrmObjectEnum[objectType.toUpperCase() as keyof typeof BasicCrmObjectEnum];
-    } else if (Object.values(BasicCrmObjectEnum).indexOf(objectType) === -1) {
-        console.error(`getObjectById() Invalid objectType provided. objectType must be a key or value of CrmObjectWithBasicApiEndpointEnum.`, JSON.stringify(BasicCrmObjectEnum));
+    if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
+        objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
+    } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
+        console.error(`getObjectById() Invalid objectType provided. objectType must be a key or value of CrmObjectWithBasicApiEndpointEnum.`, JSON.stringify(CrmObjectEnum));
         return undefined;
     }
     try {
@@ -50,17 +50,17 @@ export async function getObjectById(
 
 /**
  * 
- * @param objectType see {@link BasicCrmObjectEnum}
- * @param limit 
- * @param after 
- * @param properties 
- * @param propertiesWithHistory 
+ * @param objectType see {@link CrmObjectEnum}
+ * @param limit `number` = `10`
+ * @param after `string | number` = `undefined`
+ * @param properties `string[]` = `undefined`
+ * @param propertiesWithHistory `string[]` = `undefined`
  * @param associations see {@link CrmAssociationObjectEnum}
- * @param archived 
- * @returns `response` = `Promise<`{@link CollectionResponseSimplePublicObjectWithAssociationsForwardPaging} | `undefined>` - The collection of objects, or undefined if not found.
+ * @param archived `boolean` = `false`
+ * @returns `response` = `Promise<`{@link HS_CollectionResponseSimplePublicObjectWithAssociationsForwardPaging} | `undefined>` - The collection of objects, or undefined if not found.
  */
 export async function getObjectByPage(
-    objectType: BasicCrmObjectEnum,
+    objectType: CrmObjectEnum,
     limit: number = 10,
     after?: string | number,
     properties?: string[],
@@ -72,10 +72,10 @@ export async function getObjectByPage(
         console.error(`getObjectByPage() Invalid objectType provided. Expected a string.`);
         return undefined;
     }
-    if (Object.keys(BasicCrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
-        objectType = BasicCrmObjectEnum[objectType.toUpperCase() as keyof typeof BasicCrmObjectEnum];
-    } else if (Object.values(BasicCrmObjectEnum).indexOf(objectType) === -1) {
-        console.error(`getObjectByPage() Invalid objectType provided. objectType must be a key or value of CrmObjectWithBasicApiEndpointEnum.`, JSON.stringify(BasicCrmObjectEnum, null, 4));
+    if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
+        objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
+    } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
+        console.error(`getObjectByPage() Invalid objectType provided. objectType must be a key or value of CrmObjectWithBasicApiEndpointEnum.`, JSON.stringify(CrmObjectEnum, null, 4));
         return undefined;
     }
     try {

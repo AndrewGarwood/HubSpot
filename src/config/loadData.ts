@@ -2,7 +2,7 @@
  * src/config/loadData.ts
  */
 import { STOP_RUNNING, ONE_DRIVE_DIR } from './env';
-import { parseExcelForOneToMany } from '../utils/io/reading';
+import { parseExcelForOneToMany, StringPadOptions, ParseOneToManyOptions } from '../utils/io';
 import { CATEGORY_A_ITEMS, CATEGORY_B_ITEMS, CATEGORY_C_ITEMS, CATEGORY_D_ITEMS, CATEGORY_E_ITEMS, CATEGORY_F_ITEMS } from '../data/inventory';
 /**
  * @description name of excel file assumed to include sheetNames ['East Territory Alignment - Zip', 'West Territory Alignment - Zip']
@@ -23,11 +23,20 @@ export const REGION_ZIP_PROPS = ['unific_shipping_postal_code']
  */
 export const TERRITORY_ZIP_PROPS = ['zip', 'unific_shipping_postal_code'];
 
+const zipParseOptions: ParseOneToManyOptions = {
+    valuePadOptions: {
+        padLength: 5,
+        padChar: '0',
+        padLeft: true,
+    } as StringPadOptions,
+}
+
 export const EAST_TERRITORY_ZIPS_DICT = parseExcelForOneToMany(
     `${ONE_DRIVE_DIR}/${territoryDataFileName}`, 
     'East Territory Alignment - Zip', 
     'Territories', 
-    'ZIP'
+    'ZIP',
+    zipParseOptions
 );
 Object.keys(EAST_TERRITORY_ZIPS_DICT).forEach((territory, index) => {
     if (territory.length === 0) {
@@ -43,7 +52,8 @@ export const WEST_TERRITORY_ZIPS_DICT = parseExcelForOneToMany(
     `${ONE_DRIVE_DIR}/${territoryDataFileName}`, 
     'West Territory Alignment - Zip', 
     'Territories', 
-    'ZIP'
+    'ZIP',
+    zipParseOptions
 );
 Object.keys(WEST_TERRITORY_ZIPS_DICT).forEach((territory, index) => {
     if (territory.length === 0) {

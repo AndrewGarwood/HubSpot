@@ -53,10 +53,10 @@ export const HUBSPOT_DEVELOPER_API_KEY = process.env.DEVELOPER_API_KEY || 'MISSI
 export const hubspotClient = new Client({ 
     accessToken: HUBSPOT_ACCESS_TOKEN, 
     developerApiKey: HUBSPOT_DEVELOPER_API_KEY,
-    numberOfApiCallRetries: 5, 
+    numberOfApiCallRetries: 2, 
 });
-export const SEARCH_LIMIT = 200;
 
+/** `https://api.hubapi.com/automation/v4/flows/${flowId}` */
 export const FLOWS_API_URL = `https://api.hubapi.com/automation/v4/flows`;
 
 function validateDirectory(dirPath: string): void {

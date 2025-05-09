@@ -1,7 +1,7 @@
 /**
  * @file src/utils/crm/objects/contacts.ts
  */
-import { CrmObjectWithBasicApiEndpointEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations } from "../types/Crm";
+import { CrmObjectEnum, CrmAssociationObjectEnum as Associations } from "../types/Crm";
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getObjectById } from "./objects";
 import { DEFAULT_CONTACT_PROPERTIES } from "../constants";
@@ -81,7 +81,7 @@ export async function getContactById(
 
     try {
         const response = await getObjectById(
-            BasicCrmObjects.CONTACTS,
+            CrmObjectEnum.CONTACTS,
             contactId,
             props,
             historyProps,

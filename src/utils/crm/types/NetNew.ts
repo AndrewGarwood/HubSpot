@@ -36,7 +36,7 @@ export type SkuData = {
  * @property {Array<string>} netNewLineItems `Array<string>`
  * @property {Array<string>} recurringLineItems `Array<string>`
  */
-export interface NetNewDataConfig {
+export type NetNewDataConfig = {
     contactId?: string;
     contactName?: string;
     categoriesBought: Record<string, string>;

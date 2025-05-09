@@ -2,15 +2,106 @@
  * @file src/utils/io/regex.ts
  */
 import { printConsoleGroup as print } from "./writing";
+import { StringCaseOptions, StringPadOptions } from "./types/Reading";
 
 // TODO: use regex to check if date is in a valid format (e.g. YYYY-MM-DD, MM/DD/YYYY, etc.)
+/**
+ * @TODO add {@link stripChar} options
+ * @description 
+ * - Removes extra spaces and dots from a string (e.g. `'..'` becomes `'.'`), and optionally converts it to uppercase or lowercase.
+ * - Removes trailing dots if the string does not end with `'Ph.D.'` and does not contain any of the {@link COMPANY_KEYWORDS_PATTERN} keywords.
+ * - calls {@link handleCaseOptions} and {@link handlePadOptions} to apply case and padding options.
+ * @param s - the `string` to clean
+ * @param caseOptions {@link StringCaseOptions} - `optional` case options to apply to the string
+ * = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
+ * @param padOptions {@link StringPadOptions} - `optional` padding options to apply to the string
+ * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
+ * @returns `s` - the cleaned `string`
+ */
+export function cleanString(
+    s: string, 
+    caseOptions?: StringCaseOptions,
+    padOptions?: StringPadOptions
+): string {
+    if (!s) return '';
+    s = s.replace(/\s+/g, ' ').replace(/\.{2,}/g, '.');
+    if (!s.endsWith('Ph.D.') && !stringEndsWithAnyOf(s, COMPANY_KEYWORDS_PATTERN)) {
+        s = stripChar(s, '.', true);
+    }
+    if (caseOptions) {
+        s = handleCaseOptions(s, caseOptions);
+    }   
+    if (padOptions && padOptions.padLength) {
+        s = handlePadOptions(s, padOptions);
+    }
+    return s.trim();
+}
+
+export function toTitleCase(s: string): string {
+    if (!s) return '';
+    return s.replace(/\b\w/g, char => char.toUpperCase());
+}
+
+/**
+ * 
+ * @param s `string` - the string to handle case options for
+ * @param caseOptions {@link StringCaseOptions} - `optional` case options to apply to the string
+ * = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
+ * - applies the first case option that is `true` and ignores the rest
+ * @returns `s` - the string with case options applied
+ */
+export function handleCaseOptions(
+    s: string, 
+    caseOptions: StringCaseOptions = { toUpper: false, toLower: false, toTitle: false }
+): string {
+    if (!s) return '';
+    const { toUpper, toLower, toTitle } = caseOptions;
+    if (toUpper) {
+        s = s.toUpperCase();
+    } else if (toLower) {
+        s = s.toLowerCase();
+    } else if (toTitle) {
+        s = toTitleCase(s);   
+    }
+    return s;
+}
+
+/**
+ * 
+ * @param s `string` - the string to handle padding options for
+ * @param padOptions {@link StringPadOptions} - `optional` padding options to apply to the string
+ * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
+ * - applies the first padding option that is `true` and ignores the rest
+ * @returns `s` - the string with padding options applied
+ * @note if `s.length >= padLength`, no padding is applied
+ */
+export function handlePadOptions(
+    s: string,
+    padOptions: StringPadOptions = { padLength: 24, padChar: ' ', padLeft: false, padRight: false }
+): string {
+    if (!s) return '';
+    const { padLength, padChar, padLeft, padRight } = padOptions;
+    if (typeof padLength !== 'number' || padLength < 0) {
+        console.warn('handlePadOptions() Invalid padLength. Expected a positive integer, but received:', padLength);
+        return s;
+    }
+    if (s.length >= padLength) {
+        return s; // No padding needed
+    }
+    if (padLeft) {
+        s = s.padStart(padLength, padChar);
+    } else if (padRight) {
+        s = s.padEnd(padLength, padChar);
+    }
+    return s;
+}
 
 /** 
  * could instead make a list then join with `|` and use `new RegExp()` to create a regex from the list
  * /(?:company|corp|inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc . . ./ 
  * */
 export const COMPANY_KEYWORDS_PATTERN: RegExp = 
-/(?:company|corp|inc|Inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc|group|consulting|consultants|packaging|print|associates|partners|practice|service(s)?|health|healthcare|medical| spa|spa |surgeons|aesthetic|America|USA|\.com)\.?\s*$/i;
+/(?:company|corp|inc|Inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc|group|consulting|consultants|packaging|print|associates|partners|practice|service(s)?|health|healthcare|medical| spa|spa |surgeons|aesthetic|America|USA|\.com)\s*$/i;
 
 
 /** `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
