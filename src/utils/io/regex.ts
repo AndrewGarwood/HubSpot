@@ -2,31 +2,36 @@
  * @file src/utils/io/regex.ts
  */
 import { printConsoleGroup as print } from "./writing";
-import { StringCaseOptions, StringPadOptions } from "./types/Reading";
+import { StringCaseOptions, StringPadOptions, StringStripOptions } from "./types/Reading";
+
 
 // TODO: use regex to check if date is in a valid format (e.g. YYYY-MM-DD, MM/DD/YYYY, etc.)
 /**
- * @TODO add {@link stripChar} options
  * @description 
- * - Removes extra spaces and dots from a string (e.g. `'..'` becomes `'.'`), and optionally converts it to uppercase or lowercase.
- * - Removes trailing dots if the string does not end with `'Ph.D.'` and does not contain any of the {@link COMPANY_KEYWORDS_PATTERN} keywords.
- * - calls {@link handleCaseOptions} and {@link handlePadOptions} to apply case and padding options.
+ * - Removes extra spaces and dots from a string (e.g. `'..'` becomes `'.'`)
+ * - and optionally applies 3 option params with: {@link stripCharFromString}, {@link handleCaseOptions}, and {@link handlePadOptions}.
  * @param s - the `string` to clean
- * @param caseOptions {@link StringCaseOptions} - `optional` case options to apply to the string
+ * @param stripOptions — {@link StringStripOptions}
+ * - `optional` strip options to apply to the string
+ * = `{ char: string, escape?: boolean, stripLeftCondition?: (s: string, ...args: any[]) => boolean, leftArgs?: any[], stripRightCondition?: (s: string, ...args: any[]) => boolean, rightArgs?: any[] }`
+ * @param caseOptions — {@link StringCaseOptions} 
+ * - `optional` case options to apply to the string
  * = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
- * @param padOptions {@link StringPadOptions} - `optional` padding options to apply to the string
+ * @param padOptions — {@link StringPadOptions} 
+ * - `optional` padding options to apply to the string
  * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
  * @returns `s` - the cleaned `string`
  */
 export function cleanString(
-    s: string, 
+    s: string,
+    stripOptions?: StringStripOptions, 
     caseOptions?: StringCaseOptions,
     padOptions?: StringPadOptions
 ): string {
     if (!s) return '';
     s = s.replace(/\s+/g, ' ').replace(/\.{2,}/g, '.');
-    if (!s.endsWith('Ph.D.') && !stringEndsWithAnyOf(s, COMPANY_KEYWORDS_PATTERN)) {
-        s = stripChar(s, '.', true);
+    if (stripOptions) {
+        s = stripCharFromString(s, stripOptions);
     }
     if (caseOptions) {
         s = handleCaseOptions(s, caseOptions);
@@ -36,7 +41,12 @@ export function cleanString(
     }
     return s.trim();
 }
-
+/**
+ * 
+ * @param s `string` - the string to convert to title case
+ * @returns `string` - the string in title case 
+ * (i.e. first letter of each word, determined by the `\b` boundary metacharacter, is capitalized)
+ */
 export function toTitleCase(s: string): string {
     if (!s) return '';
     return s.replace(/\b\w/g, char => char.toUpperCase());
@@ -45,7 +55,7 @@ export function toTitleCase(s: string): string {
 /**
  * 
  * @param s `string` - the string to handle case options for
- * @param caseOptions {@link StringCaseOptions} - `optional` case options to apply to the string
+ * @param caseOptions — {@link StringCaseOptions} - `optional` case options to apply to the string
  * = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
  * - applies the first case option that is `true` and ignores the rest
  * @returns `s` - the string with case options applied
@@ -69,7 +79,7 @@ export function handleCaseOptions(
 /**
  * 
  * @param s `string` - the string to handle padding options for
- * @param padOptions {@link StringPadOptions} - `optional` padding options to apply to the string
+ * @param padOptions — {@link StringPadOptions} - `optional` padding options to apply to the string
  * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
  * - applies the first padding option that is `true` and ignores the rest
  * @returns `s` - the string with padding options applied
@@ -96,13 +106,79 @@ export function handlePadOptions(
     return s;
 }
 
+
+/**
+ * @param {string} s `string`
+ * @param {StringStripOptions} stripOptions — {@link StringStripOptions} 
+ * = `{ char: string, escape?: boolean, stripLeftCondition?: (s: string, ...args: any[]) => boolean, leftArgs?: any[], stripRightCondition?: (s: string, ...args: any[]) => boolean, rightArgs?: any[] }`
+ * - if `stripLeftCondition(s, leftArgs)` is `true` or `stripLeftCondition` is `undefined` (i.e. no conditions need to be met to strip left):
+ * - - then the left side of the `s` is stripped of `char`
+ * - if `stripRightCondition(s, rightArgs)` is `true` or `stripRightCondition` is `undefined` (i.e. no conditions need to be met to strip right):
+ * - - then the right side of the `s` is stripped of `char`
+ * @param {boolean} stripOptions.escape escape special regex characters in `char` with `char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`
+ * @returns `string` - the string with leading and trailing characters removed
+ */
+export function stripCharFromString(
+    s: string, 
+    stripOptions: StringStripOptions
+): string {
+    if (!s) return '';
+    let { char, escape = false, stripLeftCondition = false, leftArgs, stripRightCondition = false, rightArgs } = stripOptions;
+    if (escape) {
+        char = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+    let regexSource = '';
+    const leftSideUnconditionalOrMeetsCondition = !stripLeftCondition || (stripLeftCondition && stripLeftCondition(s, leftArgs));
+    const rightSideUnconditionalOrMeetsCondition = !stripRightCondition || (stripRightCondition && stripRightCondition(s, rightArgs));
+    if (leftSideUnconditionalOrMeetsCondition) {
+        regexSource = regexSource + `^${char}+`;
+    }
+    if (regexSource.length > 0) {
+        regexSource = regexSource + '|';
+    }
+    if (rightSideUnconditionalOrMeetsCondition) {
+        regexSource = regexSource + `${char}+$`;
+    }
+    if (!stripLeftCondition && !stripRightCondition) { // assume strip both sides
+        regexSource = `^${char}+|${char}+$`;
+    } 
+    const regex = new RegExp(regexSource, 'g');
+    return s.replace(regex, '');
+}
+
 /** 
  * could instead make a list then join with `|` and use `new RegExp()` to create a regex from the list
- * /(?:company|corp|inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc . . ./ 
+ * - `re` = `/(?:company|corp|inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc . . ./ `
  * */
 export const COMPANY_KEYWORDS_PATTERN: RegExp = 
-/(?:company|corp|inc|Inc|co\.?,? ltd\.?|ltd|\.?l\.?lc|plc|group|consulting|consultants|packaging|print|associates|partners|practice|service(s)?|health|healthcare|medical| spa|spa |surgeons|aesthetic|America|USA|\.com)\s*$/i;
+/(?:company|corp|inc|co\.?,? ltd\.?|ltd|(p\.)?l\.?l\.?c|plc|group|consulting|consultants|packaging|print|associates|partners|practice|service(s)?|health|healthcare|medical| spa|spa |surgeons|aesthetic|America|USA|\.com)\s*$/i;
+/** - `re` =  `/(?:|corp|inc|co\.?,? ltd\.?|ltd|(p\.)?l\.?l\.?c|plc)\s*$/i` */
+export const COMPANY_ABBREVIATION_PATTERN: RegExp =
+/(?:|corp|inc|co\.?,? ltd\.?|ltd|(p\.)?l\.?l\.?c|plc)\s*$/i;
 
+export function doesNotEndWithKnownAbbreviation(s: string): boolean {
+    if (!s) return false;
+    s = s.trim();
+    return !s.endsWith('Ph.D.') && !stringEndsWithAnyOf(s, COMPANY_ABBREVIATION_PATTERN);
+}
+
+
+export const conditionalStripDotOptions: StringStripOptions = {
+    char: '.',
+    escape: true,
+    stripLeftCondition: undefined,
+    leftArgs: undefined,
+    stripRightCondition: doesNotEndWithKnownAbbreviation,
+}
+
+export const unconditionalStripDotOptions: StringStripOptions = {
+    char: '.',
+    escape: true,
+    stripLeftCondition: undefined,
+    leftArgs: undefined,
+    stripRightCondition: undefined,
+    rightArgs: undefined
+}
 
 /** `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
 export const BOOLEAN_FIELD_ID_REGEX = new RegExp(/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/)
@@ -189,7 +265,15 @@ export function applyPhoneRegex(phone: string, label?: string): string {
         print({label:`Valid Phone Found!`, details: `PHONE_REGEX.test(${phone}) == false and phone.length == 11`, printToConsole: false});
         phone = phone.replace(/(\d{1})(\d{3})(\d{3})(\d{4})/, '$1-$2-$3-$4');
     } 
-    phone = stripChar(phone, '-', false).replace(/\s{2,}/, ' ').replace(/ext(?=\D*$)/,'').trim();
+    phone = stripCharFromString(phone, {
+        char: '-', 
+        escape: false, 
+        stripLeftCondition: undefined, 
+        leftArgs: undefined, 
+        stripRightCondition: undefined, 
+        rightArgs: undefined
+    } as StringStripOptions);
+    phone = phone.replace(/\s{2,}/, ' ').replace(/ext(?=\D*$)/,'').trim();
     print({
         label: `applyPhoneRegex()` + (label ? ` ${label}` : ''), 
         details: [
@@ -201,22 +285,8 @@ export function applyPhoneRegex(phone: string, label?: string): string {
 }
 
 /**
- * @param {string} s `string`
- * @param {string} char `string`
- * @param {boolean} escape `boolean`
- * @returns `strippedString` {string}
- */
-export function stripChar(s: string, char: string, escape: boolean=false): string {
-    if (escape) {
-        char = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    }
-    const regex = new RegExp(`^${char}+|${char}+$`, 'g');
-    return s.replace(regex, '');
-}
-
-/**
  * @reference {@link https://javascript.info/regexp-introduction}
- * @enum {string} RegExpFlagsEnum
+ * @enum {string} `RegExpFlagsEnum`
  * @property {string} IGNORE_CASE - `i` - case insensitive "the search is case-insensitive: no difference between `A` and `a`"
  * @property {string} MULTI_LINE - `m` - multi-line "Multiline mode" see {@link https://javascript.info/regexp-multiline-mode}
  * @property {string} GLOBAL - `g` - global search "With this flag the search looks for all matches, without it – only the first match is returned."

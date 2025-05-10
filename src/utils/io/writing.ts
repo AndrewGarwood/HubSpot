@@ -5,7 +5,7 @@ import fs from 'fs';
 import { OUTPUT_DIR } from '../../config/env';
 import { getCurrentPacificTime } from './dateTime';
 import { validateFileExtension } from './reading';
-import { DelimitedFileTypeEnum, DelimiterCharacterEnum as DELIMITERS } from './types/Csv';
+import { DelimitedFileTypeEnum, DelimiterCharacterEnum } from './types/Csv';
 
 
 
@@ -74,7 +74,7 @@ export function printJson(data:Record<string, any>, indent: number=4) {
 }
 
 /**
- * @typedefn `{Object}` `ConsoleGroup`
+ * @typedefn `ConsoleGroup`
  * @property {string} label `string` - label for the console group
  * @property {Array<string> | string} details `string[]` - log each string in arr on new line
  * @property {boolean} collapse `boolean` - `optional`, default=`false`
@@ -106,7 +106,7 @@ export type ConsoleGroup = {
  * @param {number} consoleGroup.numTabs `number` - `optional`, default=`1`
  * @param {boolean} consoleGroup.printToConsole `boolean` - `optional`, default=`true`
  * @param {boolean} consoleGroup.printToFile `boolean` - `optional`, default=`true`
- * @param {string} consoleGroup.filePath `string` - `${OUTPUT_DIR}/DEFAULT_LOG.txt`
+ * @param {string} consoleGroup.filePath `string` - `${OUTPUT_DIR}/logs/DEFAULT_LOG.txt`
  * @param {boolean} consoleGroup.enableOverwrite `boolean` - `optional`, default=`false`
  * @returns {void}
  * @description Print a console group with the given label and log statements. Optionally print to file.
@@ -118,7 +118,7 @@ export function printConsoleGroup({
     numTabs = 0,
     printToConsole = true,
     printToFile = true,
-    filePath = `${OUTPUT_DIR}/DEFAULT_LOG.txt`,
+    filePath = `${OUTPUT_DIR}/logs/DEFAULT_LOG.txt`,
     enableOverwrite = false
 }: ConsoleGroup): void {
     let labelOffset = '\t'.repeat(numTabs);
@@ -172,13 +172,13 @@ export function writeListsToCsv(
     listData: Record<string, Array<string>>,
     fileName: string,
     filePath: string,
-    delimiter: string =DELIMITERS.COMMA,
+    delimiter: string =DelimiterCharacterEnum.COMMA,
     delimiterColumn: string='',  
 ) {
     let fileExtension = '';
-    if (delimiter === DELIMITERS.COMMA) {
+    if (delimiter === DelimiterCharacterEnum.COMMA) {
         fileExtension = DelimitedFileTypeEnum.CSV;
-    } else if (delimiter === DELIMITERS.TAB) {
+    } else if (delimiter === DelimiterCharacterEnum.TAB) {
         fileExtension = DelimitedFileTypeEnum.TSV;
     }
     const outputAddress = `${filePath}/${fileName}.${fileExtension}`;
