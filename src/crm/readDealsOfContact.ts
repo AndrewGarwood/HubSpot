@@ -6,7 +6,7 @@
 import { SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getContactById, getDealById, getLineItemById } from "./objects";
 import { SkuData } from "./types/NetNew";
-import { printConsoleGroup as print, toPacificTime } from "../io";
+import { printConsoleGroup as print, toPacificTime } from "../utils/io";
 
 /**
  * 

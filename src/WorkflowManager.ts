@@ -17,8 +17,8 @@ import {
     getFlowById, 
     setFlowById, 
     flowExistsAndHasUniqueBranches,
-    batchUpdateFlowByBranchName,
-} from "./utils/automation/flows";
+    batchUpdateFlowByBranchName, FlowBranchUpdate, Flow
+} from "./automation";
 import { ONE_DRIVE_DIR, OUTPUT_DIR, STOP_RUNNING, DELAY } from './config/env';
 import { 
     readJsonFileAsObject, 
@@ -28,10 +28,9 @@ import {
     validateFileExtension,
     parseExcelForOneToMany
 } from './utils/io'
-import { FlowBranchUpdate, Flow } from './utils/automation/types';
 const FLOW_ID_LIST = [TEST_FLOW_ID]
 
-await main().catch(e => {
+main().catch(e => {
     console.error('Error in main():', e);
     STOP_RUNNING(1);
 });

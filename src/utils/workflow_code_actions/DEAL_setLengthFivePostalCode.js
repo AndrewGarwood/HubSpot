@@ -1,0 +1,81 @@
+/**
+ * @file src/utils/workflow_code_actions/DEAL_setLengthFivePostalCode.js
+ * @flowName "Deal - Set Custom Postal Code Property Values"
+ * @flowId NUMBER
+ * @flowObject DEAL
+ * @description determine { lengthFivePostalCode, lengthFiveShippingPostalCode }, 
+ * then set corresponding properties of enrolled deal to these values.
+ */
+
+const hubspot = require('@hubspot/api-client');
+const NEWLINE = '\n > ';
+/** `INDENTED_NEW_LINE` = `'\n\t'` */
+const TAB = '\n\t';
+const isFiveDigitsAndNoLeadingZero = (str) => {
+    console.log(NEWLINE+`isFiveDigitsAndNoLeadingZero(${str}) /^[1-9]{1}\\d{4}$/.test(${str}) ==`, 
+        /^[1-9]{1}\d{4}$/.test(str)
+    );
+    return /^[1-9]{1}\d{4}$/.test(str);
+}	
+exports.main = async (event, callback) => {
+    const hubspotClient = new hubspot.Client({ 
+        accessToken: process.env.AllCustomCode
+    });
+
+    const dealId = event['object']['objectId'];
+    const initialPostalCode = event.inputFields['unific_billing_postal_code'];
+    const initialShippingPostalCode = event.inputFields['unific_shipping_postal_code'];
+    console.log(NEWLINE+`initial values for deal "${dealId}":`,
+        TAB+`        initialPostalCode: "${initialPostalCode}"`,
+        TAB+`initialShippingPostalCode: "${initialShippingPostalCode}"`,
+    );
+
+    const lengthFivePostalCode = String(initialPostalCode)
+        .replace(/null|undefined|/g, '').slice(0,5).padStart(5, 0) || '';
+    const lengthFiveShippingPostalCode = String(initialShippingPostalCode)
+        .replace(/null|undefined|/g, '').slice(0,5).padStart(5, 0) || '';
+    console.log(NEWLINE+`values after truncation for deal "${dealId}":`,
+        TAB+`        lengthFivePostalCode: "${lengthFivePostalCode}"`,
+        TAB+`lengthFiveShippingPostalCode: "${lengthFiveShippingPostalCode}"`,
+    );
+    const outputProperties = {};
+    if (lengthFivePostalCode) {
+        outputProperties[`length_five_postal_code`] = lengthFivePostalCode;
+    }
+    if (lengthFiveShippingPostalCode) {
+        outputProperties[`length_five_shipping_postal_code`] = lengthFiveShippingPostalCode;
+    }
+    if (lengthFivePostalCode && isFiveDigitsAndNoLeadingZero(lengthFivePostalCode)) {
+        outputProperties[`numeric_length_five_postal_code`] = parseInt(lengthFivePostalCode, 10);
+    }
+    if (lengthFiveShippingPostalCode && isFiveDigitsAndNoLeadingZero(lengthFiveShippingPostalCode)) {
+        outputProperties[`numeric_length_five_shipping_postal_code`] = parseInt(lengthFiveShippingPostalCode, 10);
+    }
+    console.log(NEWLINE+`Preparing to set outputProperties for deal "${dealId}":`,
+        TAB+`        lengthFivePostalCode:`, lengthFivePostalCode,
+        TAB+`lengthFiveShippingPostalCode:`, lengthFiveShippingPostalCode,
+        NEWLINE+`Only set numeric props if no leading zeros:`,
+        TAB+`        isFiveDigitsAndNoLeadingZero(lengthFivePostalCode):`, lengthFivePostalCode && isFiveDigitsAndNoLeadingZero(lengthFivePostalCode),
+        TAB+`isFiveDigitsAndNoLeadingZero(lengthFiveShippingPostalCode):`, lengthFiveShippingPostalCode && isFiveDigitsAndNoLeadingZero(lengthFiveShippingPostalCode),
+        NEWLINE+ `outputProperties:`, outputProperties
+    );
+    if (Object.keys(outputProperties).length === 0) {
+        console.log(NEWLINE+`No properties to set for deal "${dealId}". Exiting.`);
+        return callback({
+            outputFields: {}
+        });
+    }
+    try {
+        const simplePublicObjectInput = {
+            objectWriteTraceId: "string",
+            properties: outputProperties
+        };
+        const apiResponse = await hubspotClient.crm.deals.basicApi.update(dealId, simplePublicObjectInput);
+        console.log(`success! SimplePublicObject.id (dealId): `, apiResponse.id);
+    } catch(e) {
+        console.error("Error setting object property:", e);
+    }
+    return callback({
+        outputFields: outputProperties
+    });
+}

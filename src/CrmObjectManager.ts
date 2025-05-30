@@ -23,7 +23,7 @@ import { searchObjectByProperty,
     CrmAssociationObjectEnum, 
     CrmObjectEnum,
     getDealByOrderNumber,
-} from "./utils/crm";
+} from "./crm";
 import { PublicObjectSearchRequest as HS_PublicObjectSearchRequest } from "@hubspot/api-client/lib/codegen/crm/objects";
 import path from "node:path";
 

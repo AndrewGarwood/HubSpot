@@ -1,7 +1,7 @@
 /**
  * @file src/utils/automation/types/Flow.ts
  */
-import { ObjectTypeIdEnum } from "../../../types/HubSpot";
+import { ObjectTypeIdEnum } from "../../types/HubSpot";
 import { AutomationTypeEnum, EnrollmentCriteria } from "./Automation";
 import { Action } from "./Action";
 /**

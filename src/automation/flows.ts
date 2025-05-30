@@ -2,9 +2,9 @@
  * @file src/utils/automation/flows.ts
  */
 
-import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR } from '../../config/env'
+import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR } from '../config/env'
 import path from 'node:path';
-import { AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE} from '../../types/AxiosEnums';
+import { AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE} from '../types/AxiosEnums';
 import { 
     Flow, Action, ActionTypeEnum, ActionTypeIdEnum, FlowFilter, FlowFilterTypeEnum, MAX_VALUES_PER_FILTER,
     Operation, OperatorEnum, OperationTypeEnum, NumericOperatorEnum, FilterBranch, FilterBranchTypeEnum, FilterBranchOperatorEnum, ListBranch, FlowBranchUpdate 

@@ -5,10 +5,13 @@
 import { SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { DATA_DIR, DELAY, STOP_RUNNING } from "./config/env";
 import { CATEGORY_TO_SKU_DICT } from "./config/loadData";
-import { getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, VALID_DEAL_STAGES, INVALID_DEAL_STAGES, getLineItemById, setPropertyByObjectId, getSkuFromLineItem, isValidLineItem, batchSetPropertyByObjectId } from "./utils/crm";
-import { CategoryExtractInfo, ContactCategoryData, NetNewDataConfig, NetNewDataOutput, SkuData } from "./utils/crm/types/NetNew";
+import { getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, 
+    VALID_DEAL_STAGES, INVALID_DEAL_STAGES, getLineItemById, setPropertyByObjectId, 
+    getSkuFromLineItem, isValidLineItem, batchSetPropertyByObjectId, 
+    CategoryExtractInfo, ContactCategoryData, NetNewDataConfig, NetNewDataOutput, 
+    SkuData, sortDealsChronologically, updateSkuHistory 
+} from "./crm";
 import { readJsonFileAsObject, printConsoleGroup as print, toPacificTime, writeObjectToJson } from "./utils/io";
-import { sortDealsChronologically, updateSkuHistory } from "./utils/crm/readDealsOfContact";
 
 
 

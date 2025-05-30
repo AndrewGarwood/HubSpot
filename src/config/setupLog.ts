@@ -6,12 +6,25 @@ import { OUTPUT_DIR } from './env';
 import { Logger, ISettingsParam, ISettings, ILogObj, ILogObjMeta, IPrettyLogStyles, IMeta } from 'tslog';
 import path from 'node:path';
 import { appendFileSync } from 'node:fs';
-const DEFAULT_LOG_FILEPATH = path.join(OUTPUT_DIR, "logs", "DEBUG.txt");
-const ERROR_LOG_FILEPATH = path.join(OUTPUT_DIR, "logs", "ERROR.txt"); 
+/** 
+ * `INDENT_LOG_LINE =  '\n\t '` = newLine + tab + space
+ * - log.debug(s1, INDENT_LOG_LINE + s2, INDENT_LOG_LINE + s3,...) 
+ * */
+export const INDENT_LOG_LINE: string = '\n\t ';
+/** 
+ * `NEW_LINE =  '\n > '` = newLine + space + > + space
+ * */
+export const NEW_LINE: string = '\n > ';
+/**`OUTPUT_DIR/logs` */
+const LOG_DIR = path.join(OUTPUT_DIR, "logs");  
+/**`OUTPUT_DIR/logs/DEBUG.txt` */
+const DEFAULT_LOG_FILEPATH = path.join(LOG_DIR, "DEBUG.txt");
+/**`OUTPUT_DIR/logs/ERROR.txt` */
+const ERROR_LOG_FILEPATH = path.join(LOG_DIR, "ERROR.txt"); 
 
 const dateTemplate = "{{yyyy}}-{{mm}}-{{dd}}";
-const timeTemplate = "{{hh}}:{{MM}}:{{ss}}.{{ms}}";
-const timestampTemplate = `<${dateTemplate} ${timeTemplate}>`;
+const timeTemplate = "{{hh}}:{{MM}}:{{ss}}";//.{{ms}}";
+const timestampTemplate = `(${dateTemplate} ${timeTemplate})`;
 
 const logNameTemplate = "[{{name}}]"; //"[{{nameWithDelimiterPrefix}}{{name}}{{nameWithDelimiterSuffix}}]";
 const logLevelTemplate = "{{logLevelName}}:";
@@ -19,8 +32,8 @@ const fileInfoTemplate = "{{filePathWithLine}}";//"{{fileName}}:{{fileLine}}";
 /** 
  * use as value for {@link ISettingsParam.prettyLogTemplate} 
  * @description template string for log messages = {@link timestampTemplate} + {@link logNameTemplate} + {@link logLevelTemplate} + {@link fileInfoTemplate} + `\n\t{{logObjMeta}}`
- * - {@link timestampTemplate} = `<{{yyyy}}-{{mm}}-{{dd}} {{hh}}:{{MM}}:{{ss}}.{{ms}}>`
- * - {@link logNameTemplate} = `[{{nameWithDelimiterPrefix}}{{name}}{{nameWithDelimiterSuffix}}]`
+ * - {@link timestampTemplate} = `({{yyyy}}-{{mm}}-{{dd}} {{hh}}:{{MM}}:{{ss}}.{{ms}})`
+ * - {@link logNameTemplate} = `"[{{name}}]"`
  * - {@link logLevelTemplate} = `{{logLevelName}}:`
  * - {@link fileInfoTemplate} = `{{fileName}}:{{fileLine}}`
  * - `\n\t{{logObjMeta}}`,
@@ -31,29 +44,21 @@ const LOG_TEMPLATE = [
     // logNameTemplate, 
     fileInfoTemplate,
     logLevelTemplate, 
-].join(' ') + "\n\t";
+].join(' ') + NEW_LINE;
 
 const errorInfoTemplate = "{{errorName}}: {{errorMessage}}\n\t{{errorStack}}";
 /** 
  * use as value for {@link ISettingsParam.prettyErrorTemplate} 
  * @description template string for error message. 
  * */
-const ERROR_TEMPLATE = `${timestampTemplate} ${logNameTemplate} ${logLevelTemplate} ${fileInfoTemplate}\n${errorInfoTemplate}`;
+const ERROR_TEMPLATE = `${errorInfoTemplate}`; //`${timestampTemplate} ${logNameTemplate} ${logLevelTemplate} ${fileInfoTemplate}\n${errorInfoTemplate}`;
 /** 
- * use as value for {@link ISettingsParam.prettyErrorStackTemplate}
+ * use as value for {@link ISettingsParam.prettyErrorStackTemplate}.
  * @description template string for error stack trace lines. 
  * */
 const ERROR_STACK_TEMPLATE = `${fileInfoTemplate}:{{method}} {{stack}}`;
-const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
-    type: "pretty",
-    name: "HS_Main",
-    minLevel: 0,
-    prettyLogTemplate: LOG_TEMPLATE,
-    prettyErrorTemplate: ERROR_TEMPLATE,
-    prettyErrorStackTemplate: ERROR_STACK_TEMPLATE,
-    stylePrettyLogs: true,
-    prettyLogTimeZone: "local",
-    prettyLogStyles: {
+
+const PRETTY_LOG_STYLES: IPrettyLogStyles = {
         yyyy: "green",
         mm: "green",
         dd: "green",
@@ -67,7 +72,7 @@ const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
             SILLY: ["bold", "white"],
             TRACE: ["bold", "whiteBright"],
             DEBUG: ["bold", "green"],
-            INFO: ["bold", "blue"],
+            INFO: ["bold", "cyan"],
             WARN: ["bold", "yellow"],
             ERROR: ["bold", "red"],
             FATAL: ["bold", "redBright"],
@@ -81,32 +86,38 @@ const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
         nameWithDelimiterSuffix: ["whiteBright", "bold", "bgBlack"],
         errorName: ["red", "bold"],
         errorMessage: ["red", "bgBlackBright"],
-    } as IPrettyLogStyles,
+};   
+
+const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
+    type: "pretty",
+    name: "HS_Main",
+    minLevel: 0,
+    prettyLogTemplate: LOG_TEMPLATE,
+    prettyErrorTemplate: ERROR_TEMPLATE,
+    prettyErrorStackTemplate: ERROR_STACK_TEMPLATE,
+    stylePrettyLogs: true,
+    prettyLogTimeZone: "local",
+    prettyLogStyles: PRETTY_LOG_STYLES,
 }
-console.log("Setting up main logger..")
 export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
-console.log("After declaration of main logger..")
 mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
     appendFileSync(DEFAULT_LOG_FILEPATH, JSON.stringify(logObj) + "\n", { encoding: "utf-8" });
 });
 
-/*
-black
-red
-green
-yellow
-blue
-magenta
-cyan
-white
-gray (alias for blackBright)
-grey (alias for blackBright)
-blackBright
-redBright
-greenBright
-yellowBright
-blueBright
-magentaBright
-cyanBright
-whiteBright
-*/
+/** `type: hidden` -> suppress logs from being sent to console */
+// const PARSE_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
+//     type: "hidden", // "pretty" | "hidden" | "json"
+//     name: "NS_Parse",
+//     minLevel: 0,
+//     prettyLogTemplate: LOG_TEMPLATE,
+//     prettyErrorTemplate: ERROR_TEMPLATE,
+//     prettyErrorStackTemplate: ERROR_STACK_TEMPLATE,
+//     stylePrettyLogs: true,
+//     prettyLogTimeZone: "local",
+//     prettyLogStyles: PRETTY_LOG_STYLES,
+// }
+
+// export const parseLogger = new Logger<ILogObj>(PARSE_LOGGER_SETTINGS);
+// parseLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
+//     appendFileSync(path.join(LOG_DIR, 'PARSE_LOG.txt'), JSON.stringify(logObj, null, 4) + "\n", { encoding: "utf-8" });
+// });

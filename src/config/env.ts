@@ -59,13 +59,10 @@ export const hubspotClient = new Client({
 /** `https://api.hubapi.com/automation/v4/flows/${flowId}` */
 export const FLOWS_API_URL = `https://api.hubapi.com/automation/v4/flows`;
 
-function validateDirectory(dirPath: string): void {
-    if (!fs.existsSync(dirPath)) {
-        console.error(`ERROR: Directory does not exist: ${dirPath}`);
-        STOP_RUNNING(1);
-    }
-}
-
+/**id for hubspot account, I think. */
+export const HUBSPOT_PORTAL_ID = "44788543";
+/** `'https://app.hubspot.com'` */
+export const HUBSPOT_APP_URL_STEM = `https://app.hubspot.com`;
 
 /** 
  * @example 
@@ -73,3 +70,11 @@ function validateDirectory(dirPath: string): void {
  * const answer = await rl.question('What do you think of Node.js?')
  * */
 export const READLINE = readline.createInterface({ input, output });
+
+
+function validateDirectory(dirPath: string): void {
+    if (!fs.existsSync(dirPath)) {
+        console.error(`ERROR: Directory does not exist: ${dirPath}`);
+        STOP_RUNNING(1);
+    }
+}

@@ -5,7 +5,7 @@ import { CrmObjectEnum, CrmAssociationObjectEnum as Associations } from "../type
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getObjectById } from "./objects";
 import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
-import { CATEGORY_TO_SKU_DICT } from "../../../config/loadData";
+import { CATEGORY_TO_SKU_DICT } from "../../config/loadData";
 
 /**
  * @property {string} lineItemId `string` = `hs_object_id`

@@ -5,9 +5,9 @@ import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associati
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getObjectById } from "./objects";
 import { DEFAULT_DEAL_PROPERTIES } from "../constants";
-import { DELAY, STOP_RUNNING } from "../../../config/env";
+import { DELAY, STOP_RUNNING } from "../../config/env";
 import { searchObjectByProperty } from "../properties";
-import { mainLogger as log } from "../../../config/setupLog";
+import { mainLogger as log } from "../../config/setupLog";
 
 
 /**

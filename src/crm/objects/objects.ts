@@ -2,7 +2,7 @@
  * @file src/utils/crm/objects/objects.ts
  */
 
-import { hubspotClient } from "../../../config/env";
+import { hubspotClient } from "../../config/env";
 import { CrmObjectEnum, CrmAssociationObjectEnum } from "../types/Crm";
 import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { CollectionResponseSimplePublicObjectWithAssociationsForwardPaging } from "@hubspot/api-client/lib/codegen/crm/objects";
