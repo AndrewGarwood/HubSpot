@@ -17,6 +17,7 @@ const DEFAULT_REPORT_URL_SEARCH_PARAMS = {
     "portalId": PORTAL_ID,
     "clienttimeout": "15000"
 };
+
 /** 
  * `INDENT_LOG_LINE =  '\n\t '` = newLine + tab + space
  * - log.debug(s1, INDENT_LOG_LINE + s2, INDENT_LOG_LINE + s3,...) 
@@ -48,72 +49,34 @@ const RegExpFlagEnum = {
     STICKY: "y"
 };
 
-/**@type {Replacement[]} */
-const formulaReplaceArr = [
-    {
-        regex: /"discount"/g,
-        newVal: "\"hs_total_discount\""
-    },
-    {
-        regex: /\[LINE_ITEM\.quantity\] ?\* ?\[LINE_ITEM\.price\] ?- ?\[LINE_ITEM\.discount\]/g,
-        newVal: "[LINE_ITEM.quantity]*[LINE_ITEM.price]-[LINE_ITEM.hs_total_discount]"
-    },
-    {
-        regex: /Line Item Amount - Discount/g,
-        newVal: "(Post-Update) Line Item (Price * Quantity - Total Discount)"
-    },
-]
-
-/**@type {Replacement[]} */
-const textWidgetReplaceArr = [
-    {
-        regex: new RegExp(/LAMCA Details/, RegExpFlagEnum.GLOBAL),
-        newVal: "Promotion Details"
-    },
-    {
-        regex: new RegExp(/\b3\/13\b/, RegExpFlagEnum.GLOBAL),
-        newVal: "05/26/2025"
-    },
-    {
-        regex: new RegExp(/\b4\/27\b/, RegExpFlagEnum.GLOBAL),
-        newVal: "09/20/2025"
-    },
-]
 
 async function main() {
-    let dashboardId = 16456985;
-
-    const prevStartDate = new RegExp(
-        String(getUnixTimestampFromISO("2025-03-13")), 
-        RegExpFlagEnum.GLOBAL
-    );
-    const newStartDate = "2025-06-26";
-    const prevEndDate = new RegExp(
-        String(getUnixTimestampFromISO("2025-04-27")), 
-        RegExpFlagEnum.GLOBAL
-    );
-    const newEndDate = "2025-09-20";
-    const prevCouponCodePattern = new RegExp(
-        /COUPON_PATTERN/, 
-        RegExpFlagEnum.IGNORE_CASE + RegExpFlagEnum.GLOBAL
-    );
-    const newCouponCode = "NEW_COUPON_CODE";
-
-    /**@type {Replacement[]} */
-    let replaceArr = [
-        ...textWidgetReplaceArr,
-        {
-            regex: prevStartDate,
-            newVal: String(getUnixTimestampFromISO(newStartDate))
-        },
-        {
-            regex: prevEndDate,
-            newVal: String(getUnixTimestampFromISO(newEndDate))
-        },
-        ...formulaReplaceArr
+    const dashboardIds = [
+        12345678
     ];
-    await updateAllOccurrencesofStringInDashboardReports(dashboardId, true, replaceArr);
-    await replaceAllOccurrencesOfStringInObject(dashboardId, ObjectTypeEnum.DASHBOARD, replaceArr);
+    /**@type {Replacement[]} */
+    const replaceArr = [
+        {
+            regex: /\bunific_coupon_code_used_text\b/g,
+            newVal: "coupon_code_used_unific"
+        },
+        {
+            regex: /\bCoupon Code Used - Unific\b/g,
+            newVal: "Coupon Code Used Unific (New)"
+        },
+    ]
+    let i = 0;
+    console.log(NL + `main() dashboardIds.length: ${dashboardIds.length}`);
+    for (let dashboardId of dashboardIds) {
+        console.log(NL + `main() dashboardIdArray[${i}]: ${dashboardId}`);
+        i++;
+        await updateAllOccurrencesofStringInDashboardReports(
+            dashboardId, true, replaceArr
+        );
+        await replaceAllOccurrencesOfStringInObject(
+            dashboardId, ObjectTypeEnum.DASHBOARD, replaceArr
+        );
+    }
 }
 
 /**
@@ -145,7 +108,6 @@ async function getObjectById(objectId, objectType) {
 }
 
 /**
- * 
  * @param {string | number} objectId 
  * @param {ObjectTypeEnum} objectType 
  * @param {string | Record<string, any>} objectData 
@@ -178,32 +140,40 @@ async function setObjectById(objectId, objectType, objectData) {
  * @returns {Promise<Record<string, any>>}
  */
 async function replaceAllOccurrencesOfStringInObject(objectId, objectType, replaceArr) {
-    console.log(`replaceAllOccurrencesOfStringInObject(objectId: ${objectId}, objectType: ${objectType}, replaceArr), replaceArr.length: ${replaceArr.length}`);
     if (!objectId || !objectType || !replaceArr) {
         throw new Error("objectId and objectType and replaceArr are required parameters.");
     }
+    // /**@type {any[]} */
+    const debugLogs = [NL + `Start of replaceAllOccurrencesOfStringInObject(objectId: ${objectId}, objectType: ${objectType}, replaceArr)`,];
     try {
         let data = await getObjectById(objectId, objectType);
         if (!data || data === undefined) {
-            console.log('data is undefined or null', data);
+            console.log('data = await getObjectById() is undefined or null');
             throw new Error(`No data found for objectId: ${objectId} and objectType: ${objectType}`);
         }
-        let updatedString = JSON.stringify(data);
+        let dataString = JSON.stringify(data);
         for (let i = 0; i < replaceArr.length; i++) {
+            debugLogs.push(NL + `Start of replaceArr[${i}]:`);
             let regex = replaceArr[i].regex;
             let value = replaceArr[i].newVal;
-            if (!regex.test(updatedString)) {
-                console.log(`\tNo match found for RegExp ${regex} in objectId: ${objectId} and objectType: ${objectType}`);
+            if (!regex.test(dataString)) {
+                debugLogs.push(TAB + `No match found for replaceArr[${i}].regex: '${regex}'`);
                 continue;
             }
-            // console.log(`\tAttempting to replace RegExp ${regExp} with ${value}`);
-            updatedString = updatedString.replace(regex, value);
-            console.log(`\t\t (${regex}).test(updatedString) after replace: ${regex.test(updatedString)}`);
-            console.log(`\t\t updatedString.includes(${value}) afer replace: ${updatedString.includes(value)}`);
+            debugLogs.push(
+                TAB + `oldVal matchArrayLength: ${regex.exec(dataString).length || 0}`
+            );
+            dataString = dataString.replace(regex, value);
+            debugLogs.push(
+                TAB + `oldVal still in dataString after replace? ${regex.test(dataString)}`,
+                TAB + `newVal found in dataString after replace? ${dataString.includes(value)}`
+            );
         }
-        return await setObjectById(objectId, objectType, JSON.parse(updatedString));
+        console.log(debugLogs.join(''));
+        return await setObjectById(objectId, objectType, JSON.parse(dataString));
     } catch (error) {
         console.error(`Error in replaceAllOccurrencesOfStringInObject(objectId: ${objectId}, objectType: ${objectType}):`, error);
+        return {};
     }
 }
 
@@ -330,11 +300,18 @@ async function updateAllOccurrencesofStringInDashboardReports(
     replaceArr=[]
 ) {
     let dashboardData = await getDashboardById(dashboardId);
+    if (!dashboardData || dashboardData === undefined) {
+        console.error(`No dashboard data found for dashboardId: ${dashboardId}`);
+        return {
+            status: 404,
+            message: `No dashboard data found for dashboardId: ${dashboardId}`
+        };
+    }
     // Loop over each widget that contains a report
     try {
         let i = 0;
         for (let widget of dashboardData.widgets) {
-            console.log(`Widget ${i++}.`);
+            console.log(NL+`Widget ${i++}.`);
             if (!widget.reportId) {
                 continue;
             }
@@ -351,10 +328,16 @@ async function updateAllOccurrencesofStringInDashboardReports(
                 console.log(NL + `Failed to update report ${reportId} in dashboard ${dashboardId}`);
             }
         }
-        return { status: 200, message: `Finished updateAllOccurrencesofStringInDashboardReports(dashboardId: ${dashboardId})` };
+        return { 
+            status: 200, 
+            message: `Finished updateAllOccurrencesofStringInDashboardReports(dashboardId: ${dashboardId})` 
+        };
     } catch (error) {
         console.error(`Error in updateAllOccurrencesofStringInDashboardReports(dashboardId: ${dashboardId}):`, error);
-        return { status: 500, message: `Failed updateAllOccurrencesofStringInDashboardReports(dashboardId: ${dashboardId})` };
+        return { 
+            status: 500, 
+            message: `Failed updateAllOccurrencesofStringInDashboardReports(dashboardId: ${dashboardId})` 
+        };
     }
 }
 

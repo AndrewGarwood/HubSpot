@@ -8,7 +8,7 @@ import {
 
 // @reference \node_modules\@hubspot\api-client\lib\codegen\crm\objects\models\Filter.d.ts
 /**
- * @interface Filter
+ * @interface **`Filter`**
  * @property {string} propertyName - `string` - The name of the property to filter by.
  * @property {FilterOperatorEnum} operator - see {@link FilterOperatorEnum}
  * @property {string} [value] - `string`
@@ -24,7 +24,7 @@ export interface Filter {
 }
 
 /**
- * @interface FilterGroup
+ * @interface **`FilterGroup`**
  * @property {Array<Filter>} filters = `Array<`{@link Filter}`>`
  */
 export interface FilterGroup {
@@ -33,7 +33,7 @@ export interface FilterGroup {
 
 
 /**
- * @interface PublicObjectSearchRequest
+ * @interface **`PublicObjectSearchRequest`**
  * @property {string} [query] `string`
  * @property {number} [limit] `number`
  * @property {string | number} [after] `string | number`
@@ -58,7 +58,7 @@ export interface PublicObjectSearchRequest {
  * or filters, you'll receive a VALIDATION_ERROR error response.
  * */
 /**
- * @typedefn `{Object}` `PublicObjectSearchResponse`
+ * @typedefn **`PublicObjectSearchResponse`**
  * @property {Array<string>} objectIds `Array<string>`
  * @property {Array<SimplePublicObject>} objects `Array<`{@link SimplePublicObject}`>`
  * @property {string | number} after `string | number`
@@ -73,7 +73,7 @@ export type PublicObjectSearchResponse = {
 
 
 /**
- * @interface SimplePublicObject
+ * @interface **`SimplePublicObject`**
  * @property {Date} createdAt
  * @property {boolean} [archived]
  * @property {Date} [archivedAt]
@@ -99,7 +99,7 @@ export interface SimplePublicObject {
 
 
 /**
- * @interface CollectionResponseWithTotalSimplePublicObjectForwardPaging
+ * @interface **`CollectionResponseWithTotalSimplePublicObjectForwardPaging`**
  * @property {number} total
  * @property {ForwardPaging} [paging] {@link ForwardPaging}
  * @property {Array<SimplePublicObject>} results `Array<`{@link SimplePublicObject}`>`
@@ -111,7 +111,7 @@ export interface CollectionResponseWithTotalSimplePublicObjectForwardPaging {
 }
 
 /**
- * @interface SimplePublicObjectWithAssociations `extends` {@link SimplePublicObject}
+ * @interface **`SimplePublicObjectWithAssociations`** extends {@link SimplePublicObject}
  * @property {Record<string, CollectionResponseAssociatedId>} [associations] see {@link CollectionResponseAssociatedId}
  * @property {Date} createdAt
  * @property {boolean} [archived]
@@ -133,7 +133,7 @@ export interface SimplePublicObjectWithAssociations extends SimplePublicObject {
 }
 
 /**
- * @interface CollectionResponseAssociatedId
+ * @interface **`CollectionResponseAssociatedId`**
  * @property {Paging} [paging] {@link Paging} 
  * @property {Array<AssociatedId>} results `Array<`{@link AssociatedId}`>`
  */
@@ -143,7 +143,7 @@ export interface CollectionResponseAssociatedId {
 }
 
 /**
- * @interface ValueWithTimestamp
+ * @interface **`ValueWithTimestamp`**
  * @property {string} sourceId
  * @property {string} sourceType
  * @property {string} sourceLabel
@@ -161,7 +161,7 @@ export interface ValueWithTimestamp {
 }
 
 /**
- * @interface AssociatedId
+ * @interface **`AssociatedId`**
  * @property {string} id
  * @property {string} type
  */
@@ -171,7 +171,7 @@ export interface AssociatedId {
 }
 
 /**
- * @interface Paging
+ * @interface **`Paging`**
  * @property {NextPage} next {@link NextPage}
  * @property {PreviousPage} prev {@link PreviousPage}
  */
@@ -182,7 +182,7 @@ export interface Paging {
 
 
 /**
- * @interface ForwardPaging
+ * @interface **`ForwardPaging`**
  * @property {NextPage} next {@link NextPage}
  */
 export interface ForwardPaging {
@@ -190,7 +190,7 @@ export interface ForwardPaging {
 }
 
 /**
- * @interface NextPage
+ * @interface **`NextPage`**
  * @property {string} [link]
  * @property {string} after
  */
@@ -200,7 +200,7 @@ export interface NextPage {
 }
 
 /**
- * @interface PreviousPage
+ * @interface **`PreviousPage`**
  * @property {string} [link]
  * @property {string} before
  */
@@ -216,14 +216,14 @@ export interface PreviousPage {
  * hubspotClient.crm[CrmObjectEnum.CONTACTS].basicApi 
  * // is equivalent to 
  * hubspotClient.crm.contacts.basicApi
- * @enum {string} `CrmObjectEnum`
+ * @enum {string} **`CrmObjectEnum`**
  * @readonly
- * @property {string} CONTACTS
- * @property {string} DEALS
- * @property {string} COMPANIES
- * @property {string} PRODUCTS
- * @property {string} LINE_ITEMS - `lineItems`
- * @property {string} TICKETS
+ * @property {string} CONTACTS - `'contacts'`
+ * @property {string} DEALS - `'deals'`
+ * @property {string} COMPANIES - `'companies'`
+ * @property {string} PRODUCTS - `'products'`
+ * @property {string} LINE_ITEMS - `'lineItems'`
+ * @property {string} TICKETS - `'tickets'`
  */
 export enum CrmObjectEnum {
     CONTACTS = 'contacts',
@@ -235,15 +235,15 @@ export enum CrmObjectEnum {
 }
 
 /**
- * @note redundant with {@link CrmObjectEnum} except for differing `LINE_ITEMS` property
- * @enum {string} `CrmAssociationObjectEnum`
+ * @note redundant... except for LINE_ITEMS
+ * @enum {string} **`CrmAssociationObjectEnum`**
  * @readonly
- * @property {string} CONTACTS
- * @property {string} DEALS
- * @property {string} COMPANIES
- * @property {string} PRODUCTS
+ * @property {string} CONTACTS - `'contacts'`
+ * @property {string} DEALS - `'deals'`
+ * @property {string} COMPANIES - `'companies'`
+ * @property {string} PRODUCTS - `'products'`
  * @property {string} LINE_ITEMS - `line_items`
- * @property {string} TICKETS
+ * @property {string} TICKETS - `'tickets'`
  */
 export enum CrmAssociationObjectEnum {
     CONTACTS = 'contacts',
@@ -255,7 +255,7 @@ export enum CrmAssociationObjectEnum {
 }
 
 /**
- * @enum {string} `FilterOperatorEnum`
+ * @enum {string} **`FilterOperatorEnum`**
  * @readonly
  * @property {string} LESS_THAN - Less than the specified value.
  * @property {string} LESS_THAN_OR_EQUAL_TO - Less than or equal to the specified value.

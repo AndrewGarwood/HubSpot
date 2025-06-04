@@ -1,18 +1,24 @@
 /**
- * @file src/utils/crm/objects/lineItems.ts
+ * @file src/crm/objects/lineItems.ts
  */
-import { CrmObjectEnum, CrmAssociationObjectEnum as Associations } from "../types/Crm";
-import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { 
+    CrmObjectEnum, 
+    CrmAssociationObjectEnum as Associations, 
+    SimplePublicObject, 
+    SimplePublicObjectWithAssociations 
+} from "../types/Crm";
 import { getObjectById } from "./objects";
 import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
 import { CATEGORY_TO_SKU_DICT } from "../../config/loadData";
-
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
+import { STOP_RUNNING } from "../../config/env";
+import { isNullLike } from "../../utils/typeValidation";
 /**
  * @property {string} lineItemId `string` = `hs_object_id`
  * @property {string[]} properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
  * @property {string[]} propertiesWithHistory `string[]`
  * @property {Array<Associations.DEALS | Associations.PRODUCTS>} associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
- * @property {boolean} archived `boolean` defaults to `false`.
+ * @property **`archived`** `boolean` defaults to `false`.
  */
 export type GetLineItemByIdParams = {
     lineItemId: string | number;
@@ -28,7 +34,7 @@ export type GetLineItemByIdParams = {
  * @param propertiesWithHistory `string[]`
  * @param associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
  * @param archived `boolean` defaults to `false`.
- * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
+ * @returns **`response`** = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
  * - The line item with the specified ID, or undefined if not found.
  */
 export async function getLineItemById(
@@ -54,56 +60,52 @@ export async function getLineItemById(
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined>;
 
 export async function getLineItemById(
-    lineItemIdOrParams: string | number | GetLineItemByIdParams,
-    properties?: string[],
+    /**lineItemIdOrParams: string | number | GetLineItemByIdParams */
+    arg1: string | number | GetLineItemByIdParams,
+    properties: string[] = DEFAULT_LINE_ITEM_PROPERTIES,
     propertiesWithHistory?: string[],
     associations?: Array<Associations.DEALS | Associations.PRODUCTS>,
-    archived?: boolean
+    archived: boolean=false
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
-    // Normalize parameters into a single object
-    const params = typeof lineItemIdOrParams === 'object' && 'lineItemId' in lineItemIdOrParams
-        ? lineItemIdOrParams
+    // Normalize parameters into GetLineItemByIdParams
+    const params = typeof arg1 === 'object' && 'lineItemId' in arg1
+        ? arg1 as GetLineItemByIdParams
         : {
-            lineItemId: lineItemIdOrParams,
-            properties,
-            propertiesWithHistory,
-            associations,
-            archived
-        };
-
-    // Apply defaults and destructure
-    const {
-        lineItemId,
-        properties: props = DEFAULT_LINE_ITEM_PROPERTIES,
-        propertiesWithHistory: historyProps,
-        associations: assoc = [Associations.DEALS],
-        archived: arch = false
-    } = params;
-
+            lineItemId: arg1 as string,
+            properties: properties || DEFAULT_LINE_ITEM_PROPERTIES,
+            propertiesWithHistory: propertiesWithHistory || undefined,
+            associations: associations || undefined,
+            archived: archived || false
+        } as GetLineItemByIdParams;
     try {
         const response = await getObjectById(
             CrmObjectEnum.LINE_ITEMS,
-            lineItemId,
-            props,
-            historyProps,
-            assoc,
-            arch
-        );
+            params.lineItemId,
+            params.properties,
+            params.propertiesWithHistory,
+            params.associations,
+            params.archived,
+        ) as SimplePublicObject | SimplePublicObjectWithAssociations;
         return response;
     } catch (e) {
-        console.error(`\t getLineItemById() Error retrieving line item with ID: ${lineItemId}`);
+        mlog.error(TAB + `getLineItemById() Error retrieving line item: '${params.lineItemId}'`);
         return undefined;
     }
 }
 
 /**
- * 
+ * gets a cleaned-up `lineItem.properties.hs_sku` value
  * @param lineItem {@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations}
- * @returns `sku` = `string` | `undefined` - The SKU of the lineItem, or undefined if not found.
+ * @returns **`sku`** = `string` | `undefined` - The SKU of the lineItem, or undefined if not found.
  */
-export function getSkuFromLineItem(lineItem: SimplePublicObject | SimplePublicObjectWithAssociations): string | undefined {
+export function getSkuFromLineItem(
+    lineItem: SimplePublicObject | SimplePublicObjectWithAssociations
+): string | undefined {
     if (!lineItem || !lineItem.properties) {
-        console.error(`getSkuFromLineItem() Invalid lineItem provided. Expected a SimplePublicObject or SimplePublicObjectWithAssociations.`);
+        mlog.error(`getSkuFromLineItem() Invalid lineItem provided.`,
+            TAB+`Expected a SimplePublicObject or SimplePublicObjectWithAssociations.`
+        );
+        return;
     }
     let sku: string;
     let props = lineItem.properties;
@@ -118,25 +120,23 @@ export function getSkuFromLineItem(lineItem: SimplePublicObject | SimplePublicOb
         }
         return sku;
     } catch (e) {
-        console.error(`getSkuFromLineItem() Error extracting SKU from lineItem:`, e);
-        return undefined;
+        mlog.error(`getSkuFromLineItem() Error extracting SKU from lineItem:`, e);
+        return;
     }
 }
+
 /**
- * 
- * @param {string} sku `string`
- * @param {number} price `number`
- * @param {string} dealstage `string` 
- * 
- * @returns {boolean} `isValid` — `boolean`
+ * @param sku `string`
+ * @param price `number`
+ * @param dealstage `string`
+ * @returns **`isValid`** — `boolean`
  */
 export function isValidLineItem(sku: string, price: number, dealstage: string): boolean {
-    let isValid: boolean = sku !== null
-        && sku !== undefined
-        && sku !== '' 
+    let isValid: boolean = Boolean(!isNullLike(sku) 
         && price > 0 
         && !CATEGORY_TO_SKU_DICT.Marketing.has(sku) 
         && !sku.startsWith('MM-') 
         && (VALID_DEAL_STAGES.includes(dealstage) || !INVALID_DEAL_STAGES.includes(dealstage))
+    );
     return isValid;
 }

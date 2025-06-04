@@ -1,14 +1,12 @@
 /**
  * @file src/utils/crm/objects/deals.ts
  */
-import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponse, PublicObjectSearchRequest } from "../types/Crm";
-import { SimplePublicObject, SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponse, PublicObjectSearchRequest, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
 import { getObjectById } from "./objects";
-import { DEFAULT_DEAL_PROPERTIES } from "../constants";
+import { DEFAULT_DEAL_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
 import { DELAY, STOP_RUNNING } from "../../config/env";
 import { searchObjectByProperty } from "../properties";
-import { mainLogger as log } from "../../config/setupLog";
-
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
 
 /**
  * @property {string} dealId `string` = `hs_object_id`
@@ -25,14 +23,13 @@ export type GetDealByIdParams = {
     archived?: boolean;
 }
 
-
 /**
  * @param dealId `string` = `hs_object_id`
  * @param properties `string[]` defaults to {@link DEFAULT_DEAL_PROPERTIES}.
  * @param propertiesWithHistory `string[]`
  * @param associations `Array<`{@link Associations.LINE_ITEMS} | {@link Associations.CONTACTS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.LINE_ITEMS}]
  * @param archived `boolean` defaults to `false`.
- * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
+ * @returns **`response`** = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
  * - The deal with the specified ID, or undefined if not found.
  */
 export async function getDealById(
@@ -50,7 +47,7 @@ export async function getDealById(
  * @param params.propertiesWithHistory `string[]` 
  * @param params.associations `Array<`{@link Associations.LINE_ITEMS} | {@link Associations.CONTACTS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.LINE_ITEMS}].
  * @param params.archived `boolean` defaults to `false`.
- * @returns `response` = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
+ * @returns **`response`** = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
  * - The deal with the specified ID, or undefined if not found.
  */
 export async function getDealById(
@@ -58,44 +55,36 @@ export async function getDealById(
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined>;
 
 export async function getDealById(
-    dealIdOrParams: string | number | GetDealByIdParams,
-    properties?: string[],
+    /**string | number | GetDealByIdParams */
+    arg1: string | number | GetDealByIdParams,
+    properties: string[] = DEFAULT_DEAL_PROPERTIES,
     propertiesWithHistory?: string[],
-    associations?: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>,
-    archived?: boolean
+    associations: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>=[Associations.LINE_ITEMS],
+    archived: boolean=false
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
-    // Normalize parameters into a single object
-    const params = typeof dealIdOrParams === 'object' && 'dealId' in dealIdOrParams
-        ? dealIdOrParams
+    // Normalize parameters into GetDealByIdParams
+    const params = typeof arg1 === 'object' && 'dealId' in arg1
+        ? arg1 as GetDealByIdParams
         : {
-            dealId: dealIdOrParams,
-            properties,
-            propertiesWithHistory,
-            associations,
-            archived
-        };
-
-    // Apply defaults and destructure
-    const {
-        dealId,
-        properties: props = DEFAULT_DEAL_PROPERTIES,
-        propertiesWithHistory: historyProps,
-        associations: assoc = [Associations.LINE_ITEMS],
-        archived: arch = false
-    } = params;
+            dealId: arg1 as string,
+            properties: properties || DEFAULT_DEAL_PROPERTIES,
+            propertiesWithHistory: propertiesWithHistory || undefined,
+            associations: associations || [Associations.LINE_ITEMS],
+            archived: archived || false
+        } as GetDealByIdParams;
 
     try {
         const response = await getObjectById(
             BasicCrmObjects.DEALS,
-            dealId,
-            props,
-            historyProps,
-            assoc,
-            arch
+            params.dealId,
+            params.properties,
+            params.propertiesWithHistory,
+            params.associations,
+            params.archived
         );
         return response;
     } catch (e) {
-        console.error(`\t getDealById() Error retrieving deal with ID: ${dealId}`);
+        mlog.error(`getDealById() Error retrieving deal with ID: ${params.dealId}`);
         return undefined;
     }
 }
@@ -136,14 +125,15 @@ export async function getDealByOrderNumber(
     await DELAY(1000);
     const responseIsInvalid: boolean = !searchRes || !searchRes.objectIds || searchRes.objectIds.length === 0;
     if (responseIsInvalid) {
-        log.info(`searchResponse is undefined or No deal was found for order number "${orderNumber}".`);
+        mlog.info(`searchResponse is undefined or No deal was found for order number "${orderNumber}".`);
         return;
     } 
     if (searchRes.objectIds.length > 1) {
-        log.warn(`Multiple deals found for order number "${orderNumber}". searchResponse.objectIds.length = ${searchRes.objectIds.length}`);
+        mlog.warn(`Multiple deals found for order number "${orderNumber}". searchResponse.objectIds.length = ${searchRes.objectIds.length}`);
     }
     const dealId = searchRes.objectIds[0];
     return await getDealById(
         dealId, properties, propertiesWithHistory, associations, archived
     ) as SimplePublicObject | SimplePublicObjectWithAssociations | undefined;
 }
+

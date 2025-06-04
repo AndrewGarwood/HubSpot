@@ -1,21 +1,20 @@
 /**
- * @file src/utils/crm/readDealsOfContact.ts
- * @TODO maybe rewrite this
+ * @file src/crm/readDealsOfContact.ts
  */
 
 import { SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
 import { getContactById, getDealById, getLineItemById } from "./objects";
 import { SkuData } from "./types/NetNew";
-import { printConsoleGroup as print, toPacificTime } from "../utils/io";
+import { toPacificTime } from "../utils/io";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../config/setupLog";
 
 /**
- * 
- * @param {Record<string, SkuData>} skuHistory `Record<string, `{@link SkuData}`>`
- * @param {string} sku `string`
- * @param {Record<string, any>} lineItemData `Record<string, any>}`
- * @param {Record<string, any>} dealData `Record<string, any>}`
- * @param {boolean} enableConsoleLog `boolean`
- * @returns {Record<string, SkuData>} `updatedSkuHistory` — `Record<string, `{@link SkuData}`>`
+ * @param skuHistory `Record<string, `{@link SkuData}`>`
+ * @param sku `string`
+ * @param lineItemData `Record<string, any>}`
+ * @param dealData `Record<string, any>}`
+ * @param enableConsoleLog `boolean`
+ * @returns **`updatedSkuHistory`** — `Record<string, `{@link SkuData}`>`
  */
 export function updateSkuHistory(
     skuHistory: Record<string, SkuData>, 
@@ -23,7 +22,7 @@ export function updateSkuHistory(
     lineItemData: Record<string, any>, 
     dealData: Record<string, any>, 
     enableConsoleLog: boolean=false
-): Record<string, SkuData> {    
+): Record<string, SkuData> {
     if (sku && !skuHistory.hasOwnProperty(sku) && lineItemData.amount > 0) {
         skuHistory[sku] = {
             sku: sku,
@@ -36,14 +35,12 @@ export function updateSkuHistory(
             associatedLineItems: [lineItemData.hs_object_id]
         };
         if (enableConsoleLog) {
-            print({
-                label: `[New Sku] ${dealData.dealname}`,
-                details: [
-                    `[${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price}] = $${lineItemData.price*Number(lineItemData.quantity)}`,
-                    `index: 1`, 
-                    `timestamp: ${toPacificTime(dealData.createdate)}`
-                ]
-            });
+            mlog.info(`[New Sku] ${dealData.dealname}`,
+                TAB + `{ ${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price} = $${lineItemData.price*Number(lineItemData.quantity)} }`,
+                TAB + `index: 1`, 
+                TAB + `timestamp: ${toPacificTime(dealData.createdate)}`
+                
+            );
         }
     } else if (sku && skuHistory.hasOwnProperty(sku)) {
         let skuData = skuHistory[sku];
@@ -58,34 +55,29 @@ export function updateSkuHistory(
         skuData.dealCount = skuData.associatedDeals.length;
         skuHistory[sku] = skuData;
         if (enableConsoleLog) {
-            print({
-                label: `[Repeat Sku] ${dealData.dealname}`, 
-                details: [
-                    `[${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price}] = $${lineItemData.price*Number(lineItemData.quantity)}`,
-                    `index: ${skuData.dealCount}`, 
-                    `timestamp: ${toPacificTime(dealData.createdate)}`
-                ],
-                collapse: true
-            });
+            mlog.info(`[Repeat Sku] ${dealData.dealname}`,
+                TAB + `{ ${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price} = $${lineItemData.price*Number(lineItemData.quantity)} }`,
+                TAB + `index: ${skuData.dealCount}`, 
+                TAB + `timestamp: ${toPacificTime(dealData.createdate)}`
+            );
         }
     }
     return skuHistory;
 }
 
 /**
- * 
- * @param {Array<string>} dealIdList `Array<string>`
- * @returns {Array<string>} `chronologicalDealIds` — `Array<string>`
+ * @param dealIds `Array<string>`
+ * @returns **`chronologicalDealIds`** — `Array<string>`
  */
-export async function sortDealsChronologically(dealIdList: Array<string>): Promise<Array<string>> {
+export async function sortDealsChronologically(dealIds: Array<string>): Promise<Array<string>> {
     let dealsWithDates: {dealId: string, dealDate: string}[] = [];
-    for (let dealId of dealIdList) {
+    for (let dealId of dealIds) {
         let dealDateResponse = await getDealById({ 
             dealId: dealId, 
             properties: ['createdate'] 
         });
         if (!dealDateResponse || !dealDateResponse.properties || !dealDateResponse.properties.createdate) {
-            console.log(`Deal with ID ${dealId} not found or has no createdate property.`);
+            mlog.warn(`Deal with ID ${dealId} not found or has no createdate property.`);
             continue;
         }
         let dealDate = dealDateResponse.properties.createdate;
@@ -99,9 +91,9 @@ export async function sortDealsChronologically(dealIdList: Array<string>): Promi
 
 
 /**
- * 
- * @param {string | number} contactId string | number
- * @returns {Record<string, SkuData> } `skuHistory` `Record<string, `{@link SkuData}`>`
+ * @deprecated
+ * @param contactId `string | number`
+ * @returns **`skuHistory`** = `Promise<Record<string, `{@link SkuData}`>>`
  */
 export async function loadSkuHistoryOfContact(contactId: string | number): Promise<Record<string, SkuData>> {
     let contactResponse = await getContactById({
@@ -109,7 +101,7 @@ export async function loadSkuHistoryOfContact(contactId: string | number): Promi
         propertiesWithHistory: []
     }) as SimplePublicObjectWithAssociations;
     if (!contactResponse || !contactResponse.properties || !contactResponse.associations || !contactResponse.associations.deals) {
-        console.log(`Contact with ID ${contactId} not found or has no associated deals.`);
+        mlog.warn(`Contact with ID ${contactId} not found or has no associated deals.`);
         return {};
     }
     let contactData = contactResponse.properties;
@@ -118,20 +110,20 @@ export async function loadSkuHistoryOfContact(contactId: string | number): Promi
     let associatedDealsOfContact = contactResponse.associations.deals.results;
     let chronologicalDealIds = 
         await sortDealsChronologically(associatedDealsOfContact.map((deal: Record<string, any>) => deal.id));
-    console.log(`Reading deals of contact: ${contactName}... ${chronologicalDealIds.length} deals found.`);
+    mlog.info(`Reading deals of contact: ${contactName}... ${chronologicalDealIds.length} deals found.`);
     for (let dealId of chronologicalDealIds) {
-        let dealResponse = await getDealById({ dealId: dealId }) as SimplePublicObjectWithAssociations;
+        let dealResponse = await getDealById(dealId) as SimplePublicObjectWithAssociations;
         if (!dealResponse || !dealResponse.properties || !dealResponse.associations || !dealResponse.associations['line items']) {
-            console.log(`Deal with ID ${dealId} not found is either undefined or has no line items.`);
+            mlog.warn(`Deal with ID ${dealId} not found is either undefined or has no line items.`);
             continue;
         }
         let dealProps = dealResponse.properties;
         let lineItemIdList = dealResponse.associations['line items']
             .results.map(associatedLineItem => associatedLineItem.id);
         for (let lineItemId of lineItemIdList) { 
-            let lineItemResponse = await getLineItemById({ lineItemId: lineItemId });
+            let lineItemResponse = await getLineItemById(lineItemId);
             if (!lineItemResponse || !lineItemResponse.properties) {
-                console.log(`Line item with ID ${lineItemId} not found.`);
+                mlog.warn(`Line item with ID ${lineItemId} not found.`);
                 continue;
             }
             let lineItemProps = lineItemResponse.properties;
@@ -141,6 +133,6 @@ export async function loadSkuHistoryOfContact(contactId: string | number): Promi
             }
         }
     }
-    console.log(`\n skuHistory: `, skuHistory);
+    mlog.info(`skuHistory: `, skuHistory);
     return skuHistory;
 }

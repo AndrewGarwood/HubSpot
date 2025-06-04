@@ -1,10 +1,10 @@
 /**
- * @file src/utils/crm/types/NetNew.ts
+ * @file src/crm/types/NetNew.ts
  */
 
 // SkuData ----------------
 /**
- * @typedefn SkuData
+ * @typedefn **`SkuData`**
  * @property {string} sku `string` `hs_sku` of the product
  * @property {string} [name] `string` name of the product, optional
  * @property {number} dealCount `number` unique dealId count == associatedDeals.size 
@@ -25,71 +25,72 @@ export type SkuData = {
     firstPurchaseDate: Date | string;
 }
 
-// NetNewDataConfig ----------------
-
+// PurchaseHistory ----------------
 /**
- * @typedefn `{Object}` `NetNewDataConfig`
+ * @typedefn **`PurchaseHistory`**
  * @property {string} [contactId] `string` = `hs_object_id`
  * @property {string} [contactName] `string`
- * @property {Record<string, string>} categoriesBought
+ * @property {Partial<Record<ProductCategoryEnum, string>>} categoriesBought `Partial<Record<`{@link ProductCategoryEnum}, `string>>` dict mapping category to dealId in which category was first bought
  * @property {Record<string, SkuData>} skuHistory `Record<string, `{@link SkuData}`>`
- * @property {Array<string>} netNewLineItems `Array<string>`
- * @property {Array<string>} recurringLineItems `Array<string>`
  */
-export type NetNewDataConfig = {
+export type PurchaseHistory = {
     contactId?: string;
     contactName?: string;
-    categoriesBought: Record<string, string>;
+    /** dict mapping {@link ProductCategoryEnum} to dealId in which category was first bought */
+    categoriesBought: Partial<Record<ProductCategoryEnum, string>>;
     skuHistory: Record<string, SkuData>;
     netNewLineItems: Array<string>;
-    recurringLineItems: Array<string>;
+    recurringLineItems: Array<string>;  
 }
-
-
 /**
- * @typedefn `{Object}` `NetNewDataOutput`
- * @property {Array<string>} netNewLineItems `Array<string>`
- * @property {Array<string>} recurringLineItems `Array<string>`
- * @property {Array<string>} unassociatedLineItems `Array<string>`
- * @property {Record<string, ContactCategoryData>} processedContacts `Record<string, `{@link ContactCategoryData}`>`
+ * @enum {string} **`NetNewValueEnum`**
+ * @property {string} TRUE `'True'`
+ * @property {string} FALSE `'False'`
+ * @property {string} NOT_APPLICABLE `'Not Applicable'`
  */
-
-export type NetNewDataOutput = {
-    netNewLineItems: Array<string>;
-    recurringLineItems: Array<string>;
-    unassociatedLineItems: Array<string>;
-    processedContacts: Record<string, ContactCategoryData>;
+export enum NetNewValueEnum {
+    TRUE = 'True',
+    FALSE = 'False',
+    NOT_APPLICABLE = 'Not Applicable',
 }
 
-// ContactCategoryData ----------------
+// CategoryHistory ----------------
 /**
- * @typedefn `{Object} ContactCategoryData`
+ * @typedefn **`CategoryHistory`**
  * @property {string} contactId `string` = `hs_object_id`
  * @property {string} contactName `string`
- * @property {Record<string, string>} categoriesBought `Record<string, string>`
+ * @property {Record<string, string>} categoriesBought `Record<`{@link ProductCategoryEnum}, `string>` dict mapping category to dealId in which category was first bought
  * @property {Record<string, SkuData>} skuHistory `Record<string, {@link SkuData}>`
  */
-export type ContactCategoryData = {
+export type CategoryHistory = {
     contactId: string;
     contactName: string;
-    categoriesBought: Record<string, string>;
+    /**dict mapping category to dealId in which category was first bought */
+    categoriesBought: Record<ProductCategoryEnum, string>;
     skuHistory: Record<string, SkuData>;
 };
 
 
 
-// CategoryExtractInfo ----------------
+// DealCategorization ----------------
 // used in extractCategoryInfo()
 /**
- * @typedefn `{Object} CategoryExtractInfo`
+ * @typedefn **`DealCategorization`**
  * @property {string} category `string`
  * @property {boolean} isFirstDealWithCategory `boolean`
  * @property {boolean} isStillFirstDealWithNewCategory `boolean`
  * @property {boolean} isRecurringDeal `boolean`
  * */
-export type CategoryExtractInfo = {
+export type DealCategorization = {
     category: string;
     isFirstDealWithCategory: boolean;
     isStillFirstDealWithNewCategory: boolean;
     isRecurringDeal: boolean;
 };
+
+/**
+ * @enum {string} **`ProductCategoryEnum`**
+ */
+export enum ProductCategoryEnum {
+    CATEGORY_A = 'CATEGORY_A',
+}
