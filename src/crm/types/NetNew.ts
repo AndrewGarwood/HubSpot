@@ -54,26 +54,7 @@ export enum NetNewValueEnum {
     NOT_APPLICABLE = 'Not Applicable',
 }
 
-// CategoryHistory ----------------
-/**
- * @typedefn **`CategoryHistory`**
- * @property {string} contactId `string` = `hs_object_id`
- * @property {string} contactName `string`
- * @property {Record<string, string>} categoriesBought `Record<`{@link ProductCategoryEnum}, `string>` dict mapping category to dealId in which category was first bought
- * @property {Record<string, SkuData>} skuHistory `Record<string, {@link SkuData}>`
- */
-export type CategoryHistory = {
-    contactId: string;
-    contactName: string;
-    /**dict mapping category to dealId in which category was first bought */
-    categoriesBought: Record<ProductCategoryEnum, string>;
-    skuHistory: Record<string, SkuData>;
-};
-
-
-
 // DealCategorization ----------------
-// used in extractCategoryInfo()
 /**
  * @typedefn **`DealCategorization`**
  * @property {string} category `string`

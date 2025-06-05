@@ -1,16 +1,21 @@
 /**
  * @file src/NetNewProcessor.ts
  */
-import { DATA_DIR, DELAY, STOP_RUNNING } from "./config/env";
+import path from "node:path";
+import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
 import { CATEGORY_TO_SKU_DICT } from "./config/loadData";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "./config/setupLog";
+import { 
+    mainLogger as mlog, 
+    apiLogger as log, 
+    INDENT_LOG_LINE as TAB, 
+    NEW_LINE as NL, 
+    indentedStringify, DEBUG_LOGS, INFO_LOGS, MAIN_LOG_FILEPATH, CLOUD_LOG_FILEPATH, clearLogFile } from "./config/setupLog";
 import { 
     getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, 
-    getLineItemById, setPropertyByObjectId, GetDealByIdParams, 
-    getSkuFromLineItem, isValidLineItem, batchSetPropertyByObjectId, 
-    DealCategorization, CategoryHistory, PurchaseHistory, NetNewValueEnum,
+    getLineItemById, getSkuFromLineItem, isValidLineItem, 
+    DealCategorization, PurchaseHistory, NetNewValueEnum,
     SkuData, sortDealsChronologically, updateSkuHistory, batchUpdatePropertyByObjectId,
-    ProductCategoryEnum, SimplePublicObject, DEFAULT_DEAL_PROPERTIES,
+    ProductCategoryEnum, SimplePublicObject,
     GetContactByIdParams,
     SimplePublicObjectWithAssociations,
     VALID_DEAL_STAGES,
@@ -19,41 +24,118 @@ import {
 import { 
     readJsonFileAsObject as read,
     writeObjectToJson as write, 
-    toPacificTime,
+    getCurrentPacificTime, toPacificTime,
 } from "./utils/io";
-
+/**@TODO maybe refactor and write function called updatePurchaseHistory(deal) */
+/**  */
 const NET_NEW_PROP = 'is_net_new';
+let NUMBER_OF_DEALS_PROCESSED = 0;
+let NUMBER_OF_LINE_ITEMS_PROCESSED = 0;
+const MISSING_SKUS: string[] = [];
 
 main().catch((error) => {
     mlog.error('Error in NetNewProcessor.ts when executing main():', error);
 });
 /** 
  * main`()` -> {@link updateContactLineItems}`(contactIds)` ->
- * - {@link identifyNetNewLineItemsOfContact}`(contactId)` 
+ * - {@link processContact}`(contactId)` 
  * - - {@link processLineItem}`(for all lineItems associated with contact)`
  * - {@link updateLineItems}`(Record<`{@link NetNewValueEnum}, `Array<string>>)`
  * - - {@link batchUpdatePropertyByObjectId}`(...)`
  * */
 async function main() {
-    let filePath = `${DATA_DIR}/contacts_with_may2025_deals.json`;
-    let contactIds = read(filePath)?.contactIds as string[] || [];
-    // mlog.debug(`contactIds.length: ${contactIds.length}`);
-    // STOP_RUNNING(0);
-    // let contactIdSubset = contactIds.slice(1, 2);
-    await updateContactLineItems(contactIds);
-    STOP_RUNNING(0, `End of main() in NetNewProcessor.ts`);
+    clearLogFile(MAIN_LOG_FILEPATH, CLOUD_LOG_FILEPATH);
+    const startTime = new Date();
+    const filePath = `${DATA_DIR}/contacts_with_may2025_deals.json`;
+    const useSubset: boolean = false;
+    const contactIds = read(filePath)?.contactIds as string[] || [];
+    const contactIdSubset = contactIds.slice(1, 2);
+    mlog.info(`Start of main() in NetNewProcessor.ts`,
+        TAB + `   filePath: ${filePath}`,
+        TAB + `  useSubset: ${useSubset}`,
+        TAB + `numContacts: ${useSubset ? contactIdSubset.length : contactIds.length}`,
+        NL  + `calling await updateContactLineItems()`
+    );
+    await updateContactLineItems(useSubset ? contactIdSubset : contactIds);
+    const endTime = new Date();
+    mlog.info(`End of main() in NetNewProcessor.ts at ${endTime.toLocaleString()}`,
+        TAB + `Elapsed Time: ${(endTime.getTime() - startTime.getTime()) / 1000} seconds`,
+        TAB + `     Number of Deals Processed: ${NUMBER_OF_DEALS_PROCESSED}`,
+        TAB + `Number of Line Items Processed: ${NUMBER_OF_LINE_ITEMS_PROCESSED}`,
+    );
+    write({missingSkus: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'))
+    MISSING_SKUS.length = 0;
+    STOP_RUNNING(0);
 }
 
+/**
+ * For each contact, 
+ * - identify the net new line items and recurring line items of their associated deals
+ * - Then call the HubSpot API to batch update the `'is_net_new'` property of the line items
+ * @param contactIds `Array<string>`
+ * @returns {Promise<void>} 
+ */
+export async function updateContactLineItems(
+    contactIds: Array<string>
+): Promise<void> {
+    // mlog.info(`Start of updateContactLineItems()`);
+    let contactBatches = partitionArrayBySize(contactIds, 50) as string[][];
+    for (let [batchIndex, contactIdBatch] of contactBatches.entries()) {
+        const batchStartTime = new Date();
+        INFO_LOGS.push(NL + `Starting batch ${batchIndex+1} of ${contactBatches.length}`,
+            TAB + `Batch Start Time: ${batchStartTime.toLocaleString()}`,
+            TAB + `      Batch Size: ${contactIdBatch.length}`,
+        );
+        const batchNetNewLineItems: string[] = [];
+        const batchRecurringLineItems: string[] = [];
+        for (let [subsetIndex, contactId] of contactIdBatch.entries()) {
+            let history =  await processContact(contactId) as PurchaseHistory;
+            INFO_LOGS.push(
+                NL  + `Contact ${subsetIndex+1} of Batch ${batchIndex+1} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
+                TAB + `   netNewLineItems.length: ${history.netNewLineItems.length}`,
+                TAB + `recurringLineItems.length: ${history.recurringLineItems.length}`,
+                TAB + `        Categories Bought: ${JSON.stringify(Object.keys(history.categoriesBought))}`,
+                // TAB + `            SKUs Bought: ${JSON.stringify(Object.keys(history.skuHistory))}`,
+            );
+            batchNetNewLineItems.push(...history.netNewLineItems);
+            batchRecurringLineItems.push(...history.recurringLineItems);
+        }
+        INFO_LOGS.push(NL + `Batch ${batchIndex+1} of ${contactBatches.length} data processed.`,
+            TAB + `Time Elapsed: ${(new Date().getTime() - batchStartTime.getTime()) / 1000} seconds`
+        );
+        const updateBatchStartTime = new Date();
+        mlog.debug(`calling updateLineItems() for Batch ${batchIndex+1} of ${contactBatches.length} with`,
+            TAB + `  batchNetNewLineItems.length: ${batchNetNewLineItems.length}`,
+            TAB + `batchRecurringLineItems.length: ${batchRecurringLineItems.length}`,
+        );
+        const updateRes: SimplePublicObject[] = await updateLineItems({
+            [NetNewValueEnum.TRUE]: batchNetNewLineItems,
+            [NetNewValueEnum.FALSE]: batchRecurringLineItems,
+        } as Record<NetNewValueEnum, Array<string>>);
+        const batchEndTime = new Date();
+        INFO_LOGS.push(NL + `updateContactLineItems() Batch (${batchIndex+1}/${contactBatches.length}) finished at ${batchEndTime.toLocaleString()}`,
+            TAB + ` Update Time Elapsed: ${(batchEndTime.getTime() - updateBatchStartTime.getTime()) / 1000} seconds`,
+            TAB + `  Total Time Elapsed: ${(batchEndTime.getTime() - batchStartTime.getTime()) / 1000} seconds`,
+            TAB + `  Net New Line Items: ${batchNetNewLineItems.length}`,
+            TAB + `Recurring Line Items: ${batchRecurringLineItems.length}`,
+            TAB + `    updateRes.length: ${updateRes.length}`,
+            NL  + `Pausing for 1 second.`
+        );
+        mlog.info(...INFO_LOGS);
+        INFO_LOGS.length = 0; // clear the infoLogs array
+        await DELAY(1000, null);
+    }
+}
 
 /**
  * @param contactId `string` 
  * @returns **`purchaseHistory`** — {@link PurchaseHistory}
  */
-async function identifyNetNewLineItemsOfContact(
+async function processContact(
     contactId: string
 ): Promise<PurchaseHistory> {
     if (!contactId) {
-        mlog.error(`Error in identifyNetNewLineItemsOfContact({contactId}): contactId is undefined`);
+        mlog.error(`Error in processContact({contactId}): contactId is undefined`);
         return {} as PurchaseHistory;
     }
     let purchaseHistory = {
@@ -64,60 +146,71 @@ async function identifyNetNewLineItemsOfContact(
         netNewLineItems: [] as Array<string>,
         recurringLineItems: [] as Array<string>
     } as PurchaseHistory;
+    DEBUG_LOGS.push(`Start of processContact('${contactId}')`);
     try {
-        const contactRes = await getContactById({ 
+        const contact = await getContactById({ 
             contactId: contactId, 
             associations: [CrmAssociationObjectEnum.DEALS] 
         } as GetContactByIdParams) as SimplePublicObjectWithAssociations;
-        if (!contactRes || !contactRes.properties 
-            || !contactRes.associations || !contactRes.associations.deals
+        if (!contact || !contact.properties 
+            || !contact.associations || !contact.associations.deals
         ) {
             mlog.error(`contactResponse for ${contactId} is invalid, null, or undefined`);
             return purchaseHistory;
         }
         purchaseHistory.contactName 
-            = `${contactRes.properties.firstname} ${contactRes.properties.lastname}`;
-        let associatedDealIds = contactRes.associations.deals.results
+            = `${contact.properties.firstname} ${contact.properties.lastname}`;
+        let associatedDealIds = contact.associations.deals.results
             .map(deal => deal.id);
         let chronologicalDealIds = associatedDealIds.length > 0 
             ? await sortDealsChronologically(associatedDealIds)
             : [];
+        NUMBER_OF_DEALS_PROCESSED += chronologicalDealIds.length;
         for (let dealId of chronologicalDealIds) {
-            const dealRes = await getDealById(dealId) as SimplePublicObjectWithAssociations;
-            // mlog.debug(`dealRes for ${dealId}:`, indentedStringify(dealRes));
-            if (!(await dealResponseIsValid(dealId, dealRes))) {
-                // mlog.warn(`dealResponse for ${dealId} is invalid`);
+            const deal = await getDealById(dealId) as SimplePublicObjectWithAssociations;
+            if (!(await isValidDeal(dealId, deal))) {
                 continue;
             }   
-            let dealResponseLineItemAssociation = (dealRes.associations 
-                ? dealRes.associations['line items'] 
-                : { results: [] });     
-            let associatedLineItems = dealResponseLineItemAssociation.results
+            let lineItemAssociation = (deal.associations 
+                ? deal.associations['line items'] 
+                : { results: [] }
+            );     
+            let lineItemIds = lineItemAssociation.results
                 .map(associatedLineItem => associatedLineItem.id);
-            for (let lineItemId of associatedLineItems) {
-                const lineItemRes = 
-                    await getLineItemById(lineItemId) as SimplePublicObjectWithAssociations;
-                if (!lineItemRes || !lineItemRes.properties) {
+            NUMBER_OF_LINE_ITEMS_PROCESSED += lineItemIds.length;
+            for (let lineItemId of lineItemIds) {
+                const lineItem = await getLineItemById(
+                    lineItemId
+                ) as SimplePublicObjectWithAssociations;
+                if (!lineItem || !lineItem.properties) {
                     mlog.error(`lineItemResponse or its properties for lineItem '${lineItemId}' of deal '${dealId}' is null or undefined`);
                     continue;
-                } 
+                }
+                const catsBefore = Object.keys(purchaseHistory.categoriesBought);
                 purchaseHistory = processLineItem(
-                    lineItemRes, dealRes, purchaseHistory
+                    lineItem, deal, purchaseHistory
                 );
+                const catsAfter = Object.keys(purchaseHistory.categoriesBought);
+                if (catsAfter.length > catsBefore.length) {
+                    DEBUG_LOGS.push(NL + `New category added for contact '${purchaseHistory.contactName}'`,
+                        TAB + ` From: '${lineItem.properties.hs_sku}' in deal '${deal.properties.dealname}' on ${toPacificTime(deal.properties.closedate as string)}`,
+                        TAB + `Added: '${catsAfter.filter(cat => !catsBefore.includes(cat)).join(', ')}'`,
+                    );
+                }
             }
         }        
     } catch (e) {
-        mlog.error('Error in identifyNetNewLineItemsOfContact():', e);
+        mlog.error('Error in processContact():', e);
     }
+    mlog.debug(...DEBUG_LOGS);
+    DEBUG_LOGS.length = 0; // clear the infoLogs array
     return purchaseHistory;
 }
-
-
 
 /**
  * @param lineItem {@link SimplePublicObjectWithAssociations}
  * @param deal {@link SimplePublicObjectWithAssociations}
- * @param history `PurchaseHistory` {@link PurchaseHistory}
+ * @param history {@link PurchaseHistory}
  * @returns **`history`** — {@link PurchaseHistory}
  */
 function processLineItem(
@@ -134,71 +227,32 @@ function processLineItem(
     const dealProps = deal.properties;
     let lineItemId = lineItemProps.hs_object_id as string;
     let price = Number(lineItemProps.price) || 0;
-    if (isValidLineItem(sku, price, dealProps.dealstage as string)) {
-        history.skuHistory = updateSkuHistory(history.skuHistory, sku, lineItemProps, dealProps);
-        let dealId = dealProps.hs_object_id as string;
-        let catInfo = categorizeDeal(sku, history.categoriesBought, dealId);
-        if (catInfo.isFirstDealWithCategory) {
-            history.netNewLineItems.push(lineItemId);
-            history.categoriesBought[catInfo.category as ProductCategoryEnum] = dealId;
-            log.info(`Net New in Deal ${dealProps.dealname} - ${toPacificTime(dealProps.closedate as string)}`,
-                TAB + `{ sku: ${sku}, price: $${price}, quantity: ${lineItemProps.quantity}, dealstage: ${dealProps.dealstage} }`,
-            );
-        } else if (catInfo.isStillFirstDealWithNewCategory) {
-            history.netNewLineItems.push(lineItemId);
-            log.info(`Net New in Deal ${dealProps.dealname} - ${toPacificTime(dealProps.closedate as string)}`,
-                TAB + `{ sku: ${sku}, price: $${price}, quantity: ${lineItemProps.quantity}, dealstage: ${dealProps.dealstage} }`,
-            );
-        } else if (catInfo.isRecurringDeal) {
-            history.recurringLineItems.push(lineItemId);
-        } else {
-            log.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${Object.keys(CATEGORY_TO_SKU_DICT)}`);
-        }
+    if (!isValidLineItem(sku, price, dealProps.dealstage as string)) {
+        return history;
+    }
+    history.skuHistory = updateSkuHistory(
+        history.skuHistory, lineItem, deal
+    );
+    let dealId = dealProps.hs_object_id as string;
+    const {
+        category, 
+        isFirstDealWithCategory, 
+        isStillFirstDealWithNewCategory,
+        isRecurringDeal
+    } = categorizeDeal(sku, history.categoriesBought, dealId);
+    if (isFirstDealWithCategory) {
+        history.netNewLineItems.push(lineItemId);
+        history.categoriesBought[category as ProductCategoryEnum] = dealId;
+    } else if (isStillFirstDealWithNewCategory) {
+        history.netNewLineItems.push(lineItemId);
+    } else if (isRecurringDeal) {
+        history.recurringLineItems.push(lineItemId);
     } else {
-        log.warn(`Line item '${lineItemId}' of deal '${dealProps.dealname}' is not valid`);
+        log.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${Object.keys(CATEGORY_TO_SKU_DICT)}`);
+        MISSING_SKUS.push(sku);
     }
+    
     return history;
-}
-
-/**
- * For each contact, 
- * - identify the net new line items and recurring line items of their associated deals
- * - Then call the HubSpot API to batch update the `'is_net_new'` property of the line items
- * @param contactIds `Array<string>`
- * @param enableConsoleLog `boolean`
- * @returns {Promise<void>} 
- */
-export async function updateContactLineItems(
-    contactIds: Array<string>
-): Promise<void> {
-    let contactBatches = partitionArrayBySize(contactIds, 50) as string[][];
-    for (let [batchIndex, contactIdBatch] of contactBatches.entries()) {
-        mlog.info(`Processing batch (${batchIndex+1}/${contactBatches.length})...`);
-        const batchNetNewLineItems: string[] = [];
-        const batchRecurringLineItems: string[] = [];
-        for (let [subsetIndex, contactId] of contactIdBatch.entries()) {
-            let history =  await identifyNetNewLineItemsOfContact(contactId) as PurchaseHistory;
-            log.info(`${batchIndex+1}-${subsetIndex+1}) Contact: ${contactId} - ${history.contactName}`,
-                TAB + `Net New Line Item Count: ${history.netNewLineItems.length}`,
-                TAB + `      Categories Bought: ${JSON.stringify(Object.keys(history.categoriesBought))}`,
-                TAB + `            SKUs Bought: ${JSON.stringify(Object.keys(history.skuHistory))}`,
-            );
-            batchNetNewLineItems.push(...history.netNewLineItems);
-            batchRecurringLineItems.push(...history.recurringLineItems);
-        }
-        const updateRes = await updateLineItems(
-            {
-                [NetNewValueEnum.TRUE]: batchNetNewLineItems,
-                [NetNewValueEnum.FALSE]: batchRecurringLineItems,
-            } as Record<NetNewValueEnum, Array<string>>
-        );
-        await DELAY(1000, `updateContactLineItems() Batch (${batchIndex+1}/${contactBatches.length}) finished call to api.`,
-            TAB + `  Net New Line Items: ${batchNetNewLineItems.length}`,
-            TAB + `Recurring Line Items: ${batchRecurringLineItems.length}`,
-            TAB + `    updateRes.length: ${updateRes.length}`,
-            TAB + ` -> pausing for 1 second...`
-        );
-    }
 }
 
 /**
@@ -214,21 +268,26 @@ async function updateLineItems(
         return [];
     }
     const responses = [];
+    let keyIndex = 0;
     for (let [enumValKey, lineItemIds] of Object.entries(lineItemDict)) {
         if (!lineItemIds || lineItemIds.length === 0) {
-            mlog.debug(`No line items to update for netNewValue: ${enumValKey}`);
+            mlog.warn(`No line items to update for netNewValue: ${enumValKey}`);
             continue;
         }
-        responses.push(... await batchUpdatePropertyByObjectId(
+        responses.push(...await batchUpdatePropertyByObjectId(
             CrmObjectEnum.LINE_ITEMS,
             lineItemIds,
             { [NET_NEW_PROP]: enumValKey }
         ));
-        await DELAY(1000);
+        await DELAY(1000, 
+            NL + `(${new Date().toLocaleString()}) updateLineItems() finished lineItemDict key ${keyIndex+1}/${Object.keys(lineItemDict).length}`,
+            TAB + `Updated ${lineItemIds.length} lineItems with netNewValue: '${enumValKey}'`,
+            NL + `Pausing for 1 second after updating `
+        );
+        keyIndex++;
     }
     return responses;
 }
-
 
 
 /**
@@ -245,7 +304,7 @@ function categorizeDeal(
     let category = Object.keys(CATEGORY_TO_SKU_DICT)
         .find(key => CATEGORY_TO_SKU_DICT[key].has(sku));
     if (!category) {
-        mlog.error(`Error in extractCategoryInfo(): SKU "${sku}" not found in any category from ${JSON.stringify(Object.keys(CATEGORY_TO_SKU_DICT))}`);
+        mlog.error(`Error in categorizeDeal(): SKU "${sku}" not found in any category from ${JSON.stringify(Object.keys(CATEGORY_TO_SKU_DICT))}`);
         return { 
             category: '', 
             isFirstDealWithCategory: false, 
@@ -253,25 +312,38 @@ function categorizeDeal(
             isRecurringDeal: false 
         };
     }
+
     const isFirstDealWithCategory = Boolean(category 
-        && !categoriesBought.hasOwnProperty(category)
+        && !categoriesBought[category]
     );
     const isStillFirstDealWithNewCategory = Boolean(category 
-        && categoriesBought.hasOwnProperty(category) 
+        && categoriesBought[category]
         && dealId === categoriesBought[category]
     );
     const isRecurringDeal = Boolean(category 
-        && categoriesBought.hasOwnProperty(category) 
+        && categoriesBought[category]
         && dealId !== categoriesBought[category]
     );
     let categoryInfo: DealCategorization = { 
         category, isFirstDealWithCategory, isStillFirstDealWithNewCategory, isRecurringDeal 
     };
+    const categorizeDealLogs = [
+        NL + `categorizeDeal() called`,
+        TAB + `             sku: "${sku}"`,
+        TAB + `        category: "${category}", dealId: "${dealId}"`,
+        TAB + `categoriesBought:`, JSON.stringify(categoriesBought),
+        NL  + `return categoryInfo:`, indentedStringify(categoryInfo)
+    ]
+    // DEBUG_LOGS.push(...categorizeDealLogs);
     return categoryInfo;
 }
 
-
-async function dealResponseIsValid(
+/**
+ * @param dealId `string`
+ * @param deal {@link SimplePublicObjectWithAssociations}
+ * @returns **`Promise<boolean>`** — `true` if the deal response is valid, `false` otherwise.
+ */
+async function isValidDeal(
     dealId: string,
     deal: SimplePublicObjectWithAssociations
 ): Promise<boolean> {
@@ -285,22 +357,23 @@ async function dealResponseIsValid(
         // STOP_RUNNING(1);
         return false;
     }
-    const debugLogs: any[] = [];
-    let isMissingLineItems = (deal 
+    let isMissingLineItems = Boolean(
+        deal 
         && deal.associations 
         && (!Object.keys(deal.associations).includes('line items') 
             || !deal.associations['line items'])
     );
-    let isValidDealStage = (deal.properties.dealstage 
+    let isValidDealStage = Boolean(
+        deal.properties.dealstage 
         && (VALID_DEAL_STAGES.includes(deal.properties.dealstage) 
             || !INVALID_DEAL_STAGES.includes(deal.properties.dealstage))
     );
-    debugLogs.push(`dealResponseIsValid() dealId: ${dealId}`,
-        TAB + `deal.properties.dealname: ${deal.properties.dealname}`,
-        TAB + `deal.properties.dealstage: ${deal.properties.dealstage}`,
-        TAB + `isMissingLineItems: ${isMissingLineItems}`,
-        TAB + `isValidDealStage: ${isValidDealStage}`,
-    );
+    // DEBUG_LOGS.push(NL + `dealResponseIsValid() dealId: ${dealId}`,
+    //     TAB + ` deal.properties.dealname: ${deal.properties.dealname}`,
+    //     TAB + `deal.properties.dealstage: ${deal.properties.dealstage}`,
+    //     TAB + `       isMissingLineItems: ${isMissingLineItems}`,
+    //     TAB + `         isValidDealStage: ${isValidDealStage}`,
+    // );
     if (isMissingLineItems) {
         mlog.error(`Deal '${deal.properties.dealname}' has no line items`, 
             TAB + 'dealRes.associations:', deal.associations

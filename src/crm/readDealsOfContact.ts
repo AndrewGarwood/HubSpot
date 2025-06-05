@@ -2,65 +2,81 @@
  * @file src/crm/readDealsOfContact.ts
  */
 
-import { SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
-import { getContactById, getDealById, getLineItemById } from "./objects";
+import { SimplePublicObject, SimplePublicObjectWithAssociations, isValidLineItem } from '../crm'
+import { getContactById, getDealById, getLineItemById, getSkuFromLineItem } from "./objects";
 import { SkuData } from "./types/NetNew";
 import { toPacificTime } from "../utils/io";
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../config/setupLog";
+import { 
+    mainLogger as mlog,
+    apiLogger as log, 
+    INDENT_LOG_LINE as TAB, 
+    NEW_LINE as NL, INFO_LOGS, DEBUG_LOGS 
+} from "../config/setupLog";
+import { hasKeys } from '../utils/typeValidation';
 
 /**
  * @param skuHistory `Record<string, `{@link SkuData}`>`
- * @param sku `string`
- * @param lineItemData `Record<string, any>}`
- * @param dealData `Record<string, any>}`
- * @param enableConsoleLog `boolean`
+ * @param lineItem {@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations}
+ * @param deal {@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations}
  * @returns **`updatedSkuHistory`** — `Record<string, `{@link SkuData}`>`
  */
 export function updateSkuHistory(
     skuHistory: Record<string, SkuData>, 
-    sku: string, 
-    lineItemData: Record<string, any>, 
-    dealData: Record<string, any>, 
-    enableConsoleLog: boolean=false
+    lineItem: SimplePublicObject | SimplePublicObjectWithAssociations, 
+    deal: SimplePublicObject | SimplePublicObjectWithAssociations
 ): Record<string, SkuData> {
-    if (sku && !skuHistory.hasOwnProperty(sku) && lineItemData.amount > 0) {
+    const lineItemProps = lineItem.properties;
+    const dealProps = deal.properties;
+    if (!lineItemProps || !dealProps) {
+        mlog.warn(`Line item or deal properties are undefined.`);
+        return skuHistory;
+    }
+    if (!hasKeys(lineItemProps, ['hs_sku', 'hs_object_id', 'name', 'quantity', 'price'])) {
+        mlog.warn(`lineItem.properties missing at least one of required keys: ${Object.keys(lineItemProps).join(', ')}`);
+        return skuHistory;
+    }
+    const sku = getSkuFromLineItem(lineItem);
+    const name = lineItemProps.name as string;
+    const quantity = Number(lineItemProps.quantity);
+    const price = Number(lineItemProps.price);
+    const amount = price * quantity;
+    const lineItemId = lineItemProps.hs_object_id as string;
+    const dealId = dealProps.hs_object_id as string;
+    const dealCreateDate = dealProps.createdate as string;
+    if (sku && !skuHistory[sku] &&!skuHistory.hasOwnProperty(sku) && Number(lineItemProps.amount) > 0) {
         skuHistory[sku] = {
             sku: sku,
-            name: lineItemData.name,
+            name: name,
             dealCount: 1, 
-            quantity: Number(lineItemData.quantity), 
-            amount: lineItemData.price * Number(lineItemData.quantity),
-            firstPurchaseDate: dealData.createdate, // assume update called chronologically
-            associatedDeals: [dealData.hs_object_id],
-            associatedLineItems: [lineItemData.hs_object_id]
+            quantity: quantity, 
+            amount: price * quantity,
+            firstPurchaseDate: dealCreateDate, // assume update called chronologically
+            associatedDeals: [dealId],
+            associatedLineItems: [lineItemId]
         };
-        if (enableConsoleLog) {
-            mlog.info(`[New Sku] ${dealData.dealname}`,
-                TAB + `{ ${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price} = $${lineItemData.price*Number(lineItemData.quantity)} }`,
-                TAB + `index: 1`, 
-                TAB + `timestamp: ${toPacificTime(dealData.createdate)}`
-                
-            );
-        }
-    } else if (sku && skuHistory.hasOwnProperty(sku)) {
+        // INFO_LOGS.push(NL + `New SKU: "${sku}" from deal "${dealProps.dealname}"`,
+        //     // TAB + `{ ${sku}, ${quantity} x $${price} = $${amount} }`,
+        //     TAB + `     dealIndex: 1`, 
+        //     TAB + `dealCreateDate: ${toPacificTime(dealCreateDate)}`
+        // );
+        
+    } else if (sku && (skuHistory.hasOwnProperty(sku) || skuHistory[sku])) {
         let skuData = skuHistory[sku];
-        skuData.quantity += Number(lineItemData.quantity);
-        skuData.amount += lineItemData.price * Number(lineItemData.quantity);
-        if (!skuData.associatedDeals.includes(dealData.hs_object_id)) {
-            skuData.associatedDeals.push(dealData.hs_object_id);
+        skuData.quantity += quantity;
+        skuData.amount += amount;
+        if (!skuData.associatedDeals.includes(dealId)) {
+            skuData.associatedDeals.push(dealId);
         }
-        if (!skuData.associatedLineItems.includes(lineItemData.hs_object_id)) {
-            skuData.associatedLineItems.push(lineItemData.hs_object_id);
+        if (!skuData.associatedLineItems.includes(lineItemId)) {
+            skuData.associatedLineItems.push(lineItemId);
         }
         skuData.dealCount = skuData.associatedDeals.length;
         skuHistory[sku] = skuData;
-        if (enableConsoleLog) {
-            mlog.info(`[Repeat Sku] ${dealData.dealname}`,
-                TAB + `{ ${sku.split(' ')[0]}, ${lineItemData.quantity} x $${lineItemData.price} = $${lineItemData.price*Number(lineItemData.quantity)} }`,
-                TAB + `index: ${skuData.dealCount}`, 
-                TAB + `timestamp: ${toPacificTime(dealData.createdate)}`
-            );
-        }
+        // INFO_LOGS.push(NL + `Repeat SKU: "${sku}" from deal "${dealProps.dealname}"`,
+        //     // TAB + `{ "${sku}", ${quantity} x $${price} = $${amount} }`,
+        //     TAB + `     dealIndex: ${skuData.dealCount}`, 
+        //     TAB + `dealCreateDate: ${toPacificTime(dealCreateDate)}`
+        // );
     }
     return skuHistory;
 }
@@ -72,15 +88,19 @@ export function updateSkuHistory(
 export async function sortDealsChronologically(dealIds: Array<string>): Promise<Array<string>> {
     let dealsWithDates: {dealId: string, dealDate: string}[] = [];
     for (let dealId of dealIds) {
-        let dealDateResponse = await getDealById({ 
+        let deal = await getDealById({ 
             dealId: dealId, 
-            properties: ['createdate'] 
+            properties: ['createdate', 'dealstage'] 
         });
-        if (!dealDateResponse || !dealDateResponse.properties || !dealDateResponse.properties.createdate) {
-            mlog.warn(`Deal with ID ${dealId} not found or has no createdate property.`);
+        if (!deal || !deal.properties || !deal.properties.createdate) {
+            mlog.warn(`sortDealsChronologically(): invalid deal (not sortable); dealId='${dealId}' `,
+                TAB + `             Boolean(deal): ${Boolean(deal)}`,
+                TAB + ` Boolean(deal?.properties): ${Boolean(deal?.properties)}`,
+                TAB + `deal.properties.createdate: ${deal?.properties?.createdate}`,
+                TAB + ` deal.properties.dealstage: ${deal?.properties?.dealstage}`);
             continue;
         }
-        let dealDate = dealDateResponse.properties.createdate;
+        let dealDate = deal.properties.createdate;
         dealsWithDates.push({dealId, dealDate});
     }
     let chronologicalDealIds = dealsWithDates
@@ -117,19 +137,16 @@ export async function loadSkuHistoryOfContact(contactId: string | number): Promi
             mlog.warn(`Deal with ID ${dealId} not found is either undefined or has no line items.`);
             continue;
         }
-        let dealProps = dealResponse.properties;
         let lineItemIdList = dealResponse.associations['line items']
             .results.map(associatedLineItem => associatedLineItem.id);
         for (let lineItemId of lineItemIdList) { 
-            let lineItemResponse = await getLineItemById(lineItemId);
+            let lineItemResponse = await getLineItemById(lineItemId) as SimplePublicObjectWithAssociations;
             if (!lineItemResponse || !lineItemResponse.properties) {
                 mlog.warn(`Line item with ID ${lineItemId} not found.`);
                 continue;
             }
-            let lineItemProps = lineItemResponse.properties;
-            let sku = lineItemProps?.hs_sku;
-            if (sku && !sku.startsWith('MM')) {
-                skuHistory = updateSkuHistory(skuHistory, sku, lineItemProps, dealProps);
+            if (isValidLineItem(lineItemResponse, dealResponse)) {
+                skuHistory = updateSkuHistory(skuHistory, lineItemResponse, dealResponse);
             }
         }
     }

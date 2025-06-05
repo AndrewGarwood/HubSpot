@@ -14,7 +14,7 @@ import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE 
 import { STOP_RUNNING } from "../../config/env";
 import { isNullLike } from "../../utils/typeValidation";
 /**
- * @property {string} lineItemId `string` = `hs_object_id`
+ * @property {string} lineItemId `string` = `lineItem.hs_object_id`
  * @property {string[]} properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
  * @property {string[]} propertiesWithHistory `string[]`
  * @property {Array<Associations.DEALS | Associations.PRODUCTS>} associations `Array<`{@link Associations.DEALS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.DEALS}]
@@ -108,9 +108,8 @@ export function getSkuFromLineItem(
         return;
     }
     let sku: string;
-    let props = lineItem.properties;
     try {
-        sku = String(props.hs_sku);
+        sku = String(lineItem.properties.hs_sku);
         if (sku && sku.includes(' - ')) {
             sku = sku.split(' - ')[1] 
         } else if (sku && sku.includes('-Lot')) {
@@ -126,17 +125,77 @@ export function getSkuFromLineItem(
 }
 
 /**
- * @param sku `string`
- * @param price `number`
- * @param dealstage `string`
+ * `Overload 1`: arg1 is object and arg2 is object
+ * @param lineItem {@link SimplePublicObjectWithAssociations}
+ * @param deal {@link SimplePublicObjectWithAssociations}
  * @returns **`isValid`** — `boolean`
  */
-export function isValidLineItem(sku: string, price: number, dealstage: string): boolean {
+export function isValidLineItem(
+    lineItem: SimplePublicObjectWithAssociations,
+    deal: SimplePublicObjectWithAssociations
+): boolean
+
+/**
+ * `Overload 2`: arg1 is string and arg2 is number and arg3 is string
+ * @param sku `string`
+ * @param price `number`
+ * @param dealStage `string`
+ * @returns **`isValid`** — `boolean`
+ */
+export function isValidLineItem(
+    sku: string, 
+    price: number, 
+    dealStage: string
+): boolean 
+
+/**
+ * @param arg1 {@link SimplePublicObjectWithAssociations} | `string`
+ * @param arg2 {@link SimplePublicObjectWithAssociations} | `number`
+ * @param arg3 `string`
+ * @returns **`isValid`** — `boolean`
+ */
+export function isValidLineItem(
+    /**lineItem object or sku string*/    
+    arg1: SimplePublicObjectWithAssociations | string,
+    /**deal object or price number*/ 
+    arg2?: SimplePublicObjectWithAssociations | number, 
+    arg3?: any
+): boolean {
+    let sku: string | undefined;
+    let price: number = 0;
+    let dealStage: string = '';
+    const paramsAreObjects = Boolean(
+        typeof arg1 === 'object' && 'properties' in arg1
+        && arg2 && typeof arg2 === 'object' && 'properties' in arg2
+    );
+    const paramsAreValidPrimitives = Boolean(
+        typeof arg1 === 'string'
+        && typeof arg2 === 'number'
+        && typeof arg3 === 'string'
+    );
+    if (paramsAreObjects) {
+        const lineItem = arg1 as SimplePublicObjectWithAssociations;
+        const deal = arg2 as SimplePublicObjectWithAssociations;
+        sku = getSkuFromLineItem(lineItem);
+        price = Number(deal.properties.price || 0);
+        dealStage = String(deal.properties.dealstage || '');
+    } else if (paramsAreValidPrimitives) {
+        sku = arg1 as string;
+        price = arg2 as number;
+        dealStage = arg3 as string;
+    } else {
+        mlog.error(`isValidLineItem() Invalid arguments provided. Expected either of these signatures:`,
+            TAB + `1. isValidLineItem(lineItem: SimplePublicObjectWithAssociations, deal: SimplePublicObjectWithAssociations)`,
+            TAB + `2. isValidLineItem(sku: string, price: number, dealStage: string)`,
+            ` -> returning false`
+        );
+        return false; 
+    }
     let isValid: boolean = Boolean(!isNullLike(sku) 
         && price > 0 
-        && !CATEGORY_TO_SKU_DICT.Marketing.has(sku) 
-        && !sku.startsWith('MM-') 
-        && (VALID_DEAL_STAGES.includes(dealstage) || !INVALID_DEAL_STAGES.includes(dealstage))
+        && !CATEGORY_TO_SKU_DICT.Marketing.has(sku as string) 
+        && !(sku as string).startsWith('MM-') 
+        && (VALID_DEAL_STAGES.includes(dealStage) || !INVALID_DEAL_STAGES.includes(dealStage))
     );
     return isValid;
 }

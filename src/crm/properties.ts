@@ -15,10 +15,13 @@ import {
     FilterGroup
 } from "./types";
 import { getObjectById } from "./objects";
-import { PublicObjectSearchRequest as HS_PublicObjectSearchRequest, Filter as HS_Filter, FilterGroup as HS_FilterGroup } from "@hubspot/api-client/lib/codegen/crm/objects";
-import { SimplePublicObject as HS_SimplePublicObject, SimplePublicObjectWithAssociations as HS_SimplePublicObjectWithAssociations } from "@hubspot/api-client/lib/codegen/crm/objects";
-import { SimplePublicObjectInput as HS_SimplePublicObjectInput } from "@hubspot/api-client/lib/codegen/crm/objects";
-import { CollectionResponseWithTotalSimplePublicObjectForwardPaging as HS_CollectionResponseWithTotalSimplePublicObjectForwardPaging } from "@hubspot/api-client/lib/codegen/crm/objects";
+import { 
+    PublicObjectSearchRequest as HS_PublicObjectSearchRequest, 
+    SimplePublicObjectInput as HS_SimplePublicObjectInput,
+    CollectionResponseWithTotalSimplePublicObjectForwardPaging as HS_CollectionResponse 
+} from "@hubspot/api-client/lib/codegen/crm/objects";
+
+let NUMBER_OF_CHANGES = 0;
 
 /**
  * @description 
@@ -27,9 +30,9 @@ import { CollectionResponseWithTotalSimplePublicObjectForwardPaging as HS_Collec
  * 3. log if they are the same and return, no need to call `api.update` else, call `api.update`
  * @param objectType {@link CrmObjectEnum}
  * @param objectId `string`
- * @param propDict `Record<string, any>` for each `key` in `Object.keys(propDict)`, if `CrmObject[key]` != `properties[key]` then set `CrmObject[key]` = `properties[key]`
+ * @param propDict `Record<string, any>` for each `key` in `Object.keys(propDict)`, if `object[key]` != `properties[key]` then set `CrmObject[key]` = `properties[key]`
  * @param idProperty `string | undefined`
- * @returns **`updateRes`** `Promise<`{@link HS_SimplePublicObject} | {@link SimplePublicObject} | `undefined>` 
+ * @returns **`updateRes`** = `Promise<`{@link SimplePublicObject}`>` 
  */
 export async function updatePropertyByObjectId(
     objectType: CrmObjectEnum, 
@@ -78,23 +81,24 @@ export async function updatePropertyByObjectId(
         return updateRes;
     }
     const propsWithChanges: string[] = [];
-    const initialProps: Record<string, any> = initialObjectRes.properties;
     for (let propName of Object.keys(propDict)) {
-        const initialPropValue =  String(initialProps[propName]);
+        const initialPropValue =  String(initialObjectRes.properties[propName]);
         if (initialPropValue === propDict[propName]) { 
             continue; 
-        } 
+        }
+        debugLogs.push(
+            NL + `Property '${propName}' has changed for ${objectType} with id='${objectId}'`,
+            TAB + `Initial Value: ${initialPropValue}`,
+            TAB + `    New Value: ${propDict[propName]}`
+        );
         propsWithChanges.push(propName);
     }
     if (propsWithChanges.length === 0) {
         debugLogs.push(TAB + `No changes made for ${objectType} with id='${objectId}' (All property valeus are the same)`);
-        // log.debug(...debugLogs);
+        log.debug(...debugLogs);
         return initialObjectRes;
     }
-    // debugLogs.push(
-    //     TAB + `Trying to update '${objectType}' with id='${objectId}'`, 
-    //     TAB + `propsWithChanges: ${JSON.stringify(propsWithChanges)}`
-    // );
+    NUMBER_OF_CHANGES += propsWithChanges.length;
     const simpleObjectInput = { properties: {} } as HS_SimplePublicObjectInput;
     for (let propName of propsWithChanges) {
         simpleObjectInput.properties[propName] = propDict[propName];
@@ -104,11 +108,11 @@ export async function updatePropertyByObjectId(
         updateRes = await objectApi.update(
             String(objectId), simpleObjectInput, idProperty
         ) as SimplePublicObject;
-        debugLogs.push(
-            TAB + `Updated ${objectType} with id='${objectId}'`,
-            TAB + `propsWithChanges: ${JSON.stringify(propsWithChanges)}`,
-            TAB +` -> returning update response.`
-        );
+        // debugLogs.push(
+        //     TAB + `Updated ${objectType} with id='${objectId}'`,
+        //     TAB + `propsWithChanges: ${JSON.stringify(propsWithChanges)}`,
+        //     TAB +` -> returning update response.`
+        // );
     } catch (e) {
         mlog.error(`Error updating ${objectType} with id='${objectId}'`,
             TAB + `properties=${JSON.stringify(simpleObjectInput.properties)}`, 
@@ -116,7 +120,7 @@ export async function updatePropertyByObjectId(
             TAB + `Error:`, e
         );
     }
-    // log.debug(...debugLogs);
+    mlog.debug(...debugLogs);
     return updateRes;
 }
 
@@ -143,13 +147,13 @@ export async function batchUpdatePropertyByObjectId(
                 propDict,
                 idProperty
             );
-            await DELAY(1000, 
-                ` > Finished updatePropertyByObjectId() call (${i+1}/${objectIds.length}) for ${objectType}`,
-                TAB + ` ->  pausing for 1 second...`
-            );
+            await DELAY(1000, null);
+            //     ` > batchUpdatePropertyByObjectId() Finished update (${i+1}/${objectIds.length}) for ${objectType}`,
+            //     ` -> Pausing for 1 second.`
+            // );
             i++;
             if (!updateRes) {
-                log.error(`batchUpdatePropertyByObjectId(): Error at objectIds[index=${i}]`,
+                mlog.error(`batchUpdatePropertyByObjectId(): Error at objectIds[index=${i}]`,
                     TAB + `undefined response for ${objectType} with id='${objectId}'`
                 );
                 continue;
@@ -157,9 +161,11 @@ export async function batchUpdatePropertyByObjectId(
             responses.push(updateRes);
         }
         mlog.info(`End of batchUpdatePropertyByObjectId()`,
-            TAB + `updated (${responses.length}/${objectIds.length}) ${objectType}(s)`,
+            TAB + 'Number of changes made:', NUMBER_OF_CHANGES,
+            TAB + `processed (${responses.length}/${objectIds.length}) ${objectType}(s)`,
             TAB + `propDict: ${JSON.stringify(propDict)}`
         );
+        NUMBER_OF_CHANGES = 0; // reset for next batch
     } catch (e) {
         mlog.error(`Error updating ${objectType}s with IDs: ${objectIds}:`, e);
     }
@@ -247,10 +253,11 @@ export async function batchSetPropertyByObjectId(
                 properties,
                 idProperty
             );
-            await DELAY(1000, 
-                NL + `Finished setPropertyByObjectId() call (${i+1}/${objectIds.length}) for ${objectType}`,
-                TAB + ` -> pausing for 1 second...`
-            );
+            await DELAY(1000, null);
+            // await DELAY(1000, 
+            //     NL + `Finished setPropertyByObjectId() call (${i+1}/${objectIds.length}) for ${objectType}`,
+            //     TAB + ` -> pausing for 1 second...`
+            // );
             i++;
             if (!res) continue;
             responses.push(res);
@@ -337,7 +344,7 @@ export async function searchObjectByProperty(
     try {
         const apiResponse = await hubspotClient.crm[objectType].searchApi.doSearch(
             searchRequest as HS_PublicObjectSearchRequest
-        ) as HS_CollectionResponseWithTotalSimplePublicObjectForwardPaging;
+        ) as HS_CollectionResponse;
         
         
         searchResponse.objectIds = apiResponse.results.map(object => object.id),

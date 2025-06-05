@@ -1,3 +1,6 @@
+/**
+ * @file src/config/env.ts
+ */
 import { Client } from '@hubspot/api-client';
 import * as fs from 'fs';
 import * as readline from 'node:readline/promises';
@@ -48,7 +51,7 @@ validatePath(
     NODE_HOME_DIR, SRC_DIR, ONE_DRIVE_DIR, CLOUD_LOG_DIR, 
     DATA_DIR, OUTPUT_DIR
 );
-function validatePath(...paths: string[]): void {
+export function validatePath(...paths: string[]): void {
     for (const p of paths) {
         if (!fs.existsSync(p)) {
             console.error(`env.ts validatePath() ERROR: Path does not exist: ${p}`);
@@ -76,7 +79,8 @@ export const STOP_RUNNING = (exitCode: number=0, ...msg: any[]): void => {
 }
 /**
  * @description Pause execution for specified amount of milliseconds
- * - default message =  `'> Pausing for ${ms} milliseconds.'` 
+ * - default message =  `'> Pausing for ${ms} milliseconds.'`
+ * - `if` pass in null as second argument, no message will be logged 
  * @param {number} ms - The number of milliseconds to pause execution for.
  * @param {...any} [msg] - `(optional)` The message to log before pausing.
  * @returns {Promise<void>}
@@ -85,6 +89,6 @@ export const STOP_RUNNING = (exitCode: number=0, ...msg: any[]): void => {
 export const DELAY = async (ms: number, ...msg: any[]): Promise<void> => {
     let pauseMsg = ` > Pausing for ${ms} milliseconds.`;
     let msgArr = Array.isArray(msg) && msg.length > 0 ? msg : [pauseMsg];
-    console.log(...msgArr);
+    if (msgArr[0] !== null) {console.log(...msgArr);}
     return new Promise(resolve => setTimeout(resolve, ms));
 }

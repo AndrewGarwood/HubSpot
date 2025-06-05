@@ -5,11 +5,13 @@
 import { OUTPUT_DIR, CLOUD_LOG_DIR } from './env';
 import { Logger, ISettingsParam, ISettings, ILogObj, ILogObjMeta, IPrettyLogStyles, IMeta } from 'tslog';
 import path from 'node:path';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 /** LOCAL_LOG_DIR (in onedrive) or `OUTPUT_DIR/logs` */
 const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  
 /**`OUTPUT_DIR/logs/DEBUG.txt` */
-const DEFAULT_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "DEBUG.txt");
+export const MAIN_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "DEBUG.txt");
+/** `CLOUD_LOG_DIR/API_LOG.txt` */
+export const CLOUD_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
 /**`OUTPUT_DIR/logs/ERROR.txt` */
 const ERROR_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "ERROR.txt"); 
 /** 
@@ -99,10 +101,11 @@ const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
     prettyLogTimeZone: "local",
     prettyLogStyles: PRETTY_LOG_STYLES,
 }
+/**`type: "pretty"` */
 export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
 mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
     appendFileSync(
-        DEFAULT_LOG_FILEPATH, 
+        MAIN_LOG_FILEPATH, 
         JSON.stringify(logObj) + "\n", 
         { encoding: "utf-8" }
     );
@@ -121,14 +124,25 @@ const API_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
     prettyLogStyles: PRETTY_LOG_STYLES,
 }
 
+/** `type: "hidden"` */
 export const apiLogger = new Logger<ILogObj>(API_LOGGER_SETTINGS);
-apiLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
+apiLogger.attachTransport((logObj: ILogObj) => {
     appendFileSync(
-        path.join(CLOUD_LOG_DIR, 'API_LOG.txt'), 
+        CLOUD_LOG_FILEPATH, 
         JSON.stringify(logObj, null, 4) + "\n",
         { encoding: "utf-8" }
     );
 });
 
-
+/**
+ * Clears the content of the specified log file(s).
+ * @param filePaths - The path(s) to the log file(s) to clear.
+ */
+export function clearLogFile(...filePaths: string[]): void {
+    for (const filePath of filePaths) {
+        writeFileSync(filePath, '', { encoding: 'utf-8' });
+    }
+}
+export const INFO_LOGS: any[] = []
+export const DEBUG_LOGS: any[] = [];
 export { indentedStringify } from '../utils/io'

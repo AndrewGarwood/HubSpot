@@ -12,6 +12,11 @@ export const CONTACT_CORE_PROPS = [
     'hubspot_owner_id','miracu_product_manager', 'regional_manager_owner', 
     'letybo_owner','num_associated_deals'
 ];
+/**
+ * `'unific_last_order_date', 'unific_customer_group',
+ * 'unific_total_number_of_orders', 'unific_total_value_of_orders',
+ * 'unific_skus_bought_text'`
+ */
 export const CONTACT_UNIFIC_PROPS = [
     'unific_last_order_date', 'unific_customer_group', 
     'unific_total_number_of_orders', 'unific_total_value_of_orders', 
@@ -46,18 +51,35 @@ export const LINE_ITEM_CORE_PROPS = [
     'currency', 'miracu_product_category', 'miracu_product_subcategory', 
     'commissionable_categories', 'is_net_new'
 ];
+
+/**
+ * `'closedwon', 'shipped', 'checkout_completed'`,
+ * `'processed', 'checkout_processed'`
+ */
 export const VALID_DEAL_STAGES = [
     'closedwon', 'shipped', 'checkout_completed', 
     'processed', 'checkout_processed'
 ];
+/**
+ * `'canceled', 'checkout_canceled', 'cancelled'`,
+ * `'checkout_cancelled', 'checkout_pending', 'checkout_abandoned'`
+ */
 export const INVALID_DEAL_STAGES = [
     'canceled', 'checkout_canceled', 'cancelled', 'checkout_cancelled', 
     'checkout_pending', 'checkout_abandoned'
 ];
-
+/**
+ * `'address', 'street_address_2', 'city', 'state', 'zip', 'country', 'phone', 'email'`
+ */
 export const DEFAULT_ADDRESS_PROPERTIES = [
     'address', 'street_address_2', 'city', 'state', 'zip', 'country', 'phone', 'email'
 ];
+
+/**
+ * `'unific_shipping_address_line_1', 'unific_shipping_address_line_2', 
+ * 'unific_shipping_city', 'unific_shipping_state','unific_shipping_postal_code',
+ * 'unific_shipping_country', 'unific_shipping_phone'`
+ */
 export const SHIPPING_ADDRESS_PROPERTIES = [
     'unific_shipping_address_line_1', 'unific_shipping_address_line_2', 
     'unific_shipping_city', 'unific_shipping_state','unific_shipping_postal_code',

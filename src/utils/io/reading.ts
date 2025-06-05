@@ -1,26 +1,25 @@
 /**
  * @file src/utils/io/reading.ts
  */
-import { mainLogger as log, INDENT_LOG_LINE as TAB } from '../../config/setupLog';
 import fs from 'fs';
 import xlsx from 'xlsx';
 import { FileExtensionResult, ParseOneToManyOptions, StringPadOptions, StringCaseOptions, StringStripOptions } from './types/Reading';
 import { DelimitedFileTypeEnum, DelimiterCharacterEnum } from './types/Csv';
 import { stripCharFromString, cleanString, UNCONDITIONAL_STRIP_DOT_OPTIONS } from './regex';
-
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from '../../config/setupLog';
 
 
 /**
- * @param {string} filePath `string`
- * @param {string} sheetName `string`
- * @param {string} keyColumn `string`
- * @param {string} valueColumn `string`
- * @param {ParseOneToManyOptions} options - {@link ParseOneToManyOptions}
+ * @param filePath `string`
+ * @param sheetName `string`
+ * @param keyColumn `string`
+ * @param valueColumn `string`
+ * @param options - {@link ParseOneToManyOptions}
  * = `{ keyStripOptions`?: {@link StringStripOptions}, `valueStripOptions`?: {@link StringStripOptions}, keyCaseOptions`?: {@link StringCaseOptions}, `valueCaseOptions`?: {@link StringCaseOptions}, `keyPadOptions`?: {@link StringPadOptions}, `valuePadOptions`?: {@link StringPadOptions} `}`
  * - {@link StringStripOptions} = `{ char`: `string`, `escape`?: `boolean`, `stripLeftCondition`?: `(s: string, ...args: any[]) => boolean`, `leftArgs`?: `any[]`, `stripRightCondition`?: `(s: string, ...args: any[]) => boolean`, `rightArgs`?: `any[] }`
  * - {@link StringCaseOptions} = `{ toUpper`?: `boolean`, `toLower`?: `boolean`, `toTitle`?: `boolean }`
  * - {@link StringPadOptions} = `{ padLength`: `number`, `padChar`?: `string`, `padLeft`?: `boolean`, `padRight`?: `boolean }`
- * @returns **`dict`**: `Record<string, Array<string>>` — key-value pairs where key is from `keyColumn` and value is an array of values from `valueColumn`
+ * @returns **`dict`** = `Record<string, Array<string>>` - key-value pairs where key is from `keyColumn` and value is an array of values from `valueColumn`
  */
 export function parseExcelForOneToMany(
     filePath: string, 
@@ -34,7 +33,11 @@ export function parseExcelForOneToMany(
         'xlsx'
     ).validatedFilePath;
     try {
-        const { keyStripOptions, valueStripOptions, keyCaseOptions, valueCaseOptions, keyPadOptions, valuePadOptions } = options;
+        const { 
+            keyStripOptions, valueStripOptions, 
+            keyCaseOptions, valueCaseOptions, 
+            keyPadOptions, valuePadOptions 
+        } = options;
         const workbook = xlsx.readFile(filePath);
         const sheet = workbook.Sheets[sheetName];
         const jsonData: any[] = xlsx.utils.sheet_to_json(sheet);
@@ -61,14 +64,14 @@ export function parseExcelForOneToMany(
         });
         return dict;
     } catch (err) {
-        log.error('Error reading or parsing the Excel file:', err, 
-            TAB + `Given File Path: "${filePath}"`,);
+        mlog.error('Error reading or parsing the Excel file:', err, 
+            TAB + `Given File Path: "${filePath}"`
+        );
         return {} as Record<string, Array<string>>;
     }
 }
 
 /**
- * 
  * @param filePath `string`
  * @param keyColumn `string`
  * @param valueColumn `string`
@@ -77,7 +80,7 @@ export function parseExcelForOneToMany(
  * = `{ keyCaseOptions`?: {@link StringCaseOptions}, `valueCaseOptions`?: {@link StringCaseOptions}, `keyPadOptions`?: {@link StringPadOptions}, `valuePadOptions`?: {@link StringPadOptions} `}`
  * - {@link StringCaseOptions} = `{ toUpper`?: `boolean`, `toLower`?: `boolean`, `toTitle`?: `boolean }`
  * - {@link StringPadOptions} = `{ padLength`: `number`, `padChar`?: `string`, `padLeft`?: `boolean`, `padRight`?: `boolean }`
- * @returns `Record<string, Array<string>>` - key-value pairs where key is from `keyColumn` and value is an array of values from `valueColumn`
+ * @returns **`dict`** = `Record<string, Array<string>>` - key-value pairs where key is from `keyColumn` and value is an array of values from `valueColumn`
  */
 export function parseCsvForOneToMany(
     filePath: string,
@@ -91,7 +94,10 @@ export function parseCsvForOneToMany(
         DelimitedFileTypeEnum.CSV
     ).validatedFilePath;
     try {
-        const { keyStripOptions, valueStripOptions, keyCaseOptions, valueCaseOptions, keyPadOptions, valuePadOptions } = options;
+        const { keyStripOptions, valueStripOptions, 
+            keyCaseOptions, valueCaseOptions, 
+            keyPadOptions, valuePadOptions 
+        } = options;
         const data = fs.readFileSync(filePath, 'utf8');
         const lines = data.split('\n');
         const dict: Record<string, Array<string>> = {};
@@ -126,8 +132,9 @@ export function parseCsvForOneToMany(
         }
         return dict;
     } catch (err) {
-        log.error('Error reading or parsing the CSV file:', err, 
-            TAB + `Given File Path: "${filePath}"`);
+        mlog.error('Error reading or parsing the CSV file:', err, 
+            TAB + `Given File Path: "${filePath}"`
+        );
         return {} as Record<string, Array<string>>;
     }
 }
@@ -136,7 +143,7 @@ export function parseCsvForOneToMany(
  * Determines the proper delimiter based on file type or extension
  * @param filePath Path to the file
  * @param fileType Explicit file type or `'auto'` for detection
- * @returns `extension` `{`{@link DelimiterCharacterEnum}` | string}` The delimiter character
+ * @returns **`extension`** `{`{@link DelimiterCharacterEnum}` | string}` The delimiter character
  */
 export function getDelimiterFromFilePath(
     filePath: string, 
@@ -160,7 +167,7 @@ export function getDelimiterFromFilePath(
  * 
  * @param filePath `string`
  * @param toLowerCase `boolean` - Whether to convert the extension to lowercase
- * @returns `extension` `string` - The file extension = last element of `filePath.split('.')`
+ * @returns **`extension`** `string` - The file extension = last element of `filePath.split('.')`
  */
 export function getExtensionFromFilePath(filePath: string, toLowerCase: boolean=true): string {
     const parts = filePath.split('.');
@@ -176,9 +183,8 @@ export function getExtensionFromFilePath(filePath: string, toLowerCase: boolean=
 
 
 /**
- * 
- * @param {string} filePath `string`
- * @returns {Array<string>} `jsonData` — `Array<string>`
+ * @param filePath `string`
+ * @returns **`jsonData`** — `Array<string>`
  */
 export function readFileLinesIntoArray(filePath: string): Array<string> {
     const result: string[] = [];
@@ -191,15 +197,14 @@ export function readFileLinesIntoArray(filePath: string): Array<string> {
             }
         }
     } catch (err) {
-        log.error('Error reading the file:', err);
+        mlog.error('Error reading the file:', err);
     }
     return result;
 }
 
 /**
- * 
- * @param {string} filePath `string`
- * @returns {Record<string, any> | null} `jsonData` — `Record<string, any> | null` - JSON data as an object or null if an error occurs
+ * @param filePath `string`
+ * @returns **`jsonData`** — `Record<string, any> | null` - JSON data as an object or null if an error occurs
  */
 export function readJsonFileAsObject(filePath: string): Record<string, any> | null {
     filePath = validateFileExtension(filePath, 'json').validatedFilePath;
@@ -208,16 +213,16 @@ export function readJsonFileAsObject(filePath: string): Record<string, any> | nu
         const jsonData = JSON.parse(data);
         return jsonData;
     } catch (err) {
-        log.error('Error reading or parsing the JSON file:', err, 
-            TAB + `Given File Path: "${filePath}"`);
+        mlog.error('Error reading or parsing the JSON file:', err, 
+            '\n\t Given File Path:', '"' + filePath + '"');
         return null;
     }
 }
 
 
 /**
- * @param {string} filePath `string`
- * @param {string} expectedExtension `string`
+ * @param filePath `string`
+ * @param expectedExtension `string`
  * @returns **`result`**: {@link FileExtensionResult} = `{ isValid`: `boolean`, `validatedFilePath`: `string }`
  */
 export function validateFileExtension(filePath: string, expectedExtension: string): FileExtensionResult {

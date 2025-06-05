@@ -1,36 +1,53 @@
 /**
  * @file src/utils/io/regex.ts
  */
-import { mainLogger as log, INDENT_LOG_LINE as TAB } from '../../config/setupLog';
-import { StringCaseOptions, StringPadOptions, StringStripOptions } from "./types/Reading";
+import { 
+    apiLogger as log, 
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL 
+} from "../../config/setupLog";
+import { isNonEmptyArray } from "../typeValidation";
+import { 
+    StringCaseOptions, StringPadOptions, 
+    StringReplaceOptions, StringStripOptions 
+} from "./types/Reading";
 
 
 /**
- * @TODO implement a StringReplaceOptions
  * @description 
+ * - applies options in this order: StringReplaceOptions, StringStripOptions, StringCaseOptions, StringPadOptions
  * - Removes leading+trailing spaces, extra spaces, commas, and dots from a string (e.g. `'..'` becomes `'.'`)
  * - optionally applies 3 option params with: {@link stripCharFromString}, {@link handleCaseOptions}, and {@link handlePadOptions}.
  * @param s - the `string` to clean
  * @param stripOptions — {@link StringStripOptions}
  * - `optional` strip options to apply to the string
- * = `{ char: string, escape?: boolean, stripLeftCondition?: (s: string, ...args: any[]) => boolean, leftArgs?: any[], stripRightCondition?: (s: string, ...args: any[]) => boolean, rightArgs?: any[] }`
+ * - = `{ char: string, escape?: boolean, stripLeftCondition?: (s: string, ...args: any[]) => boolean, leftArgs?: any[], stripRightCondition?: (s: string, ...args: any[]) => boolean, rightArgs?: any[] }`
  * @param caseOptions — {@link StringCaseOptions} 
  * - `optional` case options to apply to the string
- * = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
+ * - = `{ toUpper: boolean, toLower: boolean, toTitle: boolean }`
  * @param padOptions — {@link StringPadOptions} 
  * - `optional` padding options to apply to the string
- * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
+ * - = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
+ * @param replaceOptions — {@link StringReplaceOptions}
+ * - `optional` replace options to apply to the string
+ * - = `{ replacements: Array<`{@link StringReplaceParams}`> }`
+ * - = `{ replacements: Array<{ searchValue: string | RegExp, replaceValue: string }> }`
  * @returns **`s`** - the cleaned `string`
  */
 export function cleanString(
     s: string,
     stripOptions?: StringStripOptions, 
     caseOptions?: StringCaseOptions,
-    padOptions?: StringPadOptions
+    padOptions?: StringPadOptions,
+    replaceOptions?: StringReplaceOptions
 ): string {
     if (!s) return '';
     s = String(s).trim();
     s = s.replace(/\s+/g, ' ').replace(/\.{2,}/g, '.');
+    if (replaceOptions && isNonEmptyArray(replaceOptions.replacements)) {
+        for (const params of replaceOptions.replacements) {
+            s = s.replace(params.searchValue, params.replaceValue)
+        }
+    }
     if (stripOptions) {
         s = stripCharFromString(s, stripOptions);
     }
@@ -190,12 +207,13 @@ export const COMPANY_ABBREVIATION_PATTERN: RegExp =
 export function doesNotEndWithKnownAbbreviation(s: string): boolean {
     if (!s) return false;
     s = s.trim();
-    const singleInitialPattern = /\b[A-Z]\.?\b/;
+    /** matches 1 to 2 occurences of a single letter followed by an optional period */
+    const initialsPattern = /\b([A-Z]\.?){1}([A-Z]\.?)?\b/;
     return !s.endsWith('Ph.D.') 
         && !stringEndsWithAnyOf(s, /\b[A-Z]{2}\.?\b/) 
         && !stringEndsWithAnyOf(s, JOB_TITLE_SUFFIX_PATTERN, RegExpFlagsEnum.IGNORE_CASE) 
         && !stringEndsWithAnyOf(s, COMPANY_ABBREVIATION_PATTERN, RegExpFlagsEnum.IGNORE_CASE) 
-        && !stringEndsWithAnyOf(s, singleInitialPattern, RegExpFlagsEnum.IGNORE_CASE);
+        && !stringEndsWithAnyOf(s, initialsPattern, RegExpFlagsEnum.IGNORE_CASE);
 }
 
 /** strip leading `.` and trailing `.` if satisfy stripRightCondition: {@link doesNotEndWithKnownAbbreviation} */
@@ -226,10 +244,15 @@ export const EMAIL_REGEX = new RegExp(
     RegExpFlagsEnum.GLOBAL
 );
 
+/**return true if matches {@link EMAIL_REGEX} and does not include substring '@benev'  */
 export function isValidEmail(email: string): boolean {
     if (!email) return false;
     email = email.trim();
-    return EMAIL_REGEX.test(email);
+    return EMAIL_REGEX.test(email) 
+        && !stringContainsAnyOf(
+            email, /@benev/, 
+            RegExpFlagsEnum.IGNORE_CASE, RegExpFlagsEnum.GLOBAL
+        );
 }
 
 /** @returns `email`: `string` - the first email that matches {@link EMAIL_REGEX} or an empty string `''`*/
@@ -573,7 +596,11 @@ export function stringStartsWithAnyOf(
  * @param flags `Optional` regex flags to use when creating the {@link RegExp} object. see {@link RegExpFlagsEnum}
  * @returns 
  */
-export function stringContainsAnyOf(str: string, substrings: string | string[] | RegExp, ...flags: RegExpFlagsEnum[]): boolean {
+export function stringContainsAnyOf(
+    str: string, 
+    substrings: string | string[] | RegExp, 
+    ...flags: RegExpFlagsEnum[]
+): boolean {
     if (!str || !substrings) {
         return false;
     }
