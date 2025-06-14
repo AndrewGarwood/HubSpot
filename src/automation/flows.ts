@@ -1,24 +1,37 @@
 /**
- * @file src/utils/automation/flows.ts
+ * @file src/automation/flows.ts
  */
-
-import { HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR } from '../config/env'
-import path from 'node:path';
-import { AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE} from '../types/AxiosEnums';
 import { 
-    Flow, Action, ActionTypeEnum, ActionTypeIdEnum, FlowFilter, FlowFilterTypeEnum, MAX_VALUES_PER_FILTER,
-    Operation, OperatorEnum, OperationTypeEnum, NumericOperatorEnum, FilterBranch, FilterBranchTypeEnum, FilterBranchOperatorEnum, ListBranch, FlowBranchUpdate 
+    HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR, 
+    mainLogger as mlog, apiLogger as alog, INDENT_LOG_LINE as TAB, NEW_LINE as NL 
+} from '../config';
+import { AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE} from '../utils/api/types/AxiosEnums';
+import { 
+    batchGeneratePropertyContainsStringChildFilterBranch, 
+    distributeFilterValuesOfListBranch, 
+    getListBranchFlowFilterValueArrayLengths, 
+    partitionArrayByNumSubarrays 
+} from './flowFactory';
+import { 
+    Flow, Action, ActionTypeEnum, ActionTypeIdEnum, FlowFilter, MAX_VALUES_PER_FILTER,
+    FilterBranch, FilterBranchTypeEnum, ListBranch, FlowBranchUpdate 
 } from './types';
 
 const BEARER_ACCESS_TOKEN = `Bearer ${HUBSPOT_ACCESS_TOKEN}`;
-
+export const debugLogs: any[] = [];
 /**
- * @param {string} flowId `string` 
- * @returns `response` = `Promise<`{@link Flow}`>`
+ * @param flowId `string` 
+ * @returns **`response`** = `Promise<`{@link Flow} `| undefined>`
  */
 export async function getFlowById(flowId: string): Promise<Flow | undefined> {
+    if (!flowId || typeof flowId !== 'string') {
+        mlog.error(`getFlowById() Invalid Parameter:`,
+            TAB+`typeof flowId: ${typeof flowId}, flowId: '${flowId}'`
+        );
+        return {} as Flow;
+    }
     try {
-        const response = await fetch(path.join(FLOWS_API_URL, flowId), {
+        const response = await fetch(`${FLOWS_API_URL}/${flowId}`, {
             method: HTTP.GET,
             headers: {
                 "accept": CONTENT_TYPE.JSON,
@@ -27,24 +40,31 @@ export async function getFlowById(flowId: string): Promise<Flow | undefined> {
             }
         });
         if (!response.ok) {
-            console.error(JSON.stringify(response, null, 4));
+            mlog.error(JSON.stringify(response, null, 4));
             throw new Error(`HTTP request failed with status ${response.status}`);
         }
         return response.json();
     } catch (e) {
-        console.error('Error in getFlowById():', e);
+        mlog.error('Error in getFlowById():', e);
         return undefined;
     }
 }
 
 /**
- * @param {string} flowId `string`
- * @param {Flow} flowDefinition {@link Flow}  
- * @returns `response` = `Promise<`{@link Flow}`>`
+ * @param flowId `string`
+ * @param flowDefinition {@link Flow}  
+ * @returns **`response`** = `Promise<`{@link Flow} `| undefined>`
  */
 export async function setFlowById(flowId: string, flowDefinition: Flow): Promise<Flow | undefined> {
+    if (!flowId || typeof flowId !== 'string' || !flowDefinition || typeof flowDefinition !== 'object') {
+        mlog.error(`setFlowById() Invalid Parameters:`,
+            TAB+`        typeof flowId: ${typeof flowId}, flowId: '${flowId}'`,
+            TAB+`typeof flowDefinition: ${typeof flowDefinition}`
+        );
+        return {} as Flow;
+    }
     try {
-        const response = await fetch(path.join(FLOWS_API_URL, flowId), {
+        const response = await fetch(`${FLOWS_API_URL}/${flowId}`, {
             method: HTTP.PUT,
             headers: {
                 "accept": CONTENT_TYPE.JSON,
@@ -58,17 +78,17 @@ export async function setFlowById(flowId: string, flowDefinition: Flow): Promise
         }
         return response.json();
     } catch (e) {
-        console.error('Error in setFlowById():', e);
+        mlog.error('Error in setFlowById():', e);
         return undefined;
     }
 }
 
 /**
  * override previous content of `filter.operation.values` with `values`
- * @param {FlowFilter} filter {@link FlowFilter}
- * @param {string} targetProperty - `string`
- * @param {Array<string>} values - `Array<string>`
- * @returns {FlowFilter} `filter` — {@link FlowFilter}
+ * @param filter {@link FlowFilter}
+ * @param targetProperty - `string`
+ * @param values - `Array<string>`
+ * @returns **`filter`** — {@link FlowFilter}
  */
 export function setFlowFilterValues(
     filter: FlowFilter, 
@@ -79,7 +99,8 @@ export function setFlowFilterValues(
         return filter;
     }
     if (filter.property !== targetProperty || !filter.operation) {
-        console.log(`\tSkipping filter in setFlowFilterValues(), property ${filter.property} !== ${targetProperty}`);
+        debugLogs.push(`Skipping filter in setFlowFilterValues():`,
+            TAB+`property '${filter.property}' !== '${targetProperty}'`);
         return filter;
     }
     if (!filter.operation.values) {
@@ -88,7 +109,7 @@ export function setFlowFilterValues(
     const sameLength = filter.operation.values.length === values.length;
     const sameValues = filter.operation.values.every(value => values.includes(value));
     if (sameLength && sameValues) { // no change to filter
-        console.log(`\tNo change after setFlowFilterValues() for property ${targetProperty}.`);
+        debugLogs.push(NL + `No change after setFlowFilterValues() for property '${targetProperty}'.`);
         return filter;
     }
     filter.operation.values = values;
@@ -96,12 +117,12 @@ export function setFlowFilterValues(
 }
 
 /**
- * @param {FlowFilter} filter {@link FlowFilter}
- * @param {string} targetProperty - `string`
- * @param {Array<string>} valuesToRemove - `Array<string>`
- * @returns {FlowFilter} `filter` — {@link FlowFilter}
+ * @param filter {@link FlowFilter}
+ * @param targetProperty - `string`
+ * @param valuesToRemove - `Array<string>`
+ * @returns **`filter`** — {@link FlowFilter}
  */
-export function removeValuesFromFilter(
+export function removeFlowFilterValues(
     filter: FlowFilter, 
     targetProperty: string, 
     valuesToRemove: string[]
@@ -119,12 +140,12 @@ export function removeValuesFromFilter(
 }
 
 /**
- * @param {FlowFilter} filter {@link FlowFilter}
- * @param {string} targetProperty - `string`
- * @param {Array<string>} valuesToAdd - `Array<string>`
- * @returns {FlowFilter} `filter` — {@link FlowFilter}
+ * @param filter {@link FlowFilter}
+ * @param targetProperty - `string`
+ * @param valuesToAdd - `Array<string>`
+ * @returns **`filter`** — {@link FlowFilter}
  */
-export function addValuesToFilter(
+export function addFlowFilterValues(
     filter: FlowFilter, 
     targetProperty: string, 
     valuesToAdd: string[]
@@ -149,66 +170,55 @@ export function addValuesToFilter(
 /**
  * Gets first listBranch with matching branchName.
  * Log branchName to console and return listBranch if found else, log not found and return null.
- * @param {Flow} flow {@link Flow}
- * @param {string} targetBranchName - `string`
- * @returns {ListBranch} `listBranch` {@link ListBranch}
+ * @param flow {@link Flow}
+ * @param targetBranchName - `string`
+ * @returns **`listBranch`** {@link ListBranch}
  */
 export function getListBranchByName(
     flow: Flow, 
     targetBranchName: string
 ): ListBranch | null {
     if (!targetBranchName) {
-        console.log(`\t Exiting getListBranchByName() - input targetBranchName was undefined.`);
+        debugLogs.push(NL + `Exiting getListBranchByName() - input targetBranchName was undefined.`);
         return null;
     }
     if (!flow || !flow.actions || flow.actions.length === 0) {
         return null;
     }
     let actions: Action[] = flow.actions;
-    console.log(`\tBegin search for branch: ${targetBranchName}`);
+    debugLogs.push(
+        (debugLogs.length > 0 ? NL : '') 
+        + `getListBranchByName() Begin search for branch: '${targetBranchName}'`
+    );
     for (let action of actions) {
-        if (!action
+        const isNotListBranchAction = Boolean(!action
             || action.type !== ActionTypeEnum.LIST_BRANCH
             || !action.listBranches
             || (action.actionTypeId && action.actionTypeId === ActionTypeIdEnum.SET_PROPERTY)
-        ) {
-            console.log(`\t\t Skipping action: ${action.actionId} with type: ${action.type}`);
+        );
+        if (isNotListBranchAction) {
+            // debugLogs.push(NL + `Skipping action: ${action.actionId} with type: ${action.type}`);
             continue;
         }
-        let listBranch = Object.values(action.listBranches).find(
+        let listBranch = Object.values(action.listBranches as ListBranch[]).find(
             listBranch => listBranch.branchName === targetBranchName
         );
         if (listBranch) {
-            console.log(`\t getListBranchByName() Found branch "${targetBranchName}" at actionId: ${action.actionId} with type: ${action.type}`);
+            debugLogs.push(TAB + `Found branch '${targetBranchName}'`,
+                TAB + `at actionId: '${action.actionId}' with type: '${action.type}'`
+            );
             return listBranch;
         }
     }
-    console.log(`No branch found with name: ${targetBranchName}`);
+    mlog.warn(`No branch found with name: '${targetBranchName}'`);
     return null;
 }
-/**
- *- `flow.action.listBranches` - `Array<`{@link ListBranch}`>`
- * @param {Flow} flow {@link Flow}
- * @returns {boolean} `boolean`
- */
-export function hasUniqueBranchNames(flow: Flow): boolean {
-    if (!flow || !flow.actions || flow.actions.length === 0) {
-        return true;
-    }
-    try {
-        let allBranchNames: string[] = getAllBranchNames(flow);
-        let uniqueBranchNames: string[] = Array.from(new Set(allBranchNames));
-        return allBranchNames.length === uniqueBranchNames.length;
-    } catch (e) {
-        console.error('Error in hasUniqueBranchNames():', e);
-        return false;
-    }
-}
+
 
 /**
  * Get all {@link ListBranch} names from a {@link Flow} object.
- * @param {Flow} flow {@link Flow}
- * @returns {Array<string>} `branchNames`: `Array<string>`
+ * @param flow {@link Flow}
+ * @returns **`branchNames`**: `Array<string>`
  */
 export function getAllBranchNames(flow: Flow): Array<string> {
     if (!flow || !flow.actions || flow.actions.length === 0) {
@@ -224,29 +234,47 @@ export function getAllBranchNames(flow: Flow): Array<string> {
             if (listBranch.branchName) {
                 branchNames.push(listBranch.branchName);
             } else {
-                console.log(`\t\t Skipping listBranch with undefined branchName.`);
+                debugLogs.push(NL + `Skipping listBranch with undefined branchName.`);
             }
         }
     }
     return branchNames;
 }
 
+/**
+ * `flow.action.listBranches` - `Array<`{@link ListBranch}`>`
+ * @param flow {@link Flow}
+ * @returns **`boolean`**
+ */
+export function hasUniqueBranchNames(flow: Flow): boolean {
+    if (!flow || !flow.actions || flow.actions.length === 0) {
+        return true;
+    }
+    try {
+        let allBranchNames: string[] = getAllBranchNames(flow);
+        let uniqueBranchNames: string[] = Array.from(new Set(allBranchNames));
+        return allBranchNames.length === uniqueBranchNames.length;
+    } catch (e) {
+        mlog.error('Error in hasUniqueBranchNames():', e);
+        return false;
+    }
+}
 
 /**
- * @param {ListBranch} listBranch 
- * @param {Array<FilterBranch>} newChildFilterBranches - `Array<`{@link FilterBranch}`>`
- * @returns {ListBranch} `listBranch` - {@link ListBranch}
+ * @param listBranch 
+ * @param newChildFilterBranches - `Array<`{@link FilterBranch}`>`
+ * @returns **`listBranch`** - {@link ListBranch}
  */
 export function setChildFilterBranchesOfListBranch(
     listBranch: ListBranch,
     newChildFilterBranches: Array<FilterBranch>,
 ): ListBranch {
     if (!listBranch || !listBranch.filterBranch) {
-        console.log(`\t Exiting setChildFilterBranchesOfListBranch() - input listBranch was undefined or does not have defined filterBranch.`);
+        debugLogs.push(NL + `Exiting setChildFilterBranchesOfListBranch() - input listBranch was undefined or does not have defined filterBranch.`);
         return listBranch;
     }
     if (!newChildFilterBranches || newChildFilterBranches.length === 0) {
-        console.log(`\t Exiting setChildFilterBranchesOfListBranch() - input newChildFilterBranches was undefined or empty.`);
+        debugLogs.push(NL + `Exiting setChildFilterBranchesOfListBranch() - input newChildFilterBranches was undefined or empty.`);
         return listBranch;
     }
     let filterBranch = listBranch.filterBranch;
@@ -255,10 +283,10 @@ export function setChildFilterBranchesOfListBranch(
 }
 
 /**
- * @param {Flow} flow - {@link Flow}
- * @param {string} targetBranchName 
- * @param {Array<FilterBranch>} newChildFilterBranches - `Array<`{@link FilterBranch}`>`
- * @returns {Flow} `flow` - {@link Flow}
+ * @param flow - {@link Flow}
+ * @param targetBranchName 
+ * @param newChildFilterBranches - `Array<`{@link FilterBranch}`>`
+ * @returns **`flow`** - {@link Flow}
  */
 export function setChildFilterBranchesByListBranchName(
     flow: Flow,
@@ -266,12 +294,12 @@ export function setChildFilterBranchesByListBranchName(
     newChildFilterBranches: Array<FilterBranch>,
 ): Flow {
     if (!flow || !flow.actions || flow.actions.length === 0) {
-        console.log(`\t Exiting setChildFilterBranchesByListBranchName() - input flow was undefined or had no actions.`);
+        debugLogs.push(NL + ` Exiting setChildFilterBranchesByListBranchName() - input flow was undefined or had no actions.`);
         return flow;
     }
     let listBranch = getListBranchByName(flow, targetBranchName);
     if (!listBranch) {
-        console.log(`\t Exiting setChildFilterBranchesByListBranchName() - input listBranch was undefined.`);
+        debugLogs.push(NL + ` Exiting setChildFilterBranchesByListBranchName() - input listBranch was undefined.`);
         return flow;
     }
     listBranch = setChildFilterBranchesOfListBranch(listBranch, newChildFilterBranches);
@@ -280,10 +308,10 @@ export function setChildFilterBranchesByListBranchName(
 
 /**
  * adds `childFilterBranch` to first `listBranch` with matching `branchName`.
- * @param {Flow} flow - {@link Flow}
- * @param {string} targetBranchName - `string`
- * @param {FilterBranch} childFilterBranch - {@link FilterBranch}
- * @returns {Flow} `flow` - {@link Flow}
+ * @param flow - {@link Flow}
+ * @param targetBranchName - `string`
+ * @param childFilterBranch - {@link FilterBranch}
+ * @returns **`flow`** - {@link Flow}
  */
 export function addChildFilterBranchToListBranchByName(
     flow: Flow,
@@ -291,7 +319,7 @@ export function addChildFilterBranchToListBranchByName(
     childFilterBranch: FilterBranch,
 ): Flow {
     if (!targetBranchName) {
-        console.log(`\t Exiting addChildFilterBranchToListBranchByName() - input targetBranchName was undefined.`);
+        debugLogs.push(NL + `Exiting addChildFilterBranchToListBranchByName() - input targetBranchName was undefined.`);
         return flow;
     }
     if (!flow || !flow.actions || flow.actions.length === 0 || !childFilterBranch) {
@@ -306,106 +334,39 @@ export function addChildFilterBranchToListBranchByName(
 }
 
 /**
- * 
- * @param {ListBranch} listBranch {@link ListBranch} 
- * @param {string} targetProperty 
- * @returns {Array<number>} `lengths`: `Array<number>`
- * @description Get lengths of filter values for each filter branch in the list branch.
- */
-export function getListBranchFlowFilterValueArrayLengths(
-    listBranch: ListBranch,
-    targetProperty: string,
-): Array<number>{
-    if (!listBranch || !listBranch.filterBranch) {
-        return [];
-    }
-    let filterBranches = listBranch.filterBranch.filterBranches;
-    if (!filterBranches || filterBranches.length === 0) {
-        return [];
-    }
-    let lengths: number[] = [];
-    for (let filterBranch of filterBranches) {
-        let flowFilters = filterBranch.filters;
-        if (!flowFilters || flowFilters.length === 0) {
-            continue;
-        }
-        let flowFilter: FlowFilter | undefined = flowFilters.find(filter => filter.property === targetProperty);
-        if (!flowFilter || !flowFilter.operation || !flowFilter.operation.values) {
-            continue;
-        }
-        lengths.push(flowFilter.operation.values.length);
-    }
-    return lengths;
-}
-
-/**
- * 
- * @param {Flow | undefined} flow {@link Flow}
- * @param {string} flowId 
- * @returns {boolean} `boolean`
+ * @param flow {@link Flow}
+ * @param flowId 
+ * @returns **`boolean`**
  * @description Checks if flow exists and has unique branch names.
  */
-export function flowExistsAndHasUniqueBranches(
-    flow: Flow | undefined, 
+export function isValidFlow(
+    flow: Flow, 
     flowId: string
 ): boolean {
     if (!flowId) {
-        console.error(`flowExistsAndHasUniqueBranches() Flow ID is undefined.`);
+        mlog.error(`flowExistsAndHasUniqueBranches() Flow ID is undefined.`);
         return false;
     }
     if (!flow || typeof flow !== 'object') {
-        console.error(`Flow not found (undefined or null or non object): ${flowId}`);
+        mlog.error(`Flow not found (undefined or null or non object): ${flowId}`);
         return false;
     } else if (!hasUniqueBranchNames(flow)) {
-        console.error(`Flow has duplicate branch names: ${flowId}`);
-        console.log('getAllBranchNames(flow): ', getAllBranchNames(flow));
+        mlog.error(`Flow has duplicate branch names: ${flowId}`, 
+            TAB+'getAllBranchNames(flow): ', getAllBranchNames(flow));
         return false;
     }
     return true;
 }
+
 /**
- * Divides elements of an array into a specified minimum number of subarrays as evenly as possible.
- * @param {Array<any>} arr - The array to divide.
- * @param {number} minNumSubarrays - The number of subarrays to create.
- * @param {number} maxSubarraySize - The maximum size of each subarray.
- * @throws {Error} If arr is not an array or if `minNumSubarrays` is less than or equal to 0 or if `maxSubarraySize` is less than or equal to 0.
- * @returns `subarrays` `Array<Array<any>>` An array of subarrays.
- * `subarrays.length` >= `Math.min(minNumSubarrays, arr.length)`
- * `subarrays[i].length` <= `maxSubarraySize`
+ * @param filterBranch {@link FilterBranch}
+ * @param targetProperty - `string`
+ * @param valuesToAdd - `Array<string>`
+ * @param valuesToRemove - `Array<string>`
+ * @param replacePreviousValues - `boolean`
+ * @returns **`filterBranch`** — {@link FilterBranch}
  */
-export function partitionArrayByNumSubarrays(arr: Array<any>, minNumSubarrays: number, maxSubarraySize: number): Array<Array<any>> {
-    if (!Array.isArray(arr)) {
-        throw new Error('Input must be an array.');
-    }
-    if (minNumSubarrays <= 0) {
-        throw new Error(`Minimum number of subarrays must be greater than 0, but got ${minNumSubarrays}.`);
-    }
-    if (maxSubarraySize <= 0) {
-        throw new Error(`Maximum subarray size must be greater than 0, but got ${maxSubarraySize}.`);
-    }
-    if (arr.length === 0) {
-        return [[]];
-    }
-    if (arr.length <= minNumSubarrays) {
-        return arr.map(item => [item]);
-    }
-    let subarrays: Array<Array<any>> = [];
-    let numElements = arr.length;
-    let subarraySize = Math.ceil(numElements / minNumSubarrays);
-    for (let i = 0; i < numElements; i += subarraySize) {
-        subarrays.push(arr.slice(i, i + Math.min(subarraySize, maxSubarraySize)));
-    }
-    return subarrays;
-}
-/**
- * @param {FilterBranch} filterBranch {@link FilterBranch}
- * @param {string} targetProperty - `string`
- * @param {Array<string>} valuesToAdd - `Array<string>`
- * @param {Array<string>} valuesToRemove - `Array<string>`
- * @param {boolean} replacePreviousValues - `boolean`
- * @returns {FilterBranch}
- */
-export function updateFilterBranchChildFilterBranches(
+export function updateFilterBranchChildren(
     filterBranch: FilterBranch,
     targetProperty: string,
     valuesToAdd: Array<string> = [],
@@ -424,12 +385,12 @@ export function updateFilterBranchChildFilterBranches(
 }
 
 /**
- * @param {FilterBranch} filterBranch {@link FilterBranch}
- * @param {string} targetProperty - `string`
- * @param {Array<string>} valuesToAdd - `Array<string>`
- * @param {Array<string>} valuesToRemove - `Array<string>`
- * @param {boolean} replacePreviousValues - `boolean`
- * @returns {FilterBranch} `filterBranch` — {@link FilterBranch}
+ * @param filterBranch {@link FilterBranch}
+ * @param targetProperty - `string`
+ * @param valuesToAdd - `Array<string>`
+ * @param valuesToRemove - `Array<string>`
+ * @param replacePreviousValues - `boolean`
+ * @returns **`filterBranch`** — {@link FilterBranch}
  */
 export function updateFilterBranchFlowFilters(
     filterBranch: FilterBranch,
@@ -447,14 +408,15 @@ export function updateFilterBranchFlowFilters(
             if (replacePreviousValues) {
                 flowFilter = setFlowFilterValues(flowFilter, targetProperty, valuesToAdd);
             } else {
-                flowFilter = addValuesToFilter(flowFilter, targetProperty, valuesToAdd);
-                flowFilter = removeValuesFromFilter(flowFilter, targetProperty, valuesToRemove);
+                flowFilter = addFlowFilterValues(flowFilter, targetProperty, valuesToAdd);
+                flowFilter = removeFlowFilterValues(flowFilter, targetProperty, valuesToRemove);
             }
             let updatedValues: string[] = flowFilter.operation.values || [];
-            console.log(
-                `\t>> filter.property \"${flowFilter.property}\"`,
-                `\n\t>> Previous values length: ${previousValues.length}, Updated values length: ${updatedValues.length}`,
-                `\n\t>> Difference = ${updatedValues.length - previousValues.length}`,
+            debugLogs.push(
+                // NL + `filter.property: '${flowFilter.property}'`,
+                TAB + `previousValues.length: ${previousValues.length}`, 
+                TAB + ` updatedValues.length: ${updatedValues.length}`,
+                TAB + `      => Difference =  ${updatedValues.length - previousValues.length}`,
             );
         }
     }
@@ -462,12 +424,12 @@ export function updateFilterBranchFlowFilters(
 }
 
 /**
- * @param {FilterBranch} filterBranch {@link FilterBranch} 
- * @param {string} targetProperty 
- * @param {Array<string>} valuesToAdd - `Array<string>`
- * @param {Array<string>} valuesToRemove - `Array<string>`
- * @param {boolean} replacePreviousValues - `boolean`
- * @returns {FilterBranch} `filterBranch` — {@link FilterBranch}
+ * @param filterBranch {@link FilterBranch} 
+ * @param targetProperty 
+ * @param valuesToAdd - `Array<string>`
+ * @param valuesToRemove - `Array<string>`
+ * @param replacePreviousValues - `boolean`
+ * @returns **`filterBranch`** — {@link FilterBranch}
  */
 export function updateFilterBranch(
     filterBranch: FilterBranch,
@@ -477,7 +439,9 @@ export function updateFilterBranch(
     replacePreviousValues: boolean = false
 ): FilterBranch {
     if (!filterBranch || !filterBranch.filters || !filterBranch.filterBranches) {
-        console.log(`\tSkipping filter branch in updateFilterBranch(); filters or filter branches were undefined/null.`);
+        debugLogs.push(NL + `Skipping filter branch in updateFilterBranch():`,
+            TAB+`filters or filter branches were undefined/null.`
+        );
         return filterBranch;
     }
     if (filterBranch.filters.length > 0) {
@@ -486,7 +450,7 @@ export function updateFilterBranch(
         );
     }
     if (filterBranch.filterBranches.length > 0) {
-        filterBranch = updateFilterBranchChildFilterBranches(
+        filterBranch = updateFilterBranchChildren(
             filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
         );
     }
@@ -495,14 +459,14 @@ export function updateFilterBranch(
 
 
 /**
- * @param {Flow} flow {@link Flow}
- * @param {string} targetBranchName - `string`
- * @param {string} targetProperty - `string`
- * @param {Array<string>} valuesToAdd - `Array<string>`
- * @param {Array<string>} valuesToRemove - `Array<string>`
- * @param {boolean} replacePreviousValues - `boolean`
- * @param {boolean} enforceMaxValues - boolean {@link MAX_VALUES_PER_FILTER} from {@link FlowFilter}.ts
- * @returns {Flow} `flow` — {@link Flow}
+ * @param flow {@link Flow}
+ * @param targetBranchName - `string`
+ * @param targetProperty - `string`
+ * @param valuesToAdd - `Array<string>`
+ * @param valuesToRemove - `Array<string>`
+ * @param replacePreviousValues - `boolean`
+ * @param enforceMaxValues - `boolean` from {@link FlowFilter}.ts
+ * @returns **`flow`** — {@link Flow}
  */
 export function updateFlowByBranchName(
     flow: Flow,
@@ -520,21 +484,22 @@ export function updateFlowByBranchName(
     if (!branch || !branch.filterBranch) {
         return flow;
     }
-    console.log(`Start of updateFlowByBranchName(flow, ${targetBranchName}, ${targetProperty}...)`);
+    debugLogs.push(NL+`Start of updateFlowByBranchName(flow, '${targetBranchName}', '${targetProperty}'...)`);
     if (enforceMaxValues && Math.max(...getListBranchFlowFilterValueArrayLengths(branch, targetProperty)) > MAX_VALUES_PER_FILTER) {
-        console.log(`\tInitial Distribution of filter values for branch: ${targetBranchName}`);
+        debugLogs.push(NL + `Initial Distribution of filter values for branch: '${targetBranchName}'`);
         branch = distributeFilterValuesOfListBranch(
             branch, targetProperty, MAX_VALUES_PER_FILTER
         );
     }
     let filterBranch = branch.filterBranch;
-    if (enforceMaxValues 
+    const needToDistributeValues = Boolean(enforceMaxValues 
         && filterBranch.filterBranches
         && (filterBranch.filterBranches.length > 1 || valuesToAdd.length > MAX_VALUES_PER_FILTER)
         && replacePreviousValues
         && filterBranch.filterBranchType === FilterBranchTypeEnum.OR
-    ) {
-        console.log(`\t!!FOUND BRANCH WHERE NEED TO DISTRIBUTE VALUES!!`);
+    );
+    if (needToDistributeValues) {
+        mlog.warn(`!!FOUND BRANCH WHERE NEED TO DISTRIBUTE VALUES!!`);
         /* 
         partition valuesToAdd such that the composite valueArray<typeof targetProperty> of each childFilterBranch 
         in filterBranch.filterBranches with childFilterBranch.filters.property === targetProperty is overwritten by valuesToAdd
@@ -582,269 +547,42 @@ export function updateFlowByBranchName(
             filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
         );
     }
-    console.log(`End of updateFlowByBranchName(flow, ${targetBranchName}, ${targetProperty}...)`);
+    debugLogs.push(NL + `End of updateFlowByBranchName(flow, branchName='${targetBranchName}', prop='${targetProperty}'...)`);
+    mlog.debug(...debugLogs);
+    debugLogs.length = 0; // clear debug logs
     return flow;
 }
 
 /**
- * @param {Flow} flow {@link Flow}
- * @param {Array<FlowBranchUpdate>} updates `Array<`{@link FlowBranchUpdate}`>` 
- * @returns {Flow} `flow` — {@link Flow}
+ * @param flow {@link Flow}
+ * @param updates `Array<`{@link FlowBranchUpdate}`>` 
+ * @returns **`flow`** — {@link Flow}
  */
 export function batchUpdateFlowByBranchName(flow: Flow, updates: Array<FlowBranchUpdate>): Flow {
     if (!flow || !updates || updates.length === 0) {
         return flow;
     }
+    const targetBranchNames = updates.map(u => u.targetBranchName);
+    const existingBranchNames = getAllBranchNames(flow);
+    const undefinedTargetBranchNames = Array.from(new Set([
+        ...targetBranchNames.filter(
+            targetBranchName => !existingBranchNames.includes(targetBranchName)
+        )
+    ]));
+    if (undefinedTargetBranchNames.length > 0) {
+        mlog.warn(`batchUpdateFlowByBranchName(): Flow is missing ${undefinedTargetBranchNames.length} targetBranchName(s)`,
+            TAB+`The following targetBranchNames were not found in the flow: ${JSON.stringify(undefinedTargetBranchNames)}`,
+            NL+ `Removing undefinedTargetBranchNames from updates...`
+        );
+        updates = updates.filter(
+            u => !undefinedTargetBranchNames.includes(u.targetBranchName)
+        );
+    }
     for (let u of updates) {
-        flow = updateFlowByBranchName(
-            flow, u.targetBranchName, u.targetProperty, u.valuesToAdd, u.valuesToRemove, u.replacePreviousValues, u.enforceMaxValues
+        flow = updateFlowByBranchName(flow, 
+            u.targetBranchName, u.targetProperty, u.valuesToAdd, 
+            u.valuesToRemove, u.replacePreviousValues, u.enforceMaxValues
         );
     }
     return flow;
-}
-
-/**
- * 
- * @param {Array<FlowFilter>} flowFilters - `Array<`{@link FlowFilter}`>`
- * @param {FilterBranchTypeEnum} [filterBranchType] - {@link FilterBranchTypeEnum}
- * @param {FilterBranchOperatorEnum} [filterBranchOperator] - {@link FilterBranchOperatorEnum}
- * @returns {FilterBranch} `filterBranch` - {@link FilterBranch}
- */
-export function generateNumericFilterBranch(
-    flowFilters: Array<FlowFilter>, 
-    filterBranchType: FilterBranchTypeEnum=FilterBranchTypeEnum.AND, 
-    filterBranchOperator: FilterBranchOperatorEnum=FilterBranchOperatorEnum.AND
-): FilterBranch {
-    let filterBranch = {
-        filterBranches: [],
-        filters: flowFilters,
-        filterBranchType: filterBranchType,
-        filterBranchOperator: filterBranchOperator
-    } as FilterBranch;
-    return filterBranch;
-}
-/**
-
- * @param {string} numericTargetProperty - `string`
- * @param {number} minimum - `number`
- * @param {number} maximum - `number`
- * @returns {FilterBranch} `filterBranch` - {@link FilterBranch}
- */
-export function numberIsBetweenFilterBranch(
-    numericTargetProperty: string, 
-    minimum: number, 
-    maximum: number
-): FilterBranch | null {
-    let numericFlowFilterPair = generateNumericRangeFlowFilterPair(
-        numericTargetProperty,
-        NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO,
-        NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO,
-        minimum,
-        maximum
-    );
-    if (!numericFlowFilterPair || numericFlowFilterPair.length !== 2) {
-        console.log(`\t Error in numberIsBetweenFilterBranch() b/c numericFlowFilterPair was undefined or had length !== 2.`);
-        return null;
-    }
-    let inclusiveRangeFilterBranch = generateNumericFilterBranch(
-        numericFlowFilterPair,
-        FilterBranchTypeEnum.AND,
-        FilterBranchOperatorEnum.AND
-    )
-    return inclusiveRangeFilterBranch;
-}
-
-/**
- * @param {string} numericTargetProperty - `string`
- * @param {NumericOperatorEnum} lowerBoundOperator - {@link NumericOperatorEnum}
- * @param {NumericOperatorEnum} upperBoundOperator - {@link NumericOperatorEnum}
- * @param {number} minimum - `number`
- * @param {number} maximum - `number`
- * @returns {Array<FlowFilter>} `flowFilters` - `Array<`{@link FlowFilter}`>`
- */
-export function generateNumericRangeFlowFilterPair(
-    numericTargetProperty: string, 
-    lowerBoundOperator: NumericOperatorEnum, 
-    upperBoundOperator: NumericOperatorEnum, 
-    minimum: number, 
-    maximum: number
-): Array<FlowFilter> {
-    if (!numericTargetProperty || !minimum || !maximum) {
-        console.log(`\t Skipping generateInclusiveNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
-        return [];
-    }
-    if (minimum > maximum) {
-        console.log(`\t Skipping generateInclusiveNumericRangeFlowFilterPair() b/c minimum > maximum.`);
-        return [];
-    }
-    if (![NumericOperatorEnum.IS_GREATER_THAN, NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO].includes(lowerBoundOperator)) {
-        console.log(`\t Skipping generateInclusiveNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
-        return [];
-    }
-    if (![NumericOperatorEnum.IS_LESS_THAN, NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO].includes(upperBoundOperator)) {
-        console.log(`\t Skipping generateInclusiveNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
-        return [];
-    }
-    let lowerBoundFlowFilter = generateNumericComparisonFlowFilter(
-        numericTargetProperty,
-        lowerBoundOperator,
-        minimum,
-    )
-    let upperBoundFlowFilter = generateNumericComparisonFlowFilter(
-        numericTargetProperty,
-        upperBoundOperator,
-        maximum,
-    )
-    if (!lowerBoundFlowFilter || !upperBoundFlowFilter) {
-        console.log(`\tSkipping generateInclusiveNumericRangeFlowFilterPair() b/c one of [lowerBoundFlowFilter, upperBoundFlowFilter] was undefined.`, lowerBoundFlowFilter, upperBoundFlowFilter);
-        return [];
-    }
-    return [lowerBoundFlowFilter, upperBoundFlowFilter];
-}
-
-/**
- * 
- * @param {string} targetProperty 
- * @param {NumericOperatorEnum} operator see {@link NumericOperatorEnum}
- * @param {number} value 
- * @returns {FlowFilter | null} `flowFilter` - {@link FlowFilter}
- */
-export function generateNumericComparisonFlowFilter(
-    targetProperty: string,
-    operator: NumericOperatorEnum,
-    value: number,
-): FlowFilter | null {
-    if (!targetProperty || !operator || !value) {
-        console.log(`\tSkipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
-        return null;
-    }
-    let flowFilter = {
-        property: targetProperty,
-        operation: {
-            operator: operator,
-            includeObjectsWithNoValueSet: false,
-            values: undefined,
-            value: value,
-            operationType: OperationTypeEnum.NUMBER
-        } as Operation,
-        filterType: FlowFilterTypeEnum.PROPERTY
-    } as FlowFilter;
-    return flowFilter;
-}
-/**
- * 
- * @param {ListBranch} listBranch - {@link ListBranch}
- * @param {string} targetProperty 
- * @returns {ListBranch} `partitionedListBranch` — {@link ListBranch}
- */
-export function distributeFilterValuesOfListBranch(
-    listBranch: ListBranch,
-    targetProperty: string,
-    maxValuesPerFilter = MAX_VALUES_PER_FILTER,
-): ListBranch {
-    if (!listBranch || !listBranch.filterBranch) {
-        return listBranch;
-    }
-    let filterBranches = listBranch.filterBranch.filterBranches;
-    if (!filterBranches || filterBranches.length === 0) {
-        return listBranch;
-    }
-    let newFilterBranches: FilterBranch[] = [];
-    for (let filterBranch of filterBranches) {
-        let flowFilters = filterBranch.filters;
-        if (!flowFilters || flowFilters.length === 0) {
-            continue;
-        }
-        for (let flowFilter of flowFilters) {
-            /**if it's a numeric or non-string filter, don't partition it */
-            let isNotStringFilter = (  
-                flowFilter.operation 
-                && (Object.values(NumericOperatorEnum).includes(flowFilter.operation.operationType as unknown as NumericOperatorEnum) 
-                    || flowFilter.operation.operationType !== OperationTypeEnum.MULTISTRING
-                )
-            );
-            /** @type {boolean}if it's a string filter and has less than maxValuesPerFilter values, don't partition it */
-            let isCompliantStringFilter: boolean = Boolean( 
-                flowFilter.operation 
-                && flowFilter.operation.operationType === OperationTypeEnum.MULTISTRING
-                && flowFilter.operation.values
-                && flowFilter.operation.values.length
-                && flowFilter.operation.values.length <= maxValuesPerFilter
-            )
-            if (!flowFilter
-                || flowFilter.property !== targetProperty
-                || isNotStringFilter
-                || isCompliantStringFilter
-                || !flowFilter.operation
-                || !flowFilter.operation.values
-            ) {
-                newFilterBranches.push(filterBranch);
-                continue;
-            }
-            let batches = partitionArrayByNumSubarrays(
-                flowFilter.operation.values as Array<string>,
-                Math.ceil(flowFilter.operation.values.length / maxValuesPerFilter),
-                maxValuesPerFilter
-            );
-            newFilterBranches.push(
-                ...batchGeneratePropertyContainsStringChildFilterBranch(batches, targetProperty)
-            );
-        }
-    }
-    console.log(`Number of filter branches after distribution: ${newFilterBranches.length}`);
-    listBranch.filterBranch.filterBranches = newFilterBranches;
-    return listBranch;
-}
-
-/**
- * 
- * @param {Array<string>} valueArray - `Array<string>`
- * @param {string} targetProperty 
- * @returns {FilterBranch | null} `filterBranch` - {@link FilterBranch}
- */
-export function generatePropertyContainsStringChildFilterBranch(
-    valueArray: Array<string>, targetProperty: string
-): FilterBranch | null {
-    if (!valueArray || valueArray.length === 0) {
-        return null;
-    }
-    let filterBranch: FilterBranch = {
-        filterBranches: [],
-        filters: [{
-            property: targetProperty,
-            operation: {
-                operator: OperatorEnum.CONTAINS,
-                includeObjectsWithNoValueSet: false,
-                values: valueArray,
-                operationType: OperationTypeEnum.MULTISTRING
-            } as Operation,
-            filterType: FlowFilterTypeEnum.PROPERTY
-        } as FlowFilter],
-        filterBranchType: FilterBranchTypeEnum.AND,
-        filterBranchOperator: FilterBranchOperatorEnum.AND
-    };
-    return filterBranch;
-}
-
-
-/**
- * @param {Array<Array<string>>} valueBatches - `Array<Array<string>>`
- * @param {string} targetProperty - `string`
- * @returns {Array<FilterBranch>} `filterBranches` - `Array<`{@link FilterBranch}`>`
- */
-export function batchGeneratePropertyContainsStringChildFilterBranch(
-    valueBatches: Array<Array<string>>, 
-    targetProperty: string
-): Array<FilterBranch> {
-    if (!valueBatches || valueBatches.length === 0) {
-        return [];
-    }
-    let filterBranches: FilterBranch[] = [];
-    for (let batch of valueBatches) {
-        let filterBranch = generatePropertyContainsStringChildFilterBranch(batch, targetProperty);
-        if (filterBranch) {
-            filterBranches.push(filterBranch);
-        }
-    }
-    return filterBranches;
 }

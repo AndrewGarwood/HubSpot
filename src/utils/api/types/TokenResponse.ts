@@ -1,12 +1,10 @@
 /**
  * @file TokenResponse.ts
- * @module TokenResponse
- * @description TypeScript definitions for the TokenResponse interface.
  * @see {@link https://www.oauth.com/oauth2-servers/access-tokens/}
  */
 import { getCurrentPacificTime } from '../../io/dateTime';
 /**
- * @interface TokenResponse
+ * @interface **`TokenResponse`**
  * @description Represents the response from the token endpoint.
  * @property {string} access_token - The access token.
  * @property {string} refresh_token - The refresh token.

@@ -82,10 +82,16 @@ export const TERRITORY_BRANCH_NAME_DICT: Record<string, string> = {
     'WA - Seattle': 'Seattle',
 };
 
-const missingKeys = Object.keys(ALL_TERRITORIES_ZIP_DICT).filter(key => !TERRITORY_BRANCH_NAME_DICT.hasOwnProperty(key));
+const missingKeys = Object.keys(ALL_TERRITORIES_ZIP_DICT).filter(
+    key => !TERRITORY_BRANCH_NAME_DICT.hasOwnProperty(key)
+);
+const TAB = '\n\t';
+const NL = '\n > ';
 if (missingKeys.length > 0) {
-    console.warn(`The following keys exist in TERRITORY_ZIPS_DICT but not in \
-        TERRITORY_BRANCH_NAME_DICT: ${missingKeys.join(', ')}`);
+    console.error(`Found Territory Name(s) not in TERRITORY_BRANCH_NAME_DICT`,
+        TAB+`The following keys exist in TERRITORY_ZIPS_DICT but not in TERRITORY_BRANCH_NAME_DICT:`, 
+        JSON.stringify(missingKeys),
+    );
     STOP_RUNNING(1);
 }
 
@@ -99,4 +105,5 @@ export const CATEGORY_TO_SKU_DICT: Record<string, Set<string>> = {
     'CategoryF': CATEGORY_F_ITEMS
 }
 
-export const TEST_FLOW_ID = 'TEST_FLOW_ID';
+export const TEST_FLOW_ID = '1637307812';
+export const ALT_TEST_FLOW_ID = '1645441838';

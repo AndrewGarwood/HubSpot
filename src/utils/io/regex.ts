@@ -97,12 +97,11 @@ export function handleCaseOptions(
 }
 
 /**
- * 
  * @param s `string` - the string to handle padding options for
  * @param padOptions — {@link StringPadOptions} - `optional` padding options to apply to the string
  * = `{ padLength: number, padChar: string, padLeft: boolean, padRight: boolean }`
  * - applies the first padding option that is `true` and ignores the rest
- * @returns `s` - the string with padding options applied
+ * @returns **`s`** - the string with padding options applied
  * @note if `s.length >= padLength`, no padding is applied
  */
 export function handlePadOptions(
@@ -136,7 +135,7 @@ export function handlePadOptions(
  * - if `stripRightCondition(s, rightArgs)` is `true` or `stripRightCondition` is `undefined` (i.e. no conditions need to be met to strip right):
  * - - then the right side of the `s` is stripped of `char`
  * @param {boolean} stripOptions.escape escape special regex characters in `char` with `char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`
- * @returns `string` - the string with leading and trailing characters removed
+ * @returns **`s`** - the string with leading and trailing characters removed
  */
 export function stripCharFromString(
     s: string, 

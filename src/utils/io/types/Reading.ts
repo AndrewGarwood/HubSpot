@@ -1,5 +1,5 @@
 /**
- * @file src/utils/io/Reading.ts
+ * @file src/utils/io/types/Reading.ts
  */
 import { stripCharFromString, toTitleCase } from "../regex"
 import { parseExcelForOneToMany } from "../reading"

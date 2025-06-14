@@ -1,6 +1,5 @@
 /** 
  * @file src/types/HubSpot.ts
- * @module HubSpot
  */
 
 

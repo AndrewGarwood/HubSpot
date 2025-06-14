@@ -27,7 +27,7 @@ export function isNullLike(value: any): boolean {
 }
 
 /**
- * @param {any} arr 
+ * @param arr 
  * @returns {boolean} `true` if arr is an array and has at least one element, `false` otherwise.
  */
 export function isNonEmptyArray(arr: any): boolean {

@@ -9,11 +9,11 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const USER = (process.env.CURRENT_USER ||'MISSING_ENV_VAR-CURRENT_USER');
-console.log('USER:'.padEnd(13), USER);
-
-/** `/OneDrive - BENEV COMPANY INC */
-export const ONE_DRIVE_DIR = `C:/Users/${USER}/OneDrive - BENEV COMPANY INC`;
+export const USER = process.cwd().split(path.sep)[2];
+console.log(`USER = '${USER}'`);
+export const ORGANIZATION = process.env.ORGANIZATION || 'MISSING_ENV_VAR-ORGANIZATION';
+/** `'C:/Users/${USER}/OneDrive - ${ORGANIZATION}'` */
+export const ONE_DRIVE_DIR = `C:/Users/${USER}/OneDrive - ${ORGANIZATION}`;
 /** `${`{@link ONE_DRIVE_DIR}`}/HubSpot/logs` (not part of git repo so no worry about file size) */
 export const CLOUD_LOG_DIR = path.join(ONE_DRIVE_DIR, 'HubSpot', 'logs') as string;
 
@@ -30,8 +30,16 @@ export const DATA_DIR = path.join(SRC_DIR, 'data') as string;
 export const OUTPUT_DIR = path.join(NODE_HOME_DIR, '.output') as string;
 
 
-export const HUBSPOT_ACCESS_TOKEN = process.env.ACCESS_TOKEN || 'MISSING_ENV_VARIABLE-ACCESS_TOKEN';
-export const HUBSPOT_DEVELOPER_API_KEY = process.env.DEVELOPER_API_KEY || 'MISSING_ENV_VARIABLE-DEVELOPER_API_KEY';
+export const HUBSPOT_ACCESS_TOKEN = (process.env.ACCESS_TOKEN 
+    || 'MISSING_ENV_VARIABLE-ACCESS_TOKEN'
+);
+export const HUBSPOT_DEVELOPER_API_KEY = (process.env.DEVELOPER_API_KEY 
+    || 'MISSING_ENV_VARIABLE-DEVELOPER_API_KEY'
+);
+/**id for hubspot account. */
+export const HUBSPOT_PORTAL_ID = (process.env.HUBSPOT_PORTAL_ID 
+    || 'MISSING_ENV_VAR-HUBSPOT_PORTAL_ID'
+);
 
 export const hubspotClient = new Client({ 
     accessToken: HUBSPOT_ACCESS_TOKEN, 
@@ -42,8 +50,6 @@ export const hubspotClient = new Client({
 /** `https://api.hubapi.com/automation/v4/flows/${flowId}` */
 export const FLOWS_API_URL = `https://api.hubapi.com/automation/v4/flows`;
 
-/**id for hubspot account, I think. */
-export const HUBSPOT_PORTAL_ID = "44788543";
 /** `'https://app.hubspot.com'` */
 export const HUBSPOT_APP_URL_STEM = `https://app.hubspot.com`;
 
