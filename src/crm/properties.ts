@@ -2,7 +2,13 @@
  * @file src/crm/properties.ts
  */
 import { hubspotClient, DELAY } from "../config/env";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../config/setupLog";
+import { 
+    mainLogger as mlog, 
+    apiLogger as log, 
+    INDENT_LOG_LINE as TAB, 
+    NEW_LINE as NL, 
+    INFO_LOGS as INFO 
+} from "../config/setupLog";
 import { 
     CrmObjectEnum,
     CrmAssociationObjectEnum, 
@@ -42,7 +48,7 @@ export async function updatePropertyByObjectId(
 ): Promise<SimplePublicObject> {
     let updateRes = {} as SimplePublicObject;
     if (!objectType || typeof objectType !== 'string') {
-        mlog.error(`Error in setPropertyByObjectId(): Invalid 'objectType' param.`,
+        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectType' param.`,
             TAB + `Expected a string, but received: ${typeof objectType} = ${objectType}`
         );
         return updateRes;
@@ -50,43 +56,43 @@ export async function updatePropertyByObjectId(
     if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
         objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
     } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
-        mlog.error(`Error in setPropertyByObjectId(): Invalid 'objectType' param.`,
+        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectType' param.`,
             TAB + `Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`
         );
         return updateRes;
     }
     if (!objectId || (typeof objectId !== 'string' && typeof objectId !== 'number')) {
-        mlog.error(`ERROR in setPropertyByObjectId(): Invalid 'objectId' param.`,
+        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectId' param.`,
             TAB + `Expected a string or number, but received: ${typeof objectId} = ${objectId}`
         );
         return updateRes;
     }
     if (!propDict || typeof propDict !== 'object' || Object.keys(propDict).length === 0) {
-        mlog.error(`Error in setPropertyByObjectId(): Invalid 'propDict' param.`,
+        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'propDict' param.`,
             TAB + `Expected Record<string, any>, but received: ${typeof propDict} = ${JSON.stringify(propDict || {})}`
         );
         return updateRes;
     }
-    const debugLogs: any[] = [`Start of updatePropertyByObjectId(${objectType})`];
+    const debugLogs: any[] = [
+        `[START updatePropertyByObjectId(type: '${objectType}')]`
+    ];
     const initialObjectRes = await getObjectById(
         objectType, 
         objectId, 
         Object.keys(propDict)
     ) as SimplePublicObject;
     if (!initialObjectRes || !initialObjectRes.properties) {
-        mlog.error(`Error in setPropertyByObjectId(): undefined initialObjectRes`,
-            TAB + `Unable to find existing ${objectType} with id='${objectId}'`,
-            TAB + `propDict.keys=${Object.keys(propDict)}`
+        mlog.error(`[ERROR setPropertyByObjectId()]: undefined initialObjectRes`,
+            TAB + `Unable to find existing ${objectType} with id = '${objectId}'`,
+            TAB + `propDict.keys: ${JSON.stringify(Object.keys(propDict))}`
         );
         return updateRes;
     }
     const propsWithChanges: string[] = [];
     for (let propName of Object.keys(propDict)) {
         const initialPropValue =  String(initialObjectRes.properties[propName]);
-        if (initialPropValue === propDict[propName]) { 
-            continue; 
-        }
-        debugLogs.push(
+        if (initialPropValue === propDict[propName]) { continue; }
+        log.debug(
             NL + `Property '${propName}' has changed for ${objectType} with id='${objectId}'`,
             TAB + `Initial Value: ${initialPropValue}`,
             TAB + `    New Value: ${propDict[propName]}`
@@ -160,7 +166,7 @@ export async function batchUpdatePropertyByObjectId(
             } 
             responses.push(updateRes);
         }
-        mlog.info(`End of batchUpdatePropertyByObjectId()`,
+        mlog.info(`[END batchUpdatePropertyByObjectId()]`,
             TAB + 'Number of changes made:', NUMBER_OF_CHANGES,
             TAB + `processed (${responses.length}/${objectIds.length}) ${objectType}(s)`,
             TAB + `propDict: ${JSON.stringify(propDict)}`
@@ -187,17 +193,17 @@ export async function setPropertyByObjectId(
     idProperty: string | undefined = undefined
 ): Promise<SimplePublicObject | undefined> {
     if (!objectType || typeof objectType !== 'string') {
-        mlog.error(`setPropertyByObjectId() Invalid objectType provided. Expected a string.`);
+        mlog.error(`[setPropertyByObjectId()] Invalid objectType provided. Expected a string.`);
         return undefined;
     }
     if (!objectId || (typeof objectId !== 'string' && typeof objectId !== 'number')) {
-        mlog.error(`setPropertyByObjectId() Invalid objectId provided. Expected a string or number.`);
+        mlog.error(`[setPropertyByObjectId()] Invalid objectId provided. Expected a string or number.`);
         return undefined;
     }
     if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
         objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
     } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
-        mlog.error(`setPropertyByObjectId() Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`, JSON.stringify(CrmObjectEnum));
+        mlog.error(`[setPropertyByObjectId()] Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`, JSON.stringify(CrmObjectEnum));
         return undefined;
     }
     const propsToSet: HS_SimplePublicObjectInput = { properties: properties };
@@ -206,7 +212,7 @@ export async function setPropertyByObjectId(
         const response = await objectApi.update(String(objectId), propsToSet, idProperty);
         return response as SimplePublicObject;
     } catch (e) {
-        mlog.error(`setPropertyByObjectId() Error updating ${objectType} with ID ${objectId}:`, e);
+        mlog.error(`[setPropertyByObjectId()] Error updating ${objectType} with ID ${objectId}:`, e);
         return undefined;
     }
 }
@@ -226,19 +232,19 @@ export async function batchSetPropertyByObjectId(
     idProperty?: string
 ): Promise<SimplePublicObject[]> {
     if (!objectType || typeof objectType !== 'string') {
-        mlog.error(`batchSetPropertyByObjectId() Invalid objectType provided.`,
+        mlog.error(`[batchSetPropertyByObjectId()] Invalid objectType provided.`,
             TAB + `Expected a string from CrmObjectEnum.`
         );
         return [];
     }
     if (!objectIds || !Array.isArray(objectIds) || objectIds.length === 0) {
-        mlog.error(`batchSetPropertyByObjectId() Invalid objectIds provided.`,
+        mlog.error(`[batchSetPropertyByObjectId()] Invalid objectIds provided.`,
             TAB + `Expected a non-empty array of strings.`
         );
         return [];
     }
     if (!properties || typeof properties !== 'object' || Object.keys(properties).length === 0) {
-        mlog.error(`batchSetPropertyByObjectId() Invalid properties provided.`,
+        mlog.error(`[batchSetPropertyByObjectId()] Invalid properties provided.`,
             TAB + `Expected a non-empty Record<string, any>.`
         );
         return [];
@@ -262,13 +268,13 @@ export async function batchSetPropertyByObjectId(
             if (!res) continue;
             responses.push(res);
         }
-        mlog.debug(`End of batchSetPropertyByObjectId()`,
+        mlog.debug(`[END batchSetPropertyByObjectId()]`,
             TAB + `set (${responses.length}/${objectIds.length}) ${objectType}(s)`,
             TAB + `properties: ${JSON.stringify(properties)}`
         );
     } catch (e) {
         mlog.error(
-            `batchSetPropertyByObjectId() Error updating ${objectType}(s)`, 
+            `[batchSetPropertyByObjectId()] Error updating ${objectType}(s)`, 
             e
         );
     }

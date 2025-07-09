@@ -5,20 +5,20 @@
 import { OUTPUT_DIR, CLOUD_LOG_DIR } from './env';
 import { Logger, ISettingsParam, ISettings, ILogObj, ILogObjMeta, IPrettyLogStyles, IMeta } from 'tslog';
 import path from 'node:path';
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 /** LOCAL_LOG_DIR (in onedrive) or `OUTPUT_DIR/logs` */
-const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  
+export const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  
 /**`OUTPUT_DIR/logs/DEBUG.txt` */
 export const MAIN_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "DEBUG.txt");
 /** `CLOUD_LOG_DIR/API_LOG.txt` */
-export const CLOUD_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
+export const API_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
 /**`OUTPUT_DIR/logs/ERROR.txt` */
-const ERROR_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "ERROR.txt"); 
+export const ERROR_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "ERROR.txt"); 
 /** 
- * `INDENT_LOG_LINE =  '\n\t '` = newLine + tab + space
+ * `INDENT_LOG_LINE =  '\n\t• '` = newLine + tab + bullet + space
  * - log.debug(s1, INDENT_LOG_LINE + s2, INDENT_LOG_LINE + s3,...) 
  * */
-export const INDENT_LOG_LINE: string = '\n\t ';
+export const INDENT_LOG_LINE: string = '\n\t• ';
 /** 
  * `NEW_LINE =  '\n > '` = newLine + space + > + space
  * */
@@ -28,24 +28,25 @@ const dateTemplate = "{{yyyy}}-{{mm}}-{{dd}}";
 const timeTemplate = "{{hh}}:{{MM}}:{{ss}}";//.{{ms}}";
 const timestampTemplate = `(${dateTemplate} ${timeTemplate})`;
 
+/**not included for now */
 const logNameTemplate = "[{{name}}]"; //"[{{nameWithDelimiterPrefix}}{{name}}{{nameWithDelimiterSuffix}}]";
-const logLevelTemplate = "{{logLevelName}}:";
-const fileInfoTemplate = "{{filePathWithLine}}";//"{{fileName}}:{{fileLine}}";
+const logLevelTemplate = "[{{logLevelName}}]";
+const fileInfoTemplate = "{{filePathWithLine}}";
+    //:{{fileColumn}} {{method}}";
+    // "{{fileName}}:{{fileLine}}";
 /** 
  * use as value for {@link ISettingsParam.prettyLogTemplate} 
- * @description template string for log messages = {@link timestampTemplate} + {@link logNameTemplate} + {@link logLevelTemplate} + {@link fileInfoTemplate} + `\n\t{{logObjMeta}}`
+ * = {@link timestampTemplate} + {@link logNameTemplate} + {@link logLevelTemplate} + {@link fileInfoTemplate} + `\n\t{{logObjMeta}}`
  * - {@link timestampTemplate} = `({{yyyy}}-{{mm}}-{{dd}} {{hh}}:{{MM}}:{{ss}}.{{ms}})`
  * - {@link logNameTemplate} = `"[{{name}}]"`
  * - {@link logLevelTemplate} = `{{logLevelName}}:`
  * - {@link fileInfoTemplate} = `{{fileName}}:{{fileLine}}`
- * - `\n\t{{logObjMeta}}`,
- * - = `<{{yyyy}}-{{mm}}-{{dd}} {{hh}}:{{MM}}:{{ss}}.{{ms}}> [{{nameWithDelimiterPrefix}}{{name}}{{nameWithDelimiterSuffix}}] {{logLevelName}}: {{fileName}}:{{fileLine}}\n\t{{logObjMeta}}`
  * */
 const LOG_TEMPLATE = [
+    logLevelTemplate, 
     timestampTemplate, 
     // logNameTemplate, 
     fileInfoTemplate,
-    logLevelTemplate, 
 ].join(' ') + NEW_LINE;
 
 const errorInfoTemplate = "{{errorName}}: {{errorMessage}}\n\t{{errorStack}}";
@@ -128,21 +129,25 @@ const API_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
 export const apiLogger = new Logger<ILogObj>(API_LOGGER_SETTINGS);
 apiLogger.attachTransport((logObj: ILogObj) => {
     appendFileSync(
-        CLOUD_LOG_FILEPATH, 
+        API_LOG_FILEPATH, 
         JSON.stringify(logObj, null, 4) + "\n",
         { encoding: "utf-8" }
     );
 });
-
-/**
- * Clears the content of the specified log file(s).
- * @param filePaths - The path(s) to the log file(s) to clear.
- */
-export function clearLogFile(...filePaths: string[]): void {
-    for (const filePath of filePaths) {
-        writeFileSync(filePath, '', { encoding: 'utf-8' });
-    }
+function modifyLogObj(logObj: ILogObj): ILogObj {
+    const meta = logObj['_meta'] as IMeta;
+    const { logLevelName, date, path } = meta;
+    const timestamp = date ? date.toLocaleString() : '';
+    const pathString = `${path?.filePathWithLine}:${path?.fileColumn} ${path?.method ? path.method + '()' : ''}`;
+    delete logObj['_meta'];
+    let compositeInfo = '';
+    if (logLevelName) compositeInfo += `[${logLevelName}] `;
+    if (timestamp) compositeInfo += `(${timestamp}) `;
+    if (pathString) compositeInfo += `${pathString}`;
+    logObj['-1'] = compositeInfo.trim();
+    return logObj;
 }
-export const INFO_LOGS: any[] = []
+export const INFO_LOGS: any[] = [];
 export const DEBUG_LOGS: any[] = [];
-export { indentedStringify } from '../utils/io'
+export const SUPPRESSED_LOGS: any[] = [];
+export { indentedStringify, trimFile, clearFile } from '../utils/io/writing';

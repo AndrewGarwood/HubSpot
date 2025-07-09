@@ -1,90 +1,227 @@
 /**
  * @file src/utils/typeValidation.ts
  */
-import { mainLogger as log } from "../config/setupLog";
+export { isValidCsv } from "./io/reading";
+import { equivalentAlphanumericStrings as equivalentAlphanumeric } from "./io/regex/index";
 
 /**
  * @param value the value to check
- * @returns **`isNullLike`** `{boolean}` 
- * - `true` if the value is null, undefined, empty object, empty array, or empty string
- * - `false` otherwise (zero returns false)
+ * @returns **`isNullLike`** `boolean` = `value is null | undefined | '' | [] | Record<string, never>`
+ * - `true` `if` the `value` is null, undefined, empty object (no keys), empty array, or empty string
+ * - `false` `otherwise`
  */
-export function isNullLike(value: any): boolean {
+export function isNullLike(value: any): value is null | undefined | '' | [] | Record<string, never> {
     if (value === null || value === undefined) {
         return true;
     }
     if (typeof value === 'boolean' || typeof value === 'number') {
         return false;
     }
-    // Check for empty object or array
-    if (typeof value === 'object' && Object.keys(value).length === 0) {
+    // Check for empty object or array... !hasNonTrivialKeys(value)
+    if (typeof value === 'object' && isEmptyArray(Object.keys(value))) {
         return true;
     }
-    if (typeof value === 'string' && (value.trim() === '' || value.toLowerCase() === 'undefined' || value.toLowerCase() === 'null') ) {
+    const isNullLikeString = (typeof value === 'string' 
+        && (value.trim() === '' 
+            || value.toLowerCase() === 'undefined' 
+            || value.toLowerCase() === 'null'
+        )
+    ); 
+    if (isNullLikeString) {
         return true;
     }
     return false;
+}
+
+/**
+ * @param values `any[]`
+ * @returns `values.some(v => `{@link isNullLike}`(v))`
+ * - **`true`** `if` any of the values are null, undefined, empty object (no keys), empty array, or empty string
+ * - **`false`** `otherwise`.
+ */
+export function anyNull(...values: any[]): boolean {
+    if (values === null || values === undefined) {
+        return true;
+    }
+    return values.some(v => isNullLike(v));
 }
 
 /**
  * @param arr 
- * @returns {boolean} `true` if arr is an array and has at least one element, `false` otherwise.
+ * @returns **`isNonEmptyArray`** `boolean` = `arr is Array<any> & { length: number }`
+ * - `true` if `arr` is an array and has at least one element, 
+ * - `false` otherwise.
  */
-export function isNonEmptyArray(arr: any): boolean {
+export function isNonEmptyArray(arr: any): arr is Array<any> & { length: number } {
     return Array.isArray(arr) && arr.length > 0;
 }
 /**
- * @description Check if an object has any non-empty keys (not `undefined`, `null`, or empty string). 
- * - passing in an array will return `false`.
- * @param {Object} obj - The object to check.
- * @returns {boolean} `true` if the object has any non-empty keys, `false` otherwise.
+ * @param arr 
+ * @returns **`isEmptyArray`** `boolean` = `arr is Array<any> & { length: 0 }`
+ * - `true` if `arr` is an array and has no elements,
+ * - `false` otherwise.
  */
-export function hasNonTrivialKeys(obj: any): boolean {
+export function isEmptyArray(arr: any): arr is Array<any> & { length: 0 } {
+    return Array.isArray(arr) && arr.length === 0; 
+}
+/**
+ * @TODO add param that indicates whether all values must be nontrivial or not
+ * @description Check if an `object` has at least 1 key with value that is non-empty (not `undefined`, `null`, or empty string). 
+ * @note **passing in an array will return `false`.**
+ * @param obj - The object to check.
+ * @returns **`true`** if the object has any non-empty keys, **`false`** otherwise.
+ */
+export function hasNonTrivialKeys(
+    obj: any
+): obj is Record<string, any> 
+| { [key: string]: any } 
+// | { [key: string]: FieldValue } 
+{
     if (typeof obj !== 'object' || !obj || Array.isArray(obj)) {
         return false;
     }
-    for (const key in obj) { // return true if any key is non-empty
-        let value = obj[key];
-        let valueIsNonTrivial = (obj.hasOwnProperty(key) 
-            && value !== undefined 
-            && value !== null 
-            && (value !== '' 
-                || isNonEmptyArray(value) 
-                || (typeof value === 'object' && isNonEmptyArray(Object.entries(value)))
-            )
+    const hasKeyWithNonTrivialValue = Object.values(obj).some(value => {
+        return value !== undefined && value !== null &&
+            (value !== '' || isNonEmptyArray(value) 
+            || (isNonEmptyArray(Object.entries(value)))
         );
-        if (valueIsNonTrivial) {
-            return true;
-        }
-    }
-    return false;
+    });
+    return hasKeyWithNonTrivialValue;
 }
-
 /**
  * @note maybe redundant with the syntax `key in obj` ? but able to check more than one
- * @param obj the object to check
- * @param keys the list of keys that obj must have
- * @returns {boolean} `true` if the object has all the keys, `false` otherwise
- * @throws {TypeError} if `keys` is not an array
+ * @param obj `T extends Object` the object to check
+ * @param keys `Array<keyof T> | string[] | string` the list of keys that obj must have
+ * @param requireAll `boolean` defaults to `true` 
+ * - `if` `true`, all keys must be present in the object; 
+ * - `if` `false`, at least one key must be present
+ * @param restrictKeys `boolean` defaults to `false`
+ * - `if` `true`, only the keys provided in the `keys` param are allowed in the object;
+ * - `if` `false`, the object can keys not included in the `keys` param.
+ * @returns **`hasKeys`** `boolean` 
+ * - **`true`** `if` `obj` is of type 'object' and has the required key(s), 
+ * - **`false`** `otherwise`
  */
-export function hasKeys<T extends Object>(obj: T, keys: Array<keyof T>): boolean {
+export function hasKeys<T extends Object>(
+    obj: T, 
+    keys: Array<keyof T> | string[] | string, 
+    requireAll: boolean = true,
+    restrictKeys: boolean = false
+): boolean {
     if (!obj || typeof obj !== 'object') {
         return false;
     }
     if (typeof keys === 'string') {
         keys = [keys] as Array<keyof T>; // Convert string (assumed to be single key) to array of keys
     }
-    if (!keys || !Array.isArray(keys)) {
-        throw new TypeError('hasKeys() param `keys` must be an array');
+    if (!keys || isEmptyArray(keys)) {
+        throw new Error('[hasKeys()] no keys provided: param `keys` must be an array with at least one key');
     }
-    if (keys.length === 0) {
-        return false; // No keys to check
-    }
+    if (keys.length === 0) return false;
+    let numKeysFound = 0;
     for (const key of keys) {
-        if (!obj.hasOwnProperty(key)) {
-            // log.warn(`hasKeys() key "${String(key)}" not found in the object`);
-            return false; // Key not found in the object
+        if (key in obj) {
+            numKeysFound++;
+            if (!requireAll) {
+                return true; // If requireAll is false, we can return early if any key is found
+            }
+        } else if (requireAll) {
+            return false; 
+            // If requireAll is true and a key is not found, return false
+        } 
+    }
+    if (restrictKeys) {
+        // If restrictKeys is true, check that no other keys are present in the object
+        const objKeys = Object.keys(obj);
+        const extraKeys = objKeys.filter(k => !keys.includes(k as keyof T & string));
+        if (extraKeys.length > 0) {
+            return false; // Found keys not in the allowed list
         }
     }
-    return true; // All keys found in the object
+    return requireAll ? numKeysFound === keys.length : numKeysFound > 0; 
 }
+
+
+/**
+ * @param objA `Record<string, any>`
+ * @param objB `Record<string, any>`
+ * @returns **`areEquivalentObjects`** `boolean`
+ * - `true` `if` `objA` and `objB` are equivalent objects (same keys and values, including nested objects and arrays),
+ * - `false` `otherwise`.
+ */
+export function areEquivalentObjects(
+    objA: Record<string, any>, 
+    objB: Record<string, any>
+): boolean {
+    if (!objA || typeof objA !== 'object' || !objB || typeof objB !== 'object') {
+        return false;
+    }
+    const keysA = Object.keys(objA);
+    const keysB = Object.keys(objB);
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every(key => {
+        if (!objB.hasOwnProperty(key)) return false; // key not in both objects
+        const valA = objA[key];
+        const valB = objB[key];
+        if (Array.isArray(valA) && Array.isArray(valB)) {
+            return valA.length === valB.length 
+                && valA.every((item) => valB.includes(item));
+        } else if (typeof valA === "object" && valA && typeof valB === "object" && valB) {
+            return areEquivalentObjects(valA, valB);
+        }
+        return equivalentAlphanumeric(valA, valB);
+    });
+}
+
+export function isNumericString(value: any): boolean {
+    if (typeof value !== 'string') return false;
+    return !isNaN(Number(value.trim()));
+}
+
+export function isPrimitiveValue(
+    value: any
+): value is string | number | boolean | null | undefined {
+    if (value === null || value === undefined) {
+        return true; // null and undefined are considered primitive
+    }
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        return true; // string, number, and boolean are primitive types
+    }
+    return false;
+}
+
+/**
+ * @param fieldId `string`
+ * @returns 
+ */
+export const isBooleanFieldId = (fieldId: string): boolean => {
+    return BOOLEAN_FIELD_ID_LIST.includes(fieldId) || BOOLEAN_FIELD_ID_REGEX.test(fieldId);
+}
+
+/**
+ * Represents the `boolean` value `true` for a radio field in NetSuite.
+ */
+export const RADIO_FIELD_TRUE = 'T';
+/**
+ * Represents the `boolean` value `false` for a radio field in NetSuite.
+ */
+export const RADIO_FIELD_FALSE = 'F';
+/**
+ * - `= typeof `{@link RADIO_FIELD_TRUE}` | typeof `{@link RADIO_FIELD_FALSE}`;` 
+ * @description
+ * Value representing the state of a radio field in NetSuite. (i.e. is the button filled in or not)
+ * - e.g. the Customer record's `'isperson'` field.
+ * */
+export type RadioFieldBoolean = typeof RADIO_FIELD_TRUE | typeof RADIO_FIELD_FALSE;   
+
+
+/** `re` = `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
+export const BOOLEAN_FIELD_ID_REGEX = new RegExp(/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/)
+export const BOOLEAN_TRUE_VALUES = ['true', 'yes', 'y'];
+export const BOOLEAN_FALSE_VALUES = ['false', 'no', 'n'];
+export const BOOLEAN_FIELD_ID_LIST = [
+    'isinactive', 'isprivate', 'giveaccess', 'emailtransactions', 'faxtransactions', 
+    'is1099eligible', 'isdefaultbilling', 'isdefaultshipping', 'isprimary', 'isprimaryshipto', 
+    'isprimarybilling', 'isprimaryshipping'
+];
+

@@ -10,13 +10,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const USER = process.cwd().split(path.sep)[2];
-console.log(`USER = '${USER}'`);
+console.log(`[env.ts] Loading environment variables...`,`\n > USER: '${USER}'`);
 export const ORGANIZATION = process.env.ORGANIZATION || 'MISSING_ENV_VAR-ORGANIZATION';
 /** `'C:/Users/${USER}/OneDrive - ${ORGANIZATION}'` */
 export const ONE_DRIVE_DIR = `C:/Users/${USER}/OneDrive - ${ORGANIZATION}`;
 /** `${`{@link ONE_DRIVE_DIR}`}/HubSpot/logs` (not part of git repo so no worry about file size) */
 export const CLOUD_LOG_DIR = path.join(ONE_DRIVE_DIR, 'HubSpot', 'logs') as string;
-
 
 /** `./HubSpot/` = the directory where the node_modules folder lives*/
 export const NODE_HOME_DIR = process.cwd() as string;
@@ -24,9 +23,9 @@ export const NODE_HOME_DIR = process.cwd() as string;
 export const SRC_DIR = path.join(NODE_HOME_DIR, 'src') as string;
 
 
-/** `~/HubSpot/src/data` */
-export const DATA_DIR = path.join(SRC_DIR, 'data') as string;
-/** `~/HubSpot/.output `*/
+/** `./HubSpot/data` = `SRC_DIR/../data` */
+export const DATA_DIR = path.join(NODE_HOME_DIR, 'data') as string;
+/** `./HubSpot/.output `*/
 export const OUTPUT_DIR = path.join(NODE_HOME_DIR, '.output') as string;
 
 
@@ -57,10 +56,10 @@ validatePath(
     NODE_HOME_DIR, SRC_DIR, ONE_DRIVE_DIR, CLOUD_LOG_DIR, 
     DATA_DIR, OUTPUT_DIR
 );
-export function validatePath(...paths: string[]): void {
+function validatePath(...paths: string[]): void {
     for (const p of paths) {
         if (!fs.existsSync(p)) {
-            console.error(`env.ts validatePath() ERROR: Path does not exist: ${p}`);
+            console.error(`[env.validatePath()] ERROR: Path does not exist: ${p}`);
             STOP_RUNNING(1);
         }
     }
@@ -83,6 +82,7 @@ export const STOP_RUNNING = (exitCode: number=0, ...msg: any[]): void => {
     console.log(`STOP_RUNNING() called with exitCode ${exitCode}.`, ...(msg || []));
     process.exit(exitCode);
 }
+
 /**
  * @description Pause execution for specified amount of milliseconds
  * - default message =  `'> Pausing for ${ms} milliseconds.'`

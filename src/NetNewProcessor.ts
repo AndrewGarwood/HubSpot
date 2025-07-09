@@ -9,7 +9,8 @@ import {
     apiLogger as log, 
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, 
-    indentedStringify, DEBUG_LOGS, INFO_LOGS, MAIN_LOG_FILEPATH, CLOUD_LOG_FILEPATH, clearLogFile } from "./config/setupLog";
+    indentedStringify, DEBUG_LOGS as DEBUG, INFO_LOGS as INFO, 
+    MAIN_LOG_FILEPATH, API_LOG_FILEPATH, clearFile, trimFile, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
 import { 
     getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, 
     getLineItemById, getSkuFromLineItem, isValidLineItem, 
@@ -26,6 +27,7 @@ import {
     writeObjectToJson as write, 
     getCurrentPacificTime, toPacificTime,
 } from "./utils/io";
+import { getColumnValues, validatePath, isValidCsv } from "./utils/io/reading";
 /**@TODO maybe refactor and write function called updatePurchaseHistory(deal) */
 /**  */
 const NET_NEW_PROP = 'is_net_new';
@@ -44,27 +46,35 @@ main().catch((error) => {
  * - - {@link batchUpdatePropertyByObjectId}`(...)`
  * */
 async function main() {
-    clearLogFile(MAIN_LOG_FILEPATH, CLOUD_LOG_FILEPATH);
+    clearFile(MAIN_LOG_FILEPATH, API_LOG_FILEPATH);
     const startTime = new Date();
-    const filePath = `${DATA_DIR}/contacts_with_may2025_deals.json`;
-    const useSubset: boolean = false;
-    const contactIds = read(filePath)?.contactIds as string[] || [];
-    const contactIdSubset = contactIds.slice(1, 2);
-    mlog.info(`Start of main() in NetNewProcessor.ts`,
-        TAB + `   filePath: ${filePath}`,
-        TAB + `  useSubset: ${useSubset}`,
-        TAB + `numContacts: ${useSubset ? contactIdSubset.length : contactIds.length}`,
+
+    const useSubset: boolean = false; // set to true to use a subset of contacts for testing
+    const filePath = `${DATA_DIR}/Contacts With June 2025 Deals.csv`;
+    const EXPORT_CSV_CONTACT_ID_COLUMN = 'Contact ID';
+    validatePath(filePath)
+    if (!isValidCsv(filePath, [EXPORT_CSV_CONTACT_ID_COLUMN])) {
+        mlog.error(`Error in main(): Invalid CSV file at '${filePath}'`);
+        STOP_RUNNING(1);
+    }
+    const ALL_CONTACTS = await getColumnValues(filePath, EXPORT_CSV_CONTACT_ID_COLUMN);
+    const contactIds = useSubset ? ALL_CONTACTS.slice(3, 5) : ALL_CONTACTS;
+    mlog.info(`[START NetNewProcessor.main()]`,
+        TAB + `   filePath: '${filePath}'`,
+        TAB + `  useSubset:  ${useSubset}`,
+        TAB + `numContacts:  ${contactIds.length}`,
         NL  + `calling await updateContactLineItems()`
     );
-    await updateContactLineItems(useSubset ? contactIdSubset : contactIds);
+    await updateContactLineItems(contactIds);
     const endTime = new Date();
-    mlog.info(`End of main() in NetNewProcessor.ts at ${endTime.toLocaleString()}`,
+    mlog.info(`[END NetNewProcessor.main()]`,
         TAB + `Elapsed Time: ${(endTime.getTime() - startTime.getTime()) / 1000} seconds`,
         TAB + `     Number of Deals Processed: ${NUMBER_OF_DEALS_PROCESSED}`,
         TAB + `Number of Line Items Processed: ${NUMBER_OF_LINE_ITEMS_PROCESSED}`,
     );
-    write({missingSkus: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'))
+    write({missingSkus: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'));
     MISSING_SKUS.length = 0;
+    trimFile(undefined, MAIN_LOG_FILEPATH);
     STOP_RUNNING(0);
 }
 
@@ -82,7 +92,8 @@ export async function updateContactLineItems(
     let contactBatches = partitionArrayBySize(contactIds, 50) as string[][];
     for (let [batchIndex, contactIdBatch] of contactBatches.entries()) {
         const batchStartTime = new Date();
-        INFO_LOGS.push(NL + `Starting batch ${batchIndex+1} of ${contactBatches.length}`,
+        INFO.push((INFO.length > 1 ? NL : '') + 
+        `[updateContactLineItems()] Starting batch ${batchIndex+1} of ${contactBatches.length}`,
             TAB + `Batch Start Time: ${batchStartTime.toLocaleString()}`,
             TAB + `      Batch Size: ${contactIdBatch.length}`,
         );
@@ -90,7 +101,7 @@ export async function updateContactLineItems(
         const batchRecurringLineItems: string[] = [];
         for (let [subsetIndex, contactId] of contactIdBatch.entries()) {
             let history =  await processContact(contactId) as PurchaseHistory;
-            INFO_LOGS.push(
+            INFO.push(
                 NL  + `Contact ${subsetIndex+1} of Batch ${batchIndex+1} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
                 TAB + `   netNewLineItems.length: ${history.netNewLineItems.length}`,
                 TAB + `recurringLineItems.length: ${history.recurringLineItems.length}`,
@@ -100,11 +111,11 @@ export async function updateContactLineItems(
             batchNetNewLineItems.push(...history.netNewLineItems);
             batchRecurringLineItems.push(...history.recurringLineItems);
         }
-        INFO_LOGS.push(NL + `Batch ${batchIndex+1} of ${contactBatches.length} data processed.`,
+        INFO.push(NL + `Batch ${batchIndex+1} of ${contactBatches.length} data processed.`,
             TAB + `Time Elapsed: ${(new Date().getTime() - batchStartTime.getTime()) / 1000} seconds`
         );
         const updateBatchStartTime = new Date();
-        mlog.debug(`calling updateLineItems() for Batch ${batchIndex+1} of ${contactBatches.length} with`,
+        INFO.push(`calling updateLineItems() for Batch ${batchIndex+1} of ${contactBatches.length} with`,
             TAB + `  batchNetNewLineItems.length: ${batchNetNewLineItems.length}`,
             TAB + `batchRecurringLineItems.length: ${batchRecurringLineItems.length}`,
         );
@@ -113,7 +124,7 @@ export async function updateContactLineItems(
             [NetNewValueEnum.FALSE]: batchRecurringLineItems,
         } as Record<NetNewValueEnum, Array<string>>);
         const batchEndTime = new Date();
-        INFO_LOGS.push(NL + `updateContactLineItems() Batch (${batchIndex+1}/${contactBatches.length}) finished at ${batchEndTime.toLocaleString()}`,
+        INFO.push(NL + `[updateContactLineItems()] Batch (${batchIndex+1}/${contactBatches.length}) finished at ${batchEndTime.toLocaleString()}`,
             TAB + ` Update Time Elapsed: ${(batchEndTime.getTime() - updateBatchStartTime.getTime()) / 1000} seconds`,
             TAB + `  Total Time Elapsed: ${(batchEndTime.getTime() - batchStartTime.getTime()) / 1000} seconds`,
             TAB + `  Net New Line Items: ${batchNetNewLineItems.length}`,
@@ -121,8 +132,8 @@ export async function updateContactLineItems(
             TAB + `    updateRes.length: ${updateRes.length}`,
             NL  + `Pausing for 1 second.`
         );
-        mlog.info(...INFO_LOGS);
-        INFO_LOGS.length = 0; // clear the infoLogs array
+        mlog.info(...INFO);
+        INFO.length = 0;
         await DELAY(1000, null);
     }
 }
@@ -146,7 +157,7 @@ async function processContact(
         netNewLineItems: [] as Array<string>,
         recurringLineItems: [] as Array<string>
     } as PurchaseHistory;
-    DEBUG_LOGS.push(`Start of processContact('${contactId}')`);
+    SUP.push(`[START processContact('${contactId}')]`);
     try {
         const contact = await getContactById({ 
             contactId: contactId, 
@@ -192,7 +203,7 @@ async function processContact(
                 );
                 const catsAfter = Object.keys(purchaseHistory.categoriesBought);
                 if (catsAfter.length > catsBefore.length) {
-                    DEBUG_LOGS.push(NL + `New category added for contact '${purchaseHistory.contactName}'`,
+                    SUP.push(NL + `New category added for contact '${purchaseHistory.contactName}'`,
                         TAB + ` From: '${lineItem.properties.hs_sku}' in deal '${deal.properties.dealname}' on ${toPacificTime(deal.properties.closedate as string)}`,
                         TAB + `Added: '${catsAfter.filter(cat => !catsBefore.includes(cat)).join(', ')}'`,
                     );
@@ -202,8 +213,8 @@ async function processContact(
     } catch (e) {
         mlog.error('Error in processContact():', e);
     }
-    mlog.debug(...DEBUG_LOGS);
-    DEBUG_LOGS.length = 0; // clear the infoLogs array
+    if (DEBUG.length > 0) mlog.debug(...DEBUG);
+    DEBUG.length = 0; // clear the infoLogs array
     return purchaseHistory;
 }
 
