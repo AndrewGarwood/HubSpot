@@ -41,10 +41,20 @@ export const REMOVE_ATTN_SALUTATION_PREFIX: StringReplaceParams = {
 /**
  * re = `/(, (` + JOB_TITLE_SUFFIX_LIST.join('|') + `)\.?,?){asterisk}/g`,
  */
-export const JOB_TITLE_SUFFIX_PATTERN_FROM_LIST = new RegExp(
-    `(, (` + JOB_TITLE_SUFFIX_LIST.join('|') + `)\.?)+`,
-    RegExpFlagsEnum.GLOBAL
-);
+export function getJobTitleSuffixPatternFromList(): RegExp {
+    return new RegExp(
+        `(, (` + JOB_TITLE_SUFFIX_LIST.join('|') + `)\.?)+`,
+        RegExpFlagsEnum.GLOBAL
+    );
+}
+
+// For backward compatibility, create a lazy getter
+export const JOB_TITLE_SUFFIX_PATTERN_FROM_LIST = new Proxy({} as RegExp, {
+    get(target, prop) {
+        const pattern = getJobTitleSuffixPatternFromList();
+        return pattern[prop as keyof RegExp];
+    }
+});
 
 
 /** 

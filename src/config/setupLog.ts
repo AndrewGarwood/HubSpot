@@ -15,12 +15,12 @@ export const API_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
 /**`OUTPUT_DIR/logs/ERROR.txt` */
 export const ERROR_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "ERROR.txt"); 
 /** 
- * `INDENT_LOG_LINE =  '\n\t• '` = newLine + tab + bullet + space
+ * `TAB = INDENT_LOG_LINE =  '\n\t• '` = newLine + tab + bullet + space
  * - log.debug(s1, INDENT_LOG_LINE + s2, INDENT_LOG_LINE + s3,...) 
  * */
 export const INDENT_LOG_LINE: string = '\n\t• ';
 /** 
- * `NEW_LINE =  '\n > '` = newLine + space + > + space
+ * `NL = NEW_LINE =  '\n > '` = newLine + space + > + space
  * */
 export const NEW_LINE: string = '\n > ';
 
@@ -107,7 +107,7 @@ export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
 mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
     appendFileSync(
         MAIN_LOG_FILEPATH, 
-        JSON.stringify(logObj) + "\n", 
+        JSON.stringify(modifyLogObj(logObj)) + "\n", 
         { encoding: "utf-8" }
     );
 });
@@ -130,7 +130,7 @@ export const apiLogger = new Logger<ILogObj>(API_LOGGER_SETTINGS);
 apiLogger.attachTransport((logObj: ILogObj) => {
     appendFileSync(
         API_LOG_FILEPATH, 
-        JSON.stringify(logObj, null, 4) + "\n",
+        JSON.stringify(modifyLogObj(logObj), null, 4) + "\n",
         { encoding: "utf-8" }
     );
 });

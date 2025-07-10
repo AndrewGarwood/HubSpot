@@ -3,7 +3,7 @@
  */
 import path from "node:path";
 import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
-import { CATEGORY_TO_SKU_DICT } from "./config/loadData";
+import { getCategoryToSkuDict } from "./config/loadData";
 import { 
     mainLogger as mlog, 
     apiLogger as log, 
@@ -28,7 +28,7 @@ import {
     getCurrentPacificTime, toPacificTime,
 } from "./utils/io";
 import { getColumnValues, validatePath, isValidCsv } from "./utils/io/reading";
-/**@TODO maybe refactor and write function called updatePurchaseHistory(deal) */
+
 /**  */
 const NET_NEW_PROP = 'is_net_new';
 let NUMBER_OF_DEALS_PROCESSED = 0;
@@ -72,7 +72,7 @@ async function main() {
         TAB + `     Number of Deals Processed: ${NUMBER_OF_DEALS_PROCESSED}`,
         TAB + `Number of Line Items Processed: ${NUMBER_OF_LINE_ITEMS_PROCESSED}`,
     );
-    write({missingSkus: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'));
+    write({MISSING_SKUS: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'));
     MISSING_SKUS.length = 0;
     trimFile(undefined, MAIN_LOG_FILEPATH);
     STOP_RUNNING(0);
@@ -259,8 +259,8 @@ function processLineItem(
     } else if (isRecurringDeal) {
         history.recurringLineItems.push(lineItemId);
     } else {
-        log.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${Object.keys(CATEGORY_TO_SKU_DICT)}`);
-        MISSING_SKUS.push(sku);
+        log.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${Object.keys(getCategoryToSkuDict())}`);
+        if (!MISSING_SKUS.includes(sku)){ MISSING_SKUS.push(sku); }
     }
     
     return history;
@@ -312,10 +312,10 @@ function categorizeDeal(
     categoriesBought: Record<string, string>, 
     dealId: string
 ): DealCategorization {
-    let category = Object.keys(CATEGORY_TO_SKU_DICT)
-        .find(key => CATEGORY_TO_SKU_DICT[key].has(sku));
+    let category = Object.keys(getCategoryToSkuDict())
+        .find(key => getCategoryToSkuDict()[key].has(sku));
     if (!category) {
-        mlog.error(`Error in categorizeDeal(): SKU "${sku}" not found in any category from ${JSON.stringify(Object.keys(CATEGORY_TO_SKU_DICT))}`);
+        mlog.error(`Error in categorizeDeal(): SKU "${sku}" not found in any category from ${JSON.stringify(Object.keys(getCategoryToSkuDict()))}`);
         return { 
             category: '', 
             isFirstDealWithCategory: false, 
@@ -338,13 +338,12 @@ function categorizeDeal(
     let categoryInfo: DealCategorization = { 
         category, isFirstDealWithCategory, isStillFirstDealWithNewCategory, isRecurringDeal 
     };
-    const categorizeDealLogs = [
-        NL + `categorizeDeal() called`,
+    SUP.push(NL + `categorizeDeal() called`,
         TAB + `             sku: "${sku}"`,
         TAB + `        category: "${category}", dealId: "${dealId}"`,
         TAB + `categoriesBought:`, JSON.stringify(categoriesBought),
         NL  + `return categoryInfo:`, indentedStringify(categoryInfo)
-    ]
+    )
     // DEBUG_LOGS.push(...categorizeDealLogs);
     return categoryInfo;
 }
@@ -379,12 +378,12 @@ async function isValidDeal(
         && (VALID_DEAL_STAGES.includes(deal.properties.dealstage) 
             || !INVALID_DEAL_STAGES.includes(deal.properties.dealstage))
     );
-    // DEBUG_LOGS.push(NL + `dealResponseIsValid() dealId: ${dealId}`,
-    //     TAB + ` deal.properties.dealname: ${deal.properties.dealname}`,
-    //     TAB + `deal.properties.dealstage: ${deal.properties.dealstage}`,
-    //     TAB + `       isMissingLineItems: ${isMissingLineItems}`,
-    //     TAB + `         isValidDealStage: ${isValidDealStage}`,
-    // );
+    SUP.push(NL + `dealResponseIsValid() dealId: ${dealId}`,
+        TAB + ` deal.properties.dealname: ${deal.properties.dealname}`,
+        TAB + `deal.properties.dealstage: ${deal.properties.dealstage}`,
+        TAB + `       isMissingLineItems: ${isMissingLineItems}`,
+        TAB + `         isValidDealStage: ${isValidDealStage}`,
+    );
     if (isMissingLineItems) {
         mlog.error(`Deal '${deal.properties.dealname}' has no line items`, 
             TAB + 'dealRes.associations:', deal.associations

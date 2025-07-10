@@ -2,15 +2,15 @@
  * @file src/WorkflowManager.ts
  */
 import { 
-    // loadData.ts
-    TEST_FLOW_ID,
-    TERRITORY_BRANCH_NAME_DICT,
-    ALL_TERRITORIES_ZIP_DICT,
-    ALL_REGIONS_ZIP_DICT,
-    REGION_ZIP_PROPS,
-    TERRITORY_ZIP_PROPS, 
+    // dataLoader.ts
+    isDataInitialized,
+    initializeData,
+    getTerritoryData,
+    DEAL_LETYBO_OWNER_FLOW_ID, 
+    CONTACT_LETYBO_OWNER_FLOW_ID, 
+    CONTACT_ISR_OWNER_FLOW_ID,
     // env.ts
-    ONE_DRIVE_DIR, OUTPUT_DIR, STOP_RUNNING, DELAY,
+    STOP_RUNNING, DELAY,
     // setupLog.ts
     mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL,
 } from './config';
@@ -18,30 +18,41 @@ import {
     getFlowById, 
     setFlowById, 
     isValidFlow,
-    batchUpdateFlowByBranchName, FlowBranchUpdate, Flow
-} from "./automation";
-import { 
-    readJsonFileAsObject, 
-    printJson, 
-    printConsoleGroup, 
-    writeObjectToJson,
-    validateFileExtension,
-    parseExcelForOneToMany
-} from './utils/io'
-const FLOW_ID_LIST = [TEST_FLOW_ID]
+    batchUpdateFlowByBranchName
+} from './automation/flows';
+import { FlowBranchUpdate, Flow } from './automation/types';
 
 main().catch(e => {
-    console.error('Error in main():', e);
+    mlog.error('Error in main():', e);
     STOP_RUNNING(1);
 });
+
 async function main() {
+    // Initialize all data first
+    mlog.info('Initializing application data...');
+    try {
+        await initializeData();
+        mlog.info('✓ Application data initialized successfully');
+    } catch (error) {
+        mlog.error('✗ Failed to initialize application data:', error);
+        STOP_RUNNING(1);
+    }
+
+    // Get initialized data
+    const territoryData = getTerritoryData();
+    
+    const LETYBO_FLOW_ID_LIST = [
+        CONTACT_LETYBO_OWNER_FLOW_ID, 
+        DEAL_LETYBO_OWNER_FLOW_ID, 
+    ];
+
     mlog.info('Starting WorkflowManager main()',
-        TAB+`FLOW_ID_LIST.length: ${FLOW_ID_LIST.length}`,    
+        TAB+`LETYBO_FLOW_ID_LIST.length: ${LETYBO_FLOW_ID_LIST.length}`,    
     );
     const mainStartTime = new Date();
-    for (const [index, flowId] of FLOW_ID_LIST.entries()) {
+    for (const [index, flowId] of LETYBO_FLOW_ID_LIST.entries()) {
         const territoryUpdateStartTime = new Date();
-        let infoLogs = [`Processing flow ${index+1}/${FLOW_ID_LIST.length}`,
+        let infoLogs = [`Processing flow ${index+1}/${LETYBO_FLOW_ID_LIST.length}`,
             TAB+`flowId: ${flowId}`,
             TAB+`starting territory branches update at ${territoryUpdateStartTime.toLocaleTimeString()}`,
         ]
@@ -54,12 +65,12 @@ async function main() {
         await updateRegionBranches(flowId);
         infoLogs.push(`Finished updating region branches.`,
             TAB+`Time Elapsed: ${(new Date().getTime() - regionUpdateStartTime.getTime())/1000} seconds.`,
-            NL+`Finished processing flow ${index+1}/${FLOW_ID_LIST.length}`,
+            NL+`Finished processing flow ${index+1}/${LETYBO_FLOW_ID_LIST.length}`,
             TAB+`Time Elapsed: ${(new Date().getTime() - territoryUpdateStartTime.getTime())/1000} seconds.`,
         );
         mlog.info(...infoLogs);
     }
-    mlog.info(`End of main(). Successfully updated ${FLOW_ID_LIST.length} flow(s).`,
+    mlog.info(`End of main(). Successfully updated ${LETYBO_FLOW_ID_LIST.length} flow(s).`,
         TAB+`Total Time Elapsed: ${(new Date().getTime() - mainStartTime.getTime())/1000} seconds.`,
     );
     STOP_RUNNING(0);
@@ -68,21 +79,27 @@ async function main() {
 
 /**
  * @param flowId - `string` a single flow ID to update
- * @param territoryZipDict - `Record<string, Array<string>>` mapping territory names to zip codes, defaults to {@link ALL_TERRITORIES_ZIP_DICT}
- * @param targetProps - `Array<string>` of property names to update, defaults to `['zip', 'unific_shipping_postal_code']` = {@link TERRITORY_ZIP_PROPS}
+ * @param territoryZipDict - `Record<string, Array<string>>` mapping territory names to zip codes, defaults to loaded territory data
+ * @param targetProps - `Array<string>` of property names to update, defaults to loaded territory props
  * @param targetTerritories - `Array<string>` (`optional`) (if only want to process subset of territories) territory names to update their corresponding branches. defaults to empty array, resulting in all territories in `territoryZipDict` being processed
- * @returns **`results`** = `Promise<`{@link Flow}`>` updated flow
+ * @returns **`results`** = `Promise<Flow>` updated flow
  */
 export async function updateTerritoryBranches(
     flowId: string, 
-    territoryZipDict: Record<string, Array<string>> = ALL_TERRITORIES_ZIP_DICT,
-    targetProps: string[] = TERRITORY_ZIP_PROPS,
+    territoryZipDict?: Record<string, Array<string>>,
+    targetProps?: string[],
     targetTerritories: string[] = []
 ): Promise<Flow> {
     if (!flowId) {
         mlog.error('flowId is undefined or null');
         return {} as Flow;
     }
+    
+    // Get data from the loader
+    const territoryData = getTerritoryData();
+    const zipDict = territoryZipDict || territoryData.ALL_TERRITORIES_ZIP_DICT;
+    const propList = targetProps || territoryData.TERRITORY_ZIP_PROPS;
+
     let result: Flow;
     
     let flow = await getFlowById(flowId) as Flow;
@@ -90,11 +107,11 @@ export async function updateTerritoryBranches(
         STOP_RUNNING();
     }
     let updateArr = generateFlowBranchUpdateByReplaceArray(
-        (Array.isArray(targetTerritories) && targetTerritories.length > 0 
-            ? targetTerritories : Object.keys(territoryZipDict)), 
-        targetProps, 
-        TERRITORY_BRANCH_NAME_DICT, 
-        territoryZipDict
+        (Array.isArray(targetTerritories) && targetTerritories.length > 0
+            ? targetTerritories : Object.keys(zipDict)),
+        propList,
+        territoryData.TERRITORY_BRANCH_NAME_DICT, 
+        zipDict
     );
     flow = batchUpdateFlowByBranchName(flow as Flow, updateArr);
     result = await setFlowById(flowId, flow) as Flow;
@@ -104,21 +121,27 @@ export async function updateTerritoryBranches(
 /**
  * @description Updates the branches of the specified flows with the given region zip codes.
  * @param flowId - `string` single flowId to update
- * @param regionZipDict - `Record<string, Array<string>>` mapping region names to zip codes, defaults to {@link ALL_REGIONS_ZIP_DICT}
- * @param targetProps - `Array<string>` of property names to update  defaults to `['unific_shipping_postal_code']` = {@link REGION_ZIP_PROPS}
+ * @param regionZipDict - `Record<string, Array<string>>` mapping region names to zip codes, defaults to loaded region data
+ * @param targetProps - `Array<string>` of property names to update, defaults to loaded region props
  * @param targetRegions - (`optional`) region names to update its corresponding branches (e.g., `['East', 'West']`) defaults to empty array, resulting in all regions in `regionZipDict` being processed
- * @returns **`result`** = `Promise<`{@link Flow}`>` updated flow
+ * @returns **`result`** = `Promise<Flow>` updated flow
  */
 export async function updateRegionBranches(
     flowId: string, 
-    regionZipDict: Record<string, Array<string>> = ALL_REGIONS_ZIP_DICT, 
-    targetProps: string[] = REGION_ZIP_PROPS,
+    regionZipDict?: Record<string, Array<string>>, 
+    targetProps?: string[],
     targetRegions: string[] = []
 ): Promise<Flow> {
     if (!flowId || typeof flowId !== 'string' || flowId.trim() === '') {
         mlog.error('flowId is undefined or null');
         return {} as Flow;
     }
+    
+    // Get data from the loader
+    const territoryData = getTerritoryData();
+    const zipDict = regionZipDict || territoryData.ALL_REGIONS_ZIP_DICT;
+    const propList = targetProps || territoryData.REGION_ZIP_PROPS;
+    
     let result: Flow;
     let flow: Flow | undefined = await getFlowById(flowId);
     if (flow === undefined || !isValidFlow(flow, flowId)) {
@@ -126,10 +149,10 @@ export async function updateRegionBranches(
     }    
     let updateArr = generateFlowBranchUpdateByReplaceArray(
         (Array.isArray(targetRegions) && targetRegions.length > 0 
-            ? targetRegions : Object.keys(regionZipDict)), 
-        targetProps, 
-        TERRITORY_BRANCH_NAME_DICT, 
-        regionZipDict
+            ? targetRegions : Object.keys(zipDict)), 
+        propList, 
+        territoryData.TERRITORY_BRANCH_NAME_DICT, 
+        zipDict
     );
     flow = batchUpdateFlowByBranchName(flow as Flow, updateArr);
     result = await setFlowById(flowId, flow) as Flow;

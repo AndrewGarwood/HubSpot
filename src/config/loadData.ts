@@ -1,134 +1,45 @@
 /**
  * @TODO put loading of territory data and SKU data into their own files.
  * @file src/config/loadData.ts
+ * @deprecated This file has been replaced by dataLoader.ts to fix circular dependency issues
+ * These exports are kept for backward compatibility but will be removed in the future
  */
-import { STOP_RUNNING, ONE_DRIVE_DIR, DATA_DIR } from './env';
-import { parseExcelForOneToMany, StringPadOptions, ParseOneToManyOptions } from '../utils/io';
-import { readJsonFileAsObject as read, validatePath } from '../utils/io/reading';
-import { isNonEmptyArray } from '../utils/typeValidation';
-import path from 'node:path';
-const TAB = '\n\t• ';
-const NL = '\n > ';
-/**
- * @description name of excel file assumed to include 2 sheets: 
- * 1. `'East Territory Alignment - Zip'` 
- * 2. `'West Territory Alignment - Zip'`
- * - Both sheets must include columnNames `['Territories', 'ZIP']`.
- */
-export const territoryDataFileName = 'Letybo Sales Rep Contact - Zipcode Alignment 2025.06.12.xlsx';
-/** `${ONE_DRIVE_DIR}/${territoryDataFileName}` */
-const TERRITORY_FILE_PATH = path.join(ONE_DRIVE_DIR, territoryDataFileName);
-validatePath(TERRITORY_FILE_PATH);
 
-/** 
- * = `['unific_shipping_postal_code'] `
- * @description zip code properties used in the East and West branches 
- */
-export const REGION_ZIP_PROPS = ['unific_shipping_postal_code']
+// Re-export everything from the new dataLoader for backward compatibility
+export * from './dataLoader';
 
-/** 
- * = `['zip', 'unific_shipping_postal_code']`
- * @description zip code properties used in the territory branches. 
- * - a territory is a subset of a region.
- * - The territory name is a key in the {@link TERRITORY_BRANCH_NAME_DICT} object.
- */
-export const TERRITORY_ZIP_PROPS = ['zip', 'unific_shipping_postal_code'];
-const zipParseOptions: ParseOneToManyOptions = {
-    valuePadOptions: {
-        padLength: 5,
-        padChar: '0',
-        padLeft: true,
-    } as StringPadOptions,
-}
-export const EAST_TERRITORY_ZIPS_DICT = parseExcelForOneToMany(
-    TERRITORY_FILE_PATH, 
-    'East Territory Alignment - Zip', 
-    'Territories', 
-    'ZIP',
-    zipParseOptions
-);
+// For any code that still uses the old direct exports, provide compatibility functions
+import { getTerritoryData, getRegexConstants, getCategoryToSkuDict } from './dataLoader';
 
-Object.keys(EAST_TERRITORY_ZIPS_DICT).forEach((territory, index) => {
-    if (territory.length === 0) {
-        console.warn(`The territory at index ${index} is empty.`);
-    }
-    EAST_TERRITORY_ZIPS_DICT[territory] = EAST_TERRITORY_ZIPS_DICT[territory].sort();
-});
+/** @deprecated Use getTerritoryData().filePath instead */
+export const territoryDataFileName = () => getTerritoryData().filePath;
 
-/**@description zip codes of all territories in the East Region */
-export const EAST_ZIPS = Object.values(EAST_TERRITORY_ZIPS_DICT).flat().sort();
+/** @deprecated Use getTerritoryData().REGION_ZIP_PROPS instead */
+export const REGION_ZIP_PROPS = () => getTerritoryData().REGION_ZIP_PROPS;
 
-export const WEST_TERRITORY_ZIPS_DICT = parseExcelForOneToMany(
-    TERRITORY_FILE_PATH, 
-    'West Territory Alignment - Zip', 
-    'Territories', 
-    'ZIP',
-    zipParseOptions
-);
-Object.keys(WEST_TERRITORY_ZIPS_DICT).forEach((territory, index) => {
-    if (territory.length === 0) {
-        console.warn(`The territory at index ${index} is empty.`);
-    }
-    WEST_TERRITORY_ZIPS_DICT[territory] = WEST_TERRITORY_ZIPS_DICT[territory].sort();
-});
+/** @deprecated Use getTerritoryData().TERRITORY_ZIP_PROPS instead */
+export const TERRITORY_ZIP_PROPS = () => getTerritoryData().TERRITORY_ZIP_PROPS;
 
-/**@description zip codes of all territories in the West Region */
-export const WEST_ZIPS = (Object.values(WEST_TERRITORY_ZIPS_DICT).flat()).sort();
+/** @deprecated Use getTerritoryData().EAST_TERRITORY_ZIPS_DICT instead */
+export const EAST_TERRITORY_ZIPS_DICT = () => getTerritoryData().EAST_TERRITORY_ZIPS_DICT;
 
-/**keys are elements of the `'Territories'` column from the source excel file. values are zip code lists */
-export const ALL_TERRITORIES_ZIP_DICT = { 
-    ...EAST_TERRITORY_ZIPS_DICT, 
-    ...WEST_TERRITORY_ZIPS_DICT 
-};
+/** @deprecated Use getTerritoryData().EAST_ZIPS instead */
+export const EAST_ZIPS = () => getTerritoryData().EAST_ZIPS;
 
-export const ALL_REGIONS_ZIP_DICT = {
-    'East': EAST_ZIPS,
-    'West': WEST_ZIPS,
-};
+/** @deprecated Use getTerritoryData().WEST_TERRITORY_ZIPS_DICT instead */
+export const WEST_TERRITORY_ZIPS_DICT = () => getTerritoryData().WEST_TERRITORY_ZIPS_DICT;
 
+/** @deprecated Use getTerritoryData().WEST_ZIPS instead */
+export const WEST_ZIPS = () => getTerritoryData().WEST_ZIPS;
 
-const TERRITORY_BRANCH_NAME_DICT_FILE_PATH = path.join(
-    DATA_DIR, 'territory', 'territory_to_branch_name.json'
-);
-validatePath(TERRITORY_BRANCH_NAME_DICT_FILE_PATH);
-/** 
- * @description map territory name from excel column to its actual branch name in the flow on HubSpot 
- * */
-export const TERRITORY_BRANCH_NAME_DICT = read(
-    TERRITORY_BRANCH_NAME_DICT_FILE_PATH
-) as Record<string, string>;
-if (!isNonEmptyArray(Object.keys(TERRITORY_BRANCH_NAME_DICT))) {
-    throw new Error(`[loadData.ts] TERRITORY_BRANCH_NAME_DICT is empty or not an object.`);
-}
+/** @deprecated Use getTerritoryData().ALL_TERRITORIES_ZIP_DICT instead */
+export const ALL_TERRITORIES_ZIP_DICT = () => getTerritoryData().ALL_TERRITORIES_ZIP_DICT;
 
-const missingKeys = Object.keys(ALL_TERRITORIES_ZIP_DICT).filter(
-    key => !TERRITORY_BRANCH_NAME_DICT.hasOwnProperty(key)
-);
-if (missingKeys.length > 0) {
-    console.error(`Found Territory Name(s) not in TERRITORY_BRANCH_NAME_DICT`,
-        TAB+`The following keys exist in TERRITORY_ZIPS_DICT but not in TERRITORY_BRANCH_NAME_DICT:`, 
-        JSON.stringify(missingKeys),
-    );
-    STOP_RUNNING(1);
-}
+/** @deprecated Use getTerritoryData().ALL_REGIONS_ZIP_DICT instead */
+export const ALL_REGIONS_ZIP_DICT = () => getTerritoryData().ALL_REGIONS_ZIP_DICT;
 
-const SKU_DICT_PATH = path.join(DATA_DIR, 'inventory', 'category_to_sku_list.json');
-validatePath(SKU_DICT_PATH);
-const jsonData = read(SKU_DICT_PATH) as Record<string, Array<string>>;
-export const CATEGORY_TO_SKU_DICT = Object.keys(jsonData).reduce((acc, key) => {
-    if (!isNonEmptyArray(jsonData[key])) {
-        throw new Error(`[loadData.ts] Category "${key}" has no SKUs or is not an array.`);
-    }
-    acc[key] = new Set(jsonData[key]);
-    console.log(NL+`Loaded Category "${key}" with ${jsonData[key].length} SKU(s)`);
-    return acc;
-}, {} as Record<string, Set<string>>);
+/** @deprecated Use getTerritoryData().TERRITORY_BRANCH_NAME_DICT instead */
+export const TERRITORY_BRANCH_NAME_DICT = () => getTerritoryData().TERRITORY_BRANCH_NAME_DICT;
 
-
-export const TEST_FLOW_ID = '1637307812';
-export const ALT_TEST_FLOW_ID = '1645441838';
-
-export const DEAL_LETYBO_OWNER_FLOW_ID = '1630134134';
-export const CONTACT_LETYBO_OWNER_FLOW_ID = '1633823083';
-
-export const CONTACT_ISR_OWNER_FLOW_ID = '566875187';
+/** @deprecated Use getCategoryToSkuDict() instead */
+export const CATEGORY_TO_SKU_DICT = () => getCategoryToSkuDict();
