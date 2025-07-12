@@ -3,16 +3,14 @@
  */
 import { 
     // dataLoader.ts
+    TerritoryData,
     isDataInitialized,
     initializeData,
     getTerritoryData,
-    DEAL_LETYBO_OWNER_FLOW_ID, 
-    CONTACT_LETYBO_OWNER_FLOW_ID, 
-    CONTACT_ISR_OWNER_FLOW_ID,
     // env.ts
     STOP_RUNNING, DELAY,
     // setupLog.ts
-    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL,
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL, INFO_LOGS as INFO
 } from './config';
 import { 
     getFlowById, 
@@ -21,59 +19,45 @@ import {
     batchUpdateFlowByBranchName
 } from './automation/flows';
 import { FlowBranchUpdate, Flow } from './automation/types';
+import { isNonEmptyArray } from './utils/typeValidation';
 
-main().catch(e => {
-    mlog.error('Error in main():', e);
-    STOP_RUNNING(1);
-});
 
-async function main() {
-    // Initialize all data first
-    mlog.info('Initializing application data...');
-    try {
+export async function updateTerritoryWorkflows(
+    flowIds: string[]
+): Promise<void> {
+    if (!isDataInitialized()) {
+        mlog.error('[WorkflowManager.updateTerritoryWorkflows()] Data not initialized. Initializing now...');
         await initializeData();
-        mlog.info('✓ Application data initialized successfully');
-    } catch (error) {
-        mlog.error('✗ Failed to initialize application data:', error);
-        STOP_RUNNING(1);
     }
-
-    // Get initialized data
-    const territoryData = getTerritoryData();
-    
-    const LETYBO_FLOW_ID_LIST = [
-        CONTACT_LETYBO_OWNER_FLOW_ID, 
-        DEAL_LETYBO_OWNER_FLOW_ID, 
-    ];
-
-    mlog.info('Starting WorkflowManager main()',
-        TAB+`LETYBO_FLOW_ID_LIST.length: ${LETYBO_FLOW_ID_LIST.length}`,    
+    mlog.info('[WorkflowManager.updateTerritoryWorkflows()] Starting flow updates',
+        TAB+`flows.length: ${flowIds.length}`,    
     );
-    const mainStartTime = new Date();
-    for (const [index, flowId] of LETYBO_FLOW_ID_LIST.entries()) {
+    const updateStartTime = new Date();
+    for (const [index, flowId] of flowIds.entries()) {
         const territoryUpdateStartTime = new Date();
-        let infoLogs = [`Processing flow ${index+1}/${LETYBO_FLOW_ID_LIST.length}`,
+        INFO.push((INFO.length > 0 ? NL : '')+`Processing flow ${index+1}/${flowIds.length}`,
             TAB+`flowId: ${flowId}`,
             TAB+`starting territory branches update at ${territoryUpdateStartTime.toLocaleTimeString()}`,
-        ]
+        );
         await updateTerritoryBranches(flowId);
-        infoLogs.push(NL+`Finished updating territory branches.`,
+        INFO.push(NL+`Finished updating territory branches.`,
             TAB+`Time Elapsed: ${(new Date().getTime() - territoryUpdateStartTime.getTime())/1000} seconds.`
         );
         DELAY(2000, null);
         const regionUpdateStartTime = new Date();
         await updateRegionBranches(flowId);
-        infoLogs.push(`Finished updating region branches.`,
+        INFO.push(NL+`Finished updating region branches.`,
             TAB+`Time Elapsed: ${(new Date().getTime() - regionUpdateStartTime.getTime())/1000} seconds.`,
-            NL+`Finished processing flow ${index+1}/${LETYBO_FLOW_ID_LIST.length}`,
+            NL+`Finished processing flow ${index+1}/${flowIds.length}`,
             TAB+`Time Elapsed: ${(new Date().getTime() - territoryUpdateStartTime.getTime())/1000} seconds.`,
         );
-        mlog.info(...infoLogs);
+        mlog.info(...INFO);
+        INFO.length = 0;
     }
-    mlog.info(`End of main(). Successfully updated ${LETYBO_FLOW_ID_LIST.length} flow(s).`,
-        TAB+`Total Time Elapsed: ${(new Date().getTime() - mainStartTime.getTime())/1000} seconds.`,
+    mlog.info(`[END WorkflowManager.updateTerritoryWorkflows()] Successfully updated ${flowIds.length} flow(s).`,
+        TAB+`Total Time Elapsed: ${(new Date().getTime() - updateStartTime.getTime())/1000} seconds.`,
     );
-    STOP_RUNNING(0);
+    return;
 }
 
 
@@ -91,12 +75,12 @@ export async function updateTerritoryBranches(
     targetTerritories: string[] = []
 ): Promise<Flow> {
     if (!flowId) {
-        mlog.error('flowId is undefined or null');
+        mlog.error('[updateTerritoryBranches()] flowId is undefined or null');
         return {} as Flow;
     }
     
     // Get data from the loader
-    const territoryData = getTerritoryData();
+    const territoryData = getTerritoryData() as TerritoryData;
     const zipDict = territoryZipDict || territoryData.ALL_TERRITORIES_ZIP_DICT;
     const propList = targetProps || territoryData.TERRITORY_ZIP_PROPS;
 
@@ -107,8 +91,10 @@ export async function updateTerritoryBranches(
         STOP_RUNNING();
     }
     let updateArr = generateFlowBranchUpdateByReplaceArray(
-        (Array.isArray(targetTerritories) && targetTerritories.length > 0
-            ? targetTerritories : Object.keys(zipDict)),
+        (isNonEmptyArray(targetTerritories) 
+            ? targetTerritories 
+            : Object.keys(zipDict)
+        ),
         propList,
         territoryData.TERRITORY_BRANCH_NAME_DICT, 
         zipDict
@@ -133,30 +119,31 @@ export async function updateRegionBranches(
     targetRegions: string[] = []
 ): Promise<Flow> {
     if (!flowId || typeof flowId !== 'string' || flowId.trim() === '') {
-        mlog.error('flowId is undefined or null');
+        mlog.error('[updateRegionBranches()] flowId is undefined or null');
         return {} as Flow;
     }
     
     // Get data from the loader
-    const territoryData = getTerritoryData();
+    const territoryData = getTerritoryData() as TerritoryData;
     const zipDict = regionZipDict || territoryData.ALL_REGIONS_ZIP_DICT;
     const propList = targetProps || territoryData.REGION_ZIP_PROPS;
-    
+
     let result: Flow;
     let flow: Flow | undefined = await getFlowById(flowId);
     if (flow === undefined || !isValidFlow(flow, flowId)) {
         STOP_RUNNING();
     }    
     let updateArr = generateFlowBranchUpdateByReplaceArray(
-        (Array.isArray(targetRegions) && targetRegions.length > 0 
-            ? targetRegions : Object.keys(zipDict)), 
-        propList, 
-        territoryData.TERRITORY_BRANCH_NAME_DICT, 
+        (isNonEmptyArray(targetRegions)
+            ? targetRegions 
+            : Object.keys(zipDict)
+        ),
+        propList,
+        territoryData.TERRITORY_BRANCH_NAME_DICT,
         zipDict
     );
     flow = batchUpdateFlowByBranchName(flow as Flow, updateArr);
     result = await setFlowById(flowId, flow) as Flow;
-    
     return result;
 }
 
@@ -175,11 +162,11 @@ function generateFlowBranchUpdateByReplaceArray(
     branchNameDict: Record<string, string>, 
     zipDict: Record<string, Array<string>>
 ): FlowBranchUpdate[] {
-    if (!targetTerritories || targetTerritories.length === 0) {
+    if (!isNonEmptyArray(targetTerritories)) {
         mlog.error('targetTerritories is undefined or empty');
         return [];
     }
-    if (!targetProps || targetProps.length === 0) {
+    if (!isNonEmptyArray(targetProps)) {
         mlog.error('targetProps is undefined or empty');
         return [];
     }

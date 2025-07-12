@@ -3,14 +3,14 @@
  */
 import path from "node:path";
 import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
-import { getCategoryToSkuDict } from "./config/loadData";
+import { getCategoryToSkuDict } from "./config/dataLoader";
 import { 
     mainLogger as mlog, 
     apiLogger as log, 
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, 
     indentedStringify, DEBUG_LOGS as DEBUG, INFO_LOGS as INFO, 
-    MAIN_LOG_FILEPATH, API_LOG_FILEPATH, clearFile, trimFile, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
+    DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH, clearFile, trimFile, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
 import { 
     getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, 
     getLineItemById, getSkuFromLineItem, isValidLineItem, 
@@ -46,7 +46,7 @@ main().catch((error) => {
  * - - {@link batchUpdatePropertyByObjectId}`(...)`
  * */
 async function main() {
-    clearFile(MAIN_LOG_FILEPATH, API_LOG_FILEPATH);
+    clearFile(DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH);
     const startTime = new Date();
 
     const useSubset: boolean = false; // set to true to use a subset of contacts for testing
@@ -74,7 +74,7 @@ async function main() {
     );
     write({MISSING_SKUS: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'));
     MISSING_SKUS.length = 0;
-    trimFile(undefined, MAIN_LOG_FILEPATH);
+    trimFile(undefined, DEFAULT_LOG_FILEPATH);
     STOP_RUNNING(0);
 }
 

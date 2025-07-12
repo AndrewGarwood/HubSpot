@@ -1,17 +1,15 @@
 /**
  * @file src/utils/io/reading.ts
  */
-import fs from 'fs';
-import csv from 'csv-parser';
-import xlsx from 'xlsx';
-import { StringCaseOptions, StringPadOptions, StringReplaceOptions, StringStripOptions } from './regex/index';
-import { ParseOneToManyOptions,} from './types/Reading';
-import { applyStripOptions, clean, UNCONDITIONAL_STRIP_DOT_OPTIONS } from './regex/index'
-import { STOP_RUNNING } from '../../config/env';
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from '../../config/setupLog';
-import { DelimiterCharacterEnum, DelimitedFileTypeEnum } from './types';
-import { isNonEmptyArray,  anyNull, isNullLike as isNull, hasKeys } from '../typeValidation';
-
+import fs from "fs";
+import csv from "csv-parser";
+import xlsx from "xlsx";
+import { StringCaseOptions, StringPadOptions, StringReplaceOptions, StringStripOptions } from "./regex/index";
+import { ParseOneToManyOptions,} from "./types/Reading";
+import { applyStripOptions, clean, UNCONDITIONAL_STRIP_DOT_OPTIONS } from "./regex/index";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config/setupLog";
+import { DelimiterCharacterEnum, DelimitedFileTypeEnum } from "./types";
+import { isNonEmptyArray,  anyNull, isNullLike as isNull, hasKeys } from "../typeValidation";
 
 /**
  * @consideration make requiredHeaders a rest parameter i.e. `...string[]`
@@ -90,7 +88,9 @@ export function isValidCsv(
 export async function validatePath(...paths: string[]): Promise<void> {
     for (const path of paths) {
         if (!fs.existsSync(path)) {
-            throw new Error(`[ERROR reading.validatePath()]: path does not exist: ${path}`);
+            throw new Error(
+                `[ERROR reading.validatePath()]: path does not exist: ${path}`
+            );
         }
     }
 }
@@ -152,8 +152,13 @@ export function parseExcelForOneToMany(
         });
         return dict;
     } catch (err) {
-        mlog.error('Error reading or parsing the Excel file:', err, 
-            TAB+'Given File Path:', '"' + filePath + '"');
+        mlog.error('Error reading or parsing the Excel file:',
+            TAB+`File Path: '${filePath}'`,
+            TAB+`Sheet Name: '${sheetName}'`,
+            TAB+`Key Column: '${keyColumn}'`,
+            TAB+`Value Column: '${valueColumn}'`,
+            TAB+`Error: ${err instanceof Error ? err.message : String(err)}`
+        );
         return {} as Record<string, Array<string>>;
     }
 }
@@ -216,8 +221,13 @@ export function parseCsvForOneToMany(
         }
         return dict;
     } catch (err) {
-        mlog.error('Error reading or parsing the CSV file:', err, 
-            TAB+'Given File Path:', '"' + filePath + '"');
+        mlog.error('Error reading or parsing the CSV file:',
+            TAB+'Given File Path:', `'${filePath}'`,
+            TAB+`Key Column: '${keyColumn}'`,
+            TAB+`Value Column: '${valueColumn}'`,
+            TAB+`Delimiter: '${delimiter}'`,
+            TAB+`Error: ${err instanceof Error ? err.message : String(err)}`
+        );
         return {} as Record<string, Array<string>>;
     }
 }

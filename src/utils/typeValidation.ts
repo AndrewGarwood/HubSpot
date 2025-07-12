@@ -178,6 +178,16 @@ export function isNumericString(value: any): boolean {
     return !isNaN(Number(value.trim()));
 }
 
+/**
+ * @param value `any`
+ * @returns **`isNonEmptyString`** `boolean`
+ * - `true` `if` `value` is a non-empty string (not just whitespace),
+ * - `false` `otherwise`.
+ */
+export function isNonEmptyString(value: any): value is string {
+    return typeof value === 'string' && value.trim() !== '';
+}
+
 export function isPrimitiveValue(
     value: any
 ): value is string | number | boolean | null | undefined {
@@ -189,39 +199,4 @@ export function isPrimitiveValue(
     }
     return false;
 }
-
-/**
- * @param fieldId `string`
- * @returns 
- */
-export const isBooleanFieldId = (fieldId: string): boolean => {
-    return BOOLEAN_FIELD_ID_LIST.includes(fieldId) || BOOLEAN_FIELD_ID_REGEX.test(fieldId);
-}
-
-/**
- * Represents the `boolean` value `true` for a radio field in NetSuite.
- */
-export const RADIO_FIELD_TRUE = 'T';
-/**
- * Represents the `boolean` value `false` for a radio field in NetSuite.
- */
-export const RADIO_FIELD_FALSE = 'F';
-/**
- * - `= typeof `{@link RADIO_FIELD_TRUE}` | typeof `{@link RADIO_FIELD_FALSE}`;` 
- * @description
- * Value representing the state of a radio field in NetSuite. (i.e. is the button filled in or not)
- * - e.g. the Customer record's `'isperson'` field.
- * */
-export type RadioFieldBoolean = typeof RADIO_FIELD_TRUE | typeof RADIO_FIELD_FALSE;   
-
-
-/** `re` = `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
-export const BOOLEAN_FIELD_ID_REGEX = new RegExp(/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/)
-export const BOOLEAN_TRUE_VALUES = ['true', 'yes', 'y'];
-export const BOOLEAN_FALSE_VALUES = ['false', 'no', 'n'];
-export const BOOLEAN_FIELD_ID_LIST = [
-    'isinactive', 'isprivate', 'giveaccess', 'emailtransactions', 'faxtransactions', 
-    'is1099eligible', 'isdefaultbilling', 'isdefaultshipping', 'isprimary', 'isprimaryshipto', 
-    'isprimarybilling', 'isprimaryshipping'
-];
 

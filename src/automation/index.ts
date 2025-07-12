@@ -1,5 +1,6 @@
 /**
- * @file src/utils/automation/index.ts
+ * @file src/automation/index.ts
  */
-export * from './types';
-export * from './flows';
+export * from "./types";
+export * from "./flows";
+export * from "./flowFactory";

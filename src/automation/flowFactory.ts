@@ -1,9 +1,10 @@
 /**
  * @file src/automation/flowFactory.ts
  */
-
-import { debugLogs } from "./flows";
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../config";
+import { 
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, 
+    NEW_LINE as NL, DEBUG_LOGS as DEBUG 
+} from "../config";
 import { 
     FlowFilter, FilterBranchTypeEnum, FilterBranchOperatorEnum, FilterBranch, 
     NumericOperatorEnum, OperationTypeEnum, Operation, FlowFilterTypeEnum, 
@@ -12,9 +13,9 @@ import {
 
 /**
  * Divides elements of an array into a specified minimum number of subarrays as evenly as possible.
- * @param arr - The array to divide.
- * @param minNumSubarrays - The number of subarrays to create.
- * @param maxSubarraySize - The maximum size of each subarray.
+ * @param arr `Array<any>` - The array to divide.
+ * @param minNumSubarrays `number` - The number of subarrays to create.
+ * @param maxSubarraySize `number` - The maximum size of each subarray.
  * @throws {Error} If arr is not an array or if `minNumSubarrays` is less than or equal to 0 or if `maxSubarraySize` is less than or equal to 0.
  * @returns **`subarrays`** `Array<Array<any>>` An array of subarrays.
  * `subarrays.length` >= `Math.min(minNumSubarrays, arr.length)`
@@ -47,8 +48,8 @@ export function partitionArrayByNumSubarrays(arr: Array<any>, minNumSubarrays: n
 
 /**
  * @param listBranch {@link ListBranch} 
- * @param targetProperty 
- * @returns **`lengths`**: `Array<number>`
+ * @param targetProperty `string`
+ * @returns **`lengths`** `Array<number>`
  * @description Get lengths of filter values for each filter branch in the list branch.
  */
 export function getListBranchFlowFilterValueArrayLengths(
@@ -78,10 +79,10 @@ export function getListBranchFlowFilterValueArrayLengths(
 }
 
 /**
- * @param flowFilters - `Array<`{@link FlowFilter}`>`
- * @param filterBranchType - {@link FilterBranchTypeEnum}
- * @param filterBranchOperator - {@link FilterBranchOperatorEnum}
- * @returns {FilterBranch} **`filterBranch`** - {@link FilterBranch}
+ * @param flowFilters `Array<`{@link FlowFilter}`>`
+ * @param filterBranchType {@link FilterBranchTypeEnum}
+ * @param filterBranchOperator {@link FilterBranchOperatorEnum}
+ * @returns **`filterBranch`** {@link FilterBranch}
  */
 export function generateNumericFilterBranch(
     flowFilters: Array<FlowFilter>, 
@@ -98,10 +99,10 @@ export function generateNumericFilterBranch(
 }
 
 /**
- * @param numericTargetProperty - `string`
- * @param minimum - `number`
- * @param maximum - `number`
- * @returns {FilterBranch} **`filterBranch`** - {@link FilterBranch}
+ * @param numericTargetProperty `string`
+ * @param minimum `number`
+ * @param maximum `number`
+ * @returns **`filterBranch`** {@link FilterBranch}
  */
 export function numberIsBetweenFilterBranch(
     numericTargetProperty: string, 
@@ -116,7 +117,7 @@ export function numberIsBetweenFilterBranch(
         maximum
     );
     if (!numericFlowFilterPair || numericFlowFilterPair.length !== 2) {
-        debugLogs.push(NL + ` Error in numberIsBetweenFilterBranch() b/c numericFlowFilterPair was undefined or had length !== 2.`);
+        DEBUG.push(NL + ` Error in numberIsBetweenFilterBranch() b/c numericFlowFilterPair was undefined or had length !== 2.`);
         return null;
     }
     let inclusiveRangeFilterBranch = generateNumericFilterBranch(
@@ -128,12 +129,12 @@ export function numberIsBetweenFilterBranch(
 }
 
 /**
- * @param numericTargetProperty - `string`
- * @param lowerBoundOperator - {@link NumericOperatorEnum}
- * @param upperBoundOperator - {@link NumericOperatorEnum}
- * @param minimum - `number`
- * @param maximum - `number`
- * @returns {Array<FlowFilter>} **`flowFilters`** - `Array<`{@link FlowFilter}`>`
+ * @param numericTargetProperty `string`
+ * @param lowerBoundOperator {@link NumericOperatorEnum}
+ * @param upperBoundOperator {@link NumericOperatorEnum}
+ * @param minimum `number`
+ * @param maximum `number`
+ * @returns **`flowFilters`** `Array<`{@link FlowFilter}`>`
  */
 export function generateNumericRangeFlowFilterPair(
     numericTargetProperty: string, 
@@ -143,19 +144,19 @@ export function generateNumericRangeFlowFilterPair(
     maximum: number
 ): Array<FlowFilter> {
     if (!numericTargetProperty || !minimum || !maximum) {
-        debugLogs.push(NL + ` Skipping generateInclusiveNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
+        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
         return [];
     }
     if (minimum > maximum) {
-        debugLogs.push(NL + ` Skipping generateInclusiveNumericRangeFlowFilterPair() b/c minimum > maximum.`);
+        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c minimum > maximum.`);
         return [];
     }
     if (![NumericOperatorEnum.IS_GREATER_THAN, NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO].includes(lowerBoundOperator)) {
-        debugLogs.push(NL + ` Skipping generateInclusiveNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
+        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
         return [];
     }
     if (![NumericOperatorEnum.IS_LESS_THAN, NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO].includes(upperBoundOperator)) {
-        debugLogs.push(NL + ` Skipping generateInclusiveNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
+        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
         return [];
     }
     let lowerBoundFlowFilter = generateNumericComparisonFlowFilter(
@@ -169,17 +170,17 @@ export function generateNumericRangeFlowFilterPair(
         maximum,
     )
     if (!lowerBoundFlowFilter || !upperBoundFlowFilter) {
-        debugLogs.push(NL + `Skipping generateInclusiveNumericRangeFlowFilterPair() b/c one of [lowerBoundFlowFilter, upperBoundFlowFilter] was undefined.`, lowerBoundFlowFilter, upperBoundFlowFilter);
+        DEBUG.push(NL + `Skipping generateNumericRangeFlowFilterPair() b/c one of [lowerBoundFlowFilter, upperBoundFlowFilter] was undefined.`, lowerBoundFlowFilter, upperBoundFlowFilter);
         return [];
     }
     return [lowerBoundFlowFilter, upperBoundFlowFilter];
 }
 
 /**
- * @param targetProperty 
- * @param operator see {@link NumericOperatorEnum}
- * @param value 
- * @returns {FlowFilter | null} **`flowFilter`** - {@link FlowFilter}
+ * @param targetProperty {@link string}
+ * @param operator {@link NumericOperatorEnum}
+ * @param value {@link number}
+ * @returns **`flowFilter`** - {@link FlowFilter} | `null`
  */
 export function generateNumericComparisonFlowFilter(
     targetProperty: string,
@@ -187,7 +188,7 @@ export function generateNumericComparisonFlowFilter(
     value: number,
 ): FlowFilter | null {
     if (!targetProperty || !operator || !value) {
-        debugLogs.push(NL + `Skipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
+        DEBUG.push(NL + `Skipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
         return null;
     }
     let flowFilter = {
@@ -205,9 +206,9 @@ export function generateNumericComparisonFlowFilter(
 }
 /**
  * 
- * @param listBranch - {@link ListBranch}
- * @param targetProperty 
- * @returns {ListBranch} **`partitionedListBranch`** — {@link ListBranch}
+ * @param listBranch {@link ListBranch}
+ * @param targetProperty `string`
+ * @returns **`partitionedListBranch`** — {@link ListBranch}
  */
 export function distributeFilterValuesOfListBranch(
     listBranch: ListBranch,
@@ -263,18 +264,19 @@ export function distributeFilterValuesOfListBranch(
             );
         }
     }
-    debugLogs.push(NL + `Number of filter branches after distribution: ${newFilterBranches.length}`);
+    DEBUG.push(NL + `Number of filter branches after distribution: ${newFilterBranches.length}`);
     listBranch.filterBranch.filterBranches = newFilterBranches;
     return listBranch;
 }
 
 /**
- * @param valueArray - `Array<string>`
- * @param targetProperty 
- * @returns {FilterBranch | null} **`filterBranch`** - {@link FilterBranch}
+ * @param valueArray `Array<string>`
+ * @param targetProperty `string`
+ * @returns **`filterBranch`** {@link FilterBranch} | `null`
  */
 export function generatePropertyContainsStringChildFilterBranch(
-    valueArray: Array<string>, targetProperty: string
+    valueArray: Array<string>, 
+    targetProperty: string
 ): FilterBranch | null {
     if (!valueArray || valueArray.length === 0) {
         return null;
@@ -298,9 +300,9 @@ export function generatePropertyContainsStringChildFilterBranch(
 }
 
 /**
- * @param valueBatches - `Array<Array<string>>`
- * @param targetProperty - `string`
- * @returns {Array<FilterBranch>} **`filterBranches`** - `Array<`{@link FilterBranch}`>`
+ * @param valueBatches `Array<Array<string>>`
+ * @param targetProperty `string`
+ * @returns **`filterBranches`** `Array<`{@link FilterBranch}`>`
  */
 export function batchGeneratePropertyContainsStringChildFilterBranch(
     valueBatches: Array<Array<string>>, 

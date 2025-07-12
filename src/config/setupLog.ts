@@ -3,17 +3,23 @@
  * @reference https://tslog.js.org/#/?id=pretty-templates-and-styles-color-settings
  */
 import { OUTPUT_DIR, CLOUD_LOG_DIR } from './env';
-import { Logger, ISettingsParam, ISettings, ILogObj, ILogObjMeta, IPrettyLogStyles, IMeta } from 'tslog';
+import { 
+    Logger, ISettingsParam, ISettings, ILogObj, 
+    ILogObjMeta, IPrettyLogStyles, IMeta 
+} from 'tslog';
 import path from 'node:path';
 import { appendFileSync } from 'node:fs';
+
+
 /** LOCAL_LOG_DIR (in onedrive) or `OUTPUT_DIR/logs` */
 export const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  
-/**`OUTPUT_DIR/logs/DEBUG.txt` */
-export const MAIN_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "DEBUG.txt");
+/**`CLOUD_LOG_DIR/DEBUG.txt` */
+export const DEFAULT_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "DEBUG.txt");
 /** `CLOUD_LOG_DIR/API_LOG.txt` */
 export const API_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
-/**`OUTPUT_DIR/logs/ERROR.txt` */
-export const ERROR_LOG_FILEPATH = path.join(LOCAL_LOG_DIR, "ERROR.txt"); 
+/**`CLOUD_LOG_DIR/ERROR.txt` */
+export const ERROR_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "ERROR.txt"); 
+
 /** 
  * `TAB = INDENT_LOG_LINE =  '\n\t• '` = newLine + tab + bullet + space
  * - log.debug(s1, INDENT_LOG_LINE + s2, INDENT_LOG_LINE + s3,...) 
@@ -30,6 +36,7 @@ const timestampTemplate = `(${dateTemplate} ${timeTemplate})`;
 
 /**not included for now */
 const logNameTemplate = "[{{name}}]"; //"[{{nameWithDelimiterPrefix}}{{name}}{{nameWithDelimiterSuffix}}]";
+/** e.g. [INFO] */
 const logLevelTemplate = "[{{logLevelName}}]";
 const fileInfoTemplate = "{{filePathWithLine}}";
     //:{{fileColumn}} {{method}}";
@@ -49,7 +56,10 @@ const LOG_TEMPLATE = [
     fileInfoTemplate,
 ].join(' ') + NEW_LINE;
 
-const errorInfoTemplate = "{{errorName}}: {{errorMessage}}\n\t{{errorStack}}";
+/** `"{{errorName}}: {{errorMessage}}{INDENT_LOG_LINE}{{errorStack}}"` */
+const errorInfoTemplate = [
+    "{{errorName}}: {{errorMessage}}", "{{errorStack}}"
+].join(INDENT_LOG_LINE);
 /** 
  * use as value for {@link ISettingsParam.prettyErrorTemplate} 
  * @description template string for error message. 
@@ -106,7 +116,7 @@ const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
 export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
 mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
     appendFileSync(
-        MAIN_LOG_FILEPATH, 
+        DEFAULT_LOG_FILEPATH, 
         JSON.stringify(modifyLogObj(logObj)) + "\n", 
         { encoding: "utf-8" }
     );

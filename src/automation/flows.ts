@@ -3,29 +3,31 @@
  */
 import { 
     HUBSPOT_ACCESS_TOKEN, FLOWS_API_URL, OUTPUT_DIR, 
+    DEBUG_LOGS as DEBUG, SUPPRESSED_LOGS as SUP,
     mainLogger as mlog, apiLogger as alog, INDENT_LOG_LINE as TAB, NEW_LINE as NL 
-} from '../config';
-import { AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE} from '../utils/api/types/AxiosEnums';
+} from "../config"
+import { 
+    AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE
+} from "../utils/api/types/AxiosEnums";
 import { 
     batchGeneratePropertyContainsStringChildFilterBranch, 
     distributeFilterValuesOfListBranch, 
     getListBranchFlowFilterValueArrayLengths, 
     partitionArrayByNumSubarrays 
-} from './flowFactory';
+} from "./flowFactory";
 import { 
     Flow, Action, ActionTypeEnum, ActionTypeIdEnum, FlowFilter, MAX_VALUES_PER_FILTER,
     FilterBranch, FilterBranchTypeEnum, ListBranch, FlowBranchUpdate 
-} from './types';
+} from "./types";
 
 const BEARER_ACCESS_TOKEN = `Bearer ${HUBSPOT_ACCESS_TOKEN}`;
-export const debugLogs: any[] = [];
 /**
  * @param flowId `string` 
  * @returns **`response`** = `Promise<`{@link Flow} `| undefined>`
  */
 export async function getFlowById(flowId: string): Promise<Flow | undefined> {
     if (!flowId || typeof flowId !== 'string') {
-        mlog.error(`getFlowById() Invalid Parameter:`,
+        mlog.error(`[getFlowById()] Invalid Parameter:`,
             TAB+`typeof flowId: ${typeof flowId}, flowId: '${flowId}'`
         );
         return {} as Flow;
@@ -45,7 +47,7 @@ export async function getFlowById(flowId: string): Promise<Flow | undefined> {
         }
         return response.json();
     } catch (e) {
-        mlog.error('Error in getFlowById():', e);
+        mlog.error(`[getFlowById()] Error:`, e);
         return undefined;
     }
 }
@@ -57,7 +59,7 @@ export async function getFlowById(flowId: string): Promise<Flow | undefined> {
  */
 export async function setFlowById(flowId: string, flowDefinition: Flow): Promise<Flow | undefined> {
     if (!flowId || typeof flowId !== 'string' || !flowDefinition || typeof flowDefinition !== 'object') {
-        mlog.error(`setFlowById() Invalid Parameters:`,
+        mlog.error(`[setFlowById()] Invalid Parameters:`,
             TAB+`        typeof flowId: ${typeof flowId}, flowId: '${flowId}'`,
             TAB+`typeof flowDefinition: ${typeof flowDefinition}`
         );
@@ -78,7 +80,7 @@ export async function setFlowById(flowId: string, flowDefinition: Flow): Promise
         }
         return response.json();
     } catch (e) {
-        mlog.error('Error in setFlowById():', e);
+        mlog.error(`[setFlowById()] Error:`, e);
         return undefined;
     }
 }
@@ -99,7 +101,7 @@ export function setFlowFilterValues(
         return filter;
     }
     if (filter.property !== targetProperty || !filter.operation) {
-        debugLogs.push(`Skipping filter in setFlowFilterValues():`,
+        DEBUG.push(NL + `[setFlowFilterValues()] Skipping filter:`,
             TAB+`property '${filter.property}' !== '${targetProperty}'`);
         return filter;
     }
@@ -109,9 +111,22 @@ export function setFlowFilterValues(
     const sameLength = filter.operation.values.length === values.length;
     const sameValues = filter.operation.values.every(value => values.includes(value));
     if (sameLength && sameValues) { // no change to filter
-        debugLogs.push(NL + `No change after setFlowFilterValues() for property '${targetProperty}'.`);
+        DEBUG.push(NL + `No change after setFlowFilterValues() for property '${targetProperty}'.`);
         return filter;
     }
+    const valuesRemoved = filter.operation.values.filter(
+        value => !values.includes(value)
+    );
+    const valuesAdded = values.filter(
+        value => !(filter.operation.values || []).includes(value)
+    );
+    DEBUG.push(
+        NL + `[setFlowFilterValues()] Setting filter.operation.values for property '${targetProperty}'`,
+        TAB + `Quantity removed: ${valuesRemoved.length > 0 ? valuesRemoved.length : 'none'}`,
+        TAB + `  Quantity added: ${valuesAdded.length > 0 ? valuesAdded.length : 'none'}`,
+        TAB + `  Initial Length: ${filter.operation.values.length}`,
+        TAB + `      New Length: ${values.length}`,
+    );
     filter.operation.values = values;
     return filter;
 }
@@ -179,16 +194,16 @@ export function getListBranchByName(
     targetBranchName: string
 ): ListBranch | null {
     if (!targetBranchName) {
-        debugLogs.push(NL + `Exiting getListBranchByName() - input targetBranchName was undefined.`);
+        DEBUG.push(NL + `[Exiting getListBranchByName()] - input targetBranchName was undefined.`);
         return null;
     }
     if (!flow || !flow.actions || flow.actions.length === 0) {
         return null;
     }
     let actions: Action[] = flow.actions;
-    debugLogs.push(
-        (debugLogs.length > 0 ? NL : '') 
-        + `getListBranchByName() Begin search for branch: '${targetBranchName}'`
+    DEBUG.push(
+        (DEBUG.length > 0 ? NL : '') 
+        + `[getListBranchByName()] Begin search for branch: '${targetBranchName}'`
     );
     for (let action of actions) {
         const isNotListBranchAction = Boolean(!action
@@ -197,20 +212,19 @@ export function getListBranchByName(
             || (action.actionTypeId && action.actionTypeId === ActionTypeIdEnum.SET_PROPERTY)
         );
         if (isNotListBranchAction) {
-            // debugLogs.push(NL + `Skipping action: ${action.actionId} with type: ${action.type}`);
             continue;
         }
         let listBranch = Object.values(action.listBranches as ListBranch[]).find(
             listBranch => listBranch.branchName === targetBranchName
         );
         if (listBranch) {
-            debugLogs.push(TAB + `Found branch '${targetBranchName}'`,
+            DEBUG.push(TAB + `Found branch '${targetBranchName}'`,
                 TAB + `at actionId: '${action.actionId}' with type: '${action.type}'`
             );
             return listBranch;
         }
     }
-    mlog.warn(`No branch found with name: '${targetBranchName}'`);
+    mlog.warn(`[getListBranchByName()] No branch found with name: '${targetBranchName}'`);
     return null;
 }
 
@@ -234,7 +248,7 @@ export function getAllBranchNames(flow: Flow): Array<string> {
             if (listBranch.branchName) {
                 branchNames.push(listBranch.branchName);
             } else {
-                debugLogs.push(NL + `Skipping listBranch with undefined branchName.`);
+                DEBUG.push(NL + `[getAllBranchNames()] Skipping listBranch with undefined branchName.`);
             }
         }
     }
@@ -255,7 +269,7 @@ export function hasUniqueBranchNames(flow: Flow): boolean {
         let uniqueBranchNames: string[] = Array.from(new Set(allBranchNames));
         return allBranchNames.length === uniqueBranchNames.length;
     } catch (e) {
-        mlog.error('Error in hasUniqueBranchNames():', e);
+        mlog.error('[hasUniqueBranchNames()] Error:', e);
         return false;
     }
 }
@@ -270,11 +284,11 @@ export function setChildFilterBranchesOfListBranch(
     newChildFilterBranches: Array<FilterBranch>,
 ): ListBranch {
     if (!listBranch || !listBranch.filterBranch) {
-        debugLogs.push(NL + `Exiting setChildFilterBranchesOfListBranch() - input listBranch was undefined or does not have defined filterBranch.`);
+        DEBUG.push(NL + `[setChildFilterBranchesOfListBranch()] Exiting - input listBranch was undefined or does not have defined filterBranch.`);
         return listBranch;
     }
     if (!newChildFilterBranches || newChildFilterBranches.length === 0) {
-        debugLogs.push(NL + `Exiting setChildFilterBranchesOfListBranch() - input newChildFilterBranches was undefined or empty.`);
+        DEBUG.push(NL + `[setChildFilterBranchesOfListBranch()] Exiting - input newChildFilterBranches was undefined or empty.`);
         return listBranch;
     }
     let filterBranch = listBranch.filterBranch;
@@ -294,12 +308,12 @@ export function setChildFilterBranchesByListBranchName(
     newChildFilterBranches: Array<FilterBranch>,
 ): Flow {
     if (!flow || !flow.actions || flow.actions.length === 0) {
-        debugLogs.push(NL + ` Exiting setChildFilterBranchesByListBranchName() - input flow was undefined or had no actions.`);
+        DEBUG.push(NL + `[setChildFilterBranchesByListBranchName()] Exiting - input flow was undefined or had no actions.`);
         return flow;
     }
     let listBranch = getListBranchByName(flow, targetBranchName);
     if (!listBranch) {
-        debugLogs.push(NL + ` Exiting setChildFilterBranchesByListBranchName() - input listBranch was undefined.`);
+        DEBUG.push(NL + `[setChildFilterBranchesByListBranchName()] Exiting - input listBranch was undefined.`);
         return flow;
     }
     listBranch = setChildFilterBranchesOfListBranch(listBranch, newChildFilterBranches);
@@ -319,7 +333,7 @@ export function addChildFilterBranchToListBranchByName(
     childFilterBranch: FilterBranch,
 ): Flow {
     if (!targetBranchName) {
-        debugLogs.push(NL + `Exiting addChildFilterBranchToListBranchByName() - input targetBranchName was undefined.`);
+        DEBUG.push(NL + `[addChildFilterBranchToListBranchByName()] Exiting - input targetBranchName was undefined.`);
         return flow;
     }
     if (!flow || !flow.actions || flow.actions.length === 0 || !childFilterBranch) {
@@ -344,14 +358,14 @@ export function isValidFlow(
     flowId: string
 ): boolean {
     if (!flowId) {
-        mlog.error(`flowExistsAndHasUniqueBranches() Flow ID is undefined.`);
+        mlog.error(`[isValidFlow()] Flow ID is undefined.`);
         return false;
     }
     if (!flow || typeof flow !== 'object') {
-        mlog.error(`Flow not found (undefined or null or non object): ${flowId}`);
+        mlog.error(`[isValidFlow()] Flow not found (undefined or null or non object): ${flowId}`);
         return false;
     } else if (!hasUniqueBranchNames(flow)) {
-        mlog.error(`Flow has duplicate branch names: ${flowId}`, 
+        mlog.error(`[isValidFlow()] Flow has duplicate branch names: ${flowId}`, 
             TAB+'getAllBranchNames(flow): ', getAllBranchNames(flow));
         return false;
     }
@@ -378,7 +392,8 @@ export function updateFilterBranchChildren(
     }
     for (let childFilterBranch of filterBranch.filterBranches) {
         childFilterBranch = updateFilterBranchFlowFilters(
-            childFilterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
+            childFilterBranch, targetProperty, valuesToAdd, valuesToRemove, 
+            replacePreviousValues
         );
     }
     return filterBranch;
@@ -412,8 +427,8 @@ export function updateFilterBranchFlowFilters(
                 flowFilter = removeFlowFilterValues(flowFilter, targetProperty, valuesToRemove);
             }
             let updatedValues: string[] = flowFilter.operation.values || [];
-            debugLogs.push(
-                // NL + `filter.property: '${flowFilter.property}'`,
+            SUP.push(
+                NL + `[updateFilterBranchFlowFilters()] filter.property: '${flowFilter.property}'`,
                 TAB + `previousValues.length: ${previousValues.length}`, 
                 TAB + ` updatedValues.length: ${updatedValues.length}`,
                 TAB + `      => Difference =  ${updatedValues.length - previousValues.length}`,
@@ -439,7 +454,7 @@ export function updateFilterBranch(
     replacePreviousValues: boolean = false
 ): FilterBranch {
     if (!filterBranch || !filterBranch.filters || !filterBranch.filterBranches) {
-        debugLogs.push(NL + `Skipping filter branch in updateFilterBranch():`,
+        DEBUG.push(NL + `[updateFilterBranch()] Skipping filter branch:`,
             TAB+`filters or filter branches were undefined/null.`
         );
         return filterBranch;
@@ -484,9 +499,12 @@ export function updateFlowByBranchName(
     if (!branch || !branch.filterBranch) {
         return flow;
     }
-    debugLogs.push(NL+`Start of updateFlowByBranchName(flow, '${targetBranchName}', '${targetProperty}'...)`);
+    DEBUG.push(NL+`[START updateFlowByBranchName()] { name: '${flow.name}', id: '${flow.id}' }`,
+        TAB+`targetBranchName: '${targetBranchName}'`,
+        TAB+`  targetProperty: '${targetProperty}'`
+    );
     if (enforceMaxValues && Math.max(...getListBranchFlowFilterValueArrayLengths(branch, targetProperty)) > MAX_VALUES_PER_FILTER) {
-        debugLogs.push(NL + `Initial Distribution of filter values for branch: '${targetBranchName}'`);
+        DEBUG.push(NL + `[updateFlowByBranchName()] Initial Distribution of filter values for branch: '${targetBranchName}'`);
         branch = distributeFilterValuesOfListBranch(
             branch, targetProperty, MAX_VALUES_PER_FILTER
         );
@@ -547,9 +565,12 @@ export function updateFlowByBranchName(
             filterBranch, targetProperty, valuesToAdd, valuesToRemove, replacePreviousValues
         );
     }
-    debugLogs.push(NL + `End of updateFlowByBranchName(flow, branchName='${targetBranchName}', prop='${targetProperty}'...)`);
-    mlog.debug(...debugLogs);
-    debugLogs.length = 0; // clear debug logs
+    DEBUG.push(NL + `[END updateFlowByBranchName()] { name: '${flow.name}', id: '${flow.id}' }`,
+        TAB+`targetBranchName: '${targetBranchName}'`,
+        TAB+`  targetProperty: '${targetProperty}'...)`
+    );
+    mlog.debug(...DEBUG);
+    DEBUG.length = 0; // clear debug logs
     return flow;
 }
 
@@ -570,7 +591,7 @@ export function batchUpdateFlowByBranchName(flow: Flow, updates: Array<FlowBranc
         )
     ]));
     if (undefinedTargetBranchNames.length > 0) {
-        mlog.warn(`batchUpdateFlowByBranchName(): Flow is missing ${undefinedTargetBranchNames.length} targetBranchName(s)`,
+        mlog.warn(`[batchUpdateFlowByBranchName()] Flow is missing ${undefinedTargetBranchNames.length} targetBranchName(s)`,
             TAB+`The following targetBranchNames were not found in the flow: ${JSON.stringify(undefinedTargetBranchNames)}`,
             NL+ `Removing undefinedTargetBranchNames from updates...`
         );

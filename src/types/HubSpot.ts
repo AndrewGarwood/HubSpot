@@ -13,9 +13,7 @@
  * @property {string} fullName
  * @property {boolean} removed
  * @property {boolean} gdprDeleted
-
- * 
- */
+ * */
 export interface HubSpotUser {
     id: number;
     email: string;

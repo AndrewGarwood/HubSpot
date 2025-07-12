@@ -1,13 +1,14 @@
 /**
  * @file src/types/ConsecutiveIntegerSequence.ts
  */
-import { printConsoleGroup as print } from "../utils/io";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../config/setupLog";
+
 export const MAX_NUM_SEQUENCES = 4;
 
 /**
  * @class `ConsecutiveIntegerSequence`
- * @param {number} start - The starting integer of the sequence.
- * @param {number} end - The ending integer of the sequence.
+ * @param start - The starting integer of the sequence.
+ * @param end - The ending integer of the sequence.
  * @property {number} length - The number of integers in the sequence.
  */
 export class ConsecutiveIntegerSequence {
@@ -16,8 +17,8 @@ export class ConsecutiveIntegerSequence {
     
     /**
      * @constructor
-     * @param {number} start  - The starting integer of the sequence.
-     * @param {number} end  - The ending integer of the sequence.
+     * @param start  - The starting integer of the sequence.
+     * @param end  - The ending integer of the sequence.
      */
     constructor(start: number, end: number) {
         this.start = start;
@@ -51,7 +52,7 @@ export type FindConsecutiveIntegerSequencesResult = {
 /**
  * 
  * @param {Array<string>} valuesArr - `Array<string>` of values (in this case zip codes) to check for consecutive integer sequences 
- * @param {number} maxNumSequences - Maximum number of sequences to find before dumping rest of the values into remainingValues.
+ * @param maxNumSequences - Maximum number of sequences to find before dumping rest of the values into remainingValues.
  * @returns {FindConsecutiveIntegerSequencesResult} - {@link FindConsecutiveIntegerSequencesResult} object containing the following properties:
  * - sequences: Array\<{@link ConsecutiveIntegerSequence}> of consecutive integer sequences result.sequences.length <= maxNumSequences
  * - remainingValues: `Array<string>` of non-consecutive values (i.e. the zip code contains non-numeric characters)
@@ -124,13 +125,11 @@ export function findConsecutiveIntegerSequences(
     console.log('Reformed Value Array length:', reformedValueArr.length);
     console.log('Reformed Value Array to Set size:', new Set(reformedValueArr).size);
     
-    print({label: 'Validation of findConsecutiveIntegerSequences()',
-        details: [
-            `Number of Remaining Values: ${result.remainingValues.length}`,
-            `Number of Sequences: ${result.sequences.length}`,
-            `Combined Length of Consecutive Sequences: ${result.sequences.reduce((acc, seq) => acc + seq.length, 0)}`,
-        ]
-    });
+    mlog.info('Validation of findConsecutiveIntegerSequences()',
+        TAB+`Number of Remaining Values: ${result.remainingValues.length}`,
+        TAB+`Number of Sequences: ${result.sequences.length}`,
+        TAB+`Combined Length of Consecutive Sequences: ${result.sequences.reduce((acc, seq) => acc + seq.length, 0)}`,
+    );
     
     if (maxNumSequences && result.sequences.length > maxNumSequences) {
         // Sort sequences by length (descending)
@@ -143,13 +142,14 @@ export function findConsecutiveIntegerSequences(
             result.remainingValues.push(...seq.sequence.map(num => String(num).padStart(5, '0')));
         }
     }
-    print({label: 'End result of findConsecutiveIntegerSequences()',
-        details: [
-            `Number of Remaining Values: ${result.remainingValues.length}`,
-            `Number of Sequences: ${result.sequences.length}`,
-            `Combined Length of Consecutive Sequences: ${result.sequences.reduce((acc, seq) => acc + seq.length, 0)}`,
-        ]
-    });
-    print({label: 'Top sequences:', details: `${result.sequences.map(seq => seq.sequence)}`});
+    mlog.info('End result of findConsecutiveIntegerSequences()',
+        TAB+`Number of Remaining Values: ${result.remainingValues.length}`,
+        TAB+`Number of Sequences: ${result.sequences.length}`,
+        TAB+`Combined Length of Consecutive Sequences: ${result.sequences.reduce((acc, seq) => acc + seq.length, 0)}`,
+    );
+    mlog.info('Top sequences:',
+        TAB+`${result.sequences.map(seq => seq.sequence)}`,
+        TAB+`Total Length of Top Sequences: ${result.sequences.reduce((acc, seq) => acc + seq.length, 0)}`
+    );
     return result;
 }

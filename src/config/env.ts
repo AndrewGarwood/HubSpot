@@ -23,7 +23,7 @@ export const NODE_HOME_DIR = process.cwd() as string;
 export const SRC_DIR = path.join(NODE_HOME_DIR, 'src') as string;
 
 
-/** `./HubSpot/data` = `SRC_DIR/../data` */
+/** `./HubSpot/data` = `NODE_HOME_DIR/../data` */
 export const DATA_DIR = path.join(NODE_HOME_DIR, 'data') as string;
 /** `./HubSpot/.output `*/
 export const OUTPUT_DIR = path.join(NODE_HOME_DIR, '.output') as string;
