@@ -9,10 +9,11 @@ import {
 } from "../types/Crm";
 import { getObjectById } from "./objects";
 import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
-import { CATEGORY_TO_SKU_DICT } from "../../config/loadData";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
-import { STOP_RUNNING } from "../../config/env";
-import { isNullLike } from "../../utils/typeValidation";
+
+import { getCategoryToSkuDict } from "../../../config/dataLoader";
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
+import { STOP_RUNNING } from "../../../config/env";
+import { isNullLike } from "../../../utils/typeValidation";
 /**
  * @property {string} lineItemId `string` = `lineItem.hs_object_id`
  * @property {string[]} properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
@@ -193,7 +194,7 @@ export function isValidLineItem(
     }
     let isValid: boolean = Boolean(!isNullLike(sku) 
         && price > 0 
-        && !CATEGORY_TO_SKU_DICT.Marketing.has(sku as string) 
+        && !getCategoryToSkuDict().Marketing.has(sku as string) 
         && !(sku as string).startsWith('MM-') 
         && (VALID_DEAL_STAGES.includes(dealStage) || !INVALID_DEAL_STAGES.includes(dealStage))
     );

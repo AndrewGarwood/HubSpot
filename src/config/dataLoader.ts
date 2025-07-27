@@ -3,15 +3,48 @@
  * @description Centralized data loading to avoid circular dependencies 
  * and ensure proper initialization order
  */
-import { STOP_RUNNING, ONE_DRIVE_DIR, DATA_DIR } from './env';
+import { STOP_RUNNING, ONE_DRIVE_DIR, DATA_DIR, SRC_DIR } from './env';
 import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from './setupLog';
 import { parseExcelForOneToMany } from '../utils/io/reading';
 import { readJsonFileAsObject as read, validatePath } from '../utils/io/reading';
 import { isNonEmptyArray } from '../utils/typeValidation';
 import type { ParseOneToManyOptions } from '../utils/io/types/Reading';
-import type { StringPadOptions } from '../utils/io/regex/types/StringOptions';
+import type { StringPadOptions } from '../utils/regex/types/StringOptions';
 import path from 'node:path';
+// Global state to track if data has been loaded
+let dataInitialized = false;
 
+/**
+ * @enum {string} **`DataDomainEnum`**
+ * @property **`CRM`** = `'CRM'`
+ */
+export enum DataDomainEnum {
+    CRM = 'CRM',
+}
+/* -------------------------- LOAD CRM CONFIG ------------------------------ */
+
+const CRM_CONSTANTS_FILE = path.join(SRC_DIR, 'crm', 'data', 'constants.json');
+
+const CRM_JSON_FILE_KEYS = [
+    'DEFAULT_CONTACT_PROPERTIES',
+    'DEFAULT_DEAL_PROPERTIES',
+    'DEFAULT_LINE_ITEM_PROPERTIES',
+];
+
+/**
+ * @interface **`CrmConstants`**
+ * @property **`DEFAULT_CONTACT_PROPERTIES`** `string[]`
+ * @property **`DEFAULT_DEAL_PROPERTIES`** `string[]`
+ * @property **`DEFAULT_LINE_ITEM_PROPERTIES`** `string[]`
+ */
+export interface CrmConstants {
+    DEFAULT_CONTACT_PROPERTIES: string[];
+    DEFAULT_DEAL_PROPERTIES: string[];
+    DEFAULT_LINE_ITEM_PROPERTIES: string[];
+}
+
+
+let CRM_CONSTANTS: CrmConstants | null =  null;
 export const TEST_FLOW_ID = '1637307812';
 export const ALT_TEST_FLOW_ID = '1645441838';
 /**
@@ -44,9 +77,9 @@ const REGION_ZIP_PROPS = ['unific_shipping_postal_code'];
  */
 const TERRITORY_ZIP_PROPS = ['zip', 'unific_shipping_postal_code'];
 // Global state to track if data has been loaded
-let dataInitialized = false;
 let territoryData: TerritoryData | null = null;
 let regexConstants: RegexConstants | null = null;
+/*-------------------------------------------------------------------------- */
 let CATEGORY_TO_SKU_DICT: Record<string, Set<string>> = {};
 
 const regexFileName = `regex_constants.json`;

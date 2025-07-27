@@ -2,17 +2,17 @@
  * @file src/crm/readDealsOfContact.ts
  */
 
-import { SimplePublicObject, SimplePublicObjectWithAssociations, isValidLineItem } from '../crm'
+import { SimplePublicObject, SimplePublicObjectWithAssociations, isValidLineItem } from '.'
 import { getContactById, getDealById, getLineItemById, getSkuFromLineItem } from "./objects";
 import { SkuData } from "./types/NetNew";
-import { toPacificTime } from "../utils/io";
+import { toPacificTime } from "../../utils/io";
 import { 
     mainLogger as mlog,
     apiLogger as log, 
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, INFO_LOGS, DEBUG_LOGS 
-} from "../config/setupLog";
-import { hasKeys } from '../utils/typeValidation';
+} from "../../config/setupLog";
+import { hasKeys } from '../../utils/typeValidation';
 
 /**
  * @param skuHistory `Record<string, `{@link SkuData}`>`

@@ -2,7 +2,6 @@
  * @file TokenResponse.ts
  * @see {@link https://www.oauth.com/oauth2-servers/access-tokens/}
  */
-import { getCurrentPacificTime } from '../../io/dateTime';
 /**
  * @interface **`TokenResponse`**
  * @description Represents the response from the token endpoint.

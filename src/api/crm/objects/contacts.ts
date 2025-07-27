@@ -4,7 +4,7 @@
 import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
 import { getObjectById } from "./objects";
 import { DEFAULT_CONTACT_PROPERTIES } from "../constants";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
 
 /**
  * @property {string} contactId `string` = `hs_object_id`

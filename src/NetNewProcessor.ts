@@ -21,7 +21,7 @@ import {
     SimplePublicObjectWithAssociations,
     VALID_DEAL_STAGES,
     INVALID_DEAL_STAGES
-} from "./crm";
+} from "./api/crm";
 import { 
     readJsonFileAsObject as read,
     writeObjectToJson as write, 

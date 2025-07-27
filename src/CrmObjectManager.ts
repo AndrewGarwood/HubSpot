@@ -6,8 +6,6 @@ import {
     parseExcelForOneToMany, 
     writeObjectToJson as write, 
     ParseOneToManyOptions, 
-    StringCaseOptions, 
-    StringPadOptions 
 } from "./utils/io";
 import { DATA_DIR, ONE_DRIVE_DIR, STOP_RUNNING, DELAY, OUTPUT_DIR } from "./config/env";
 import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "./config/setupLog";
@@ -24,9 +22,10 @@ import { searchObjectByProperty,
     CrmAssociationObjectEnum, 
     CrmObjectEnum,
     getDealByOrderNumber,
-} from "./crm";
+} from "./api/crm";
 import { PublicObjectSearchRequest as HS_PublicObjectSearchRequest } from "@hubspot/api-client/lib/codegen/crm/objects";
 import path from "node:path";
+import { StringCaseOptions } from "./utils/regex/types/StringOptions";
 const COUPON_COLUMN = "Coupon Code";
 const ORDER_NUMBER_COLUMN = "Order #";
 const ORDER_STATUS_COLUMN = "Status";

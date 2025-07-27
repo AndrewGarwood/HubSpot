@@ -4,9 +4,9 @@
 import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponse, PublicObjectSearchRequest, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
 import { getObjectById } from "./objects";
 import { DEFAULT_DEAL_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
-import { DELAY, STOP_RUNNING } from "../../config/env";
+import { DELAY, STOP_RUNNING } from "../../../config/env";
 import { searchObjectByProperty } from "../properties";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
 
 /**
  * @property {string} dealId `string` = `hs_object_id`

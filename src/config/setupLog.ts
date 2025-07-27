@@ -8,8 +8,7 @@ import {
     ILogObjMeta, IPrettyLogStyles, IMeta 
 } from 'tslog';
 import path from 'node:path';
-import { appendFileSync } from 'node:fs';
-
+import { appendFileSync, existsSync } from 'node:fs';
 
 /** LOCAL_LOG_DIR (in onedrive) or `OUTPUT_DIR/logs` */
 export const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  

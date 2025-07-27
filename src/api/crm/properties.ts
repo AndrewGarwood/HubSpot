@@ -1,14 +1,14 @@
 /**
  * @file src/crm/properties.ts
  */
-import { hubspotClient, DELAY } from "../config/env";
+import { hubspotClient, DELAY } from "../../config/env";
 import { 
     mainLogger as mlog, 
     apiLogger as log, 
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, 
     INFO_LOGS as INFO 
-} from "../config/setupLog";
+} from "../../config/setupLog";
 import { 
     CrmObjectEnum,
     CrmAssociationObjectEnum, 

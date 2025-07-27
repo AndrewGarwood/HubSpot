@@ -1,8 +1,8 @@
 /**
  * @file src/crm/objects/objects.ts
  */
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../config/setupLog";
-import { hubspotClient, STOP_RUNNING } from "../../config/env";
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
+import { hubspotClient, STOP_RUNNING } from "../../../config/env";
 import { 
     CrmObjectEnum, CrmAssociationObjectEnum, 
     SimplePublicObject, SimplePublicObjectWithAssociations 

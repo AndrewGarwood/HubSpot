@@ -1,23 +1,25 @@
 /**
  * @file src/utils/typeValidation.ts
  */
-export { isValidCsv } from "./io/reading";
-import { equivalentAlphanumericStrings as equivalentAlphanumeric } from "./io/regex/index";
+
+import { equivalentAlphanumericStrings as equivalentAlphanumeric } from "./regex/index";
 
 /**
- * @param value the value to check
- * @returns **`isNullLike`** `boolean` = `value is null | undefined | '' | [] | Record<string, never>`
- * - `true` `if` the `value` is null, undefined, empty object (no keys), empty array, or empty string
- * - `false` `otherwise`
+ * @param value `any` the value to check
+ * @returns **`isNullLike`** `boolean` = `value is '' | (Array<any> & { length: 0 }) | null | undefined | Record<string, never>`
+ * - **`true`** `if` the `value` is null, undefined, empty object (no keys), empty array, or empty string
+ * - **`false`** `otherwise`
  */
-export function isNullLike(value: any): value is null | undefined | '' | [] | Record<string, never> {
+export function isNullLike(
+    value: any
+): value is '' | null | undefined | (Array<any> & { length: 0 }) | Record<string, never> {
     if (value === null || value === undefined) {
         return true;
     }
     if (typeof value === 'boolean' || typeof value === 'number') {
         return false;
     }
-    // Check for empty object or array... !hasNonTrivialKeys(value)
+    // Check for empty object or array
     if (typeof value === 'object' && isEmptyArray(Object.keys(value))) {
         return true;
     }
@@ -32,8 +34,8 @@ export function isNullLike(value: any): value is null | undefined | '' | [] | Re
     }
     return false;
 }
-
 /**
+ * @deprecated no type predicate b/c "A type predicate cannot reference a rest parameter.ts(1229)" 
  * @param values `any[]`
  * @returns `values.some(v => `{@link isNullLike}`(v))`
  * - **`true`** `if` any of the values are null, undefined, empty object (no keys), empty array, or empty string
@@ -47,23 +49,42 @@ export function anyNull(...values: any[]): boolean {
 }
 
 /**
- * @param arr 
- * @returns **`isNonEmptyArray`** `boolean` = `arr is Array<any> & { length: number }`
- * - `true` if `arr` is an array and has at least one element, 
- * - `false` otherwise.
+ * @param value 
+ * @returns **`isNonEmptyArray`** `boolean` = `value is Array<any> & { length: number }`
+ * - **`true`** if `value` is an array and has at least one element, 
+ * - **`false`** otherwise.
  */
-export function isNonEmptyArray(arr: any): arr is Array<any> & { length: number } {
-    return Array.isArray(arr) && arr.length > 0;
+export function isNonEmptyArray(value: any): value is Array<any> & { length: number } {
+    return Array.isArray(value) && value.length > 0;
 }
 /**
- * @param arr 
- * @returns **`isEmptyArray`** `boolean` = `arr is Array<any> & { length: 0 }`
- * - `true` if `arr` is an array and has no elements,
- * - `false` otherwise.
+ * @param value `any`
+ * @returns **`isEmptyArray`** `boolean` = `value is Array<any> & { length: 0 }`
+ * - **`true`** if `value` is an array and has no elements,
+ * - **`false`** `otherwise`
  */
-export function isEmptyArray(arr: any): arr is Array<any> & { length: 0 } {
-    return Array.isArray(arr) && arr.length === 0; 
+export function isEmptyArray(value: any): value is Array<any> & { length: 0 } {
+    return Array.isArray(value) && value.length === 0; 
 }
+
+/**
+ * @param value `any`
+ * @returns **`isIntegerArray`** `boolean` = `value is Array<number> & { length: number }`
+ * - **`true`** if `value` is an array with `length > 0` and each of its elements is an integer
+ * - **`false`** `otherwise`
+ */
+export function isIntegerArray(
+    value: any
+): value is Array<number> & { length: number } {
+    return (value 
+        && isNonEmptyArray(value) 
+        && value.every(arrElement => 
+            typeof arrElement === 'number'
+            && Number.isInteger(arrElement)
+            && arrElement >= 0
+    ))
+}
+
 /**
  * @TODO add param that indicates whether all values must be nontrivial or not
  * @description Check if an `object` has at least 1 key with value that is non-empty (not `undefined`, `null`, or empty string). 
@@ -89,6 +110,7 @@ export function hasNonTrivialKeys(
     return hasKeyWithNonTrivialValue;
 }
 /**
+ * @TODO add overload on param `keys` where keys = `{ required: string[], optional: string[] }`
  * @note maybe redundant with the syntax `key in obj` ? but able to check more than one
  * @param obj `T extends Object` the object to check
  * @param keys `Array<keyof T> | string[] | string` the list of keys that obj must have
@@ -184,9 +206,12 @@ export function isNumericString(value: any): boolean {
  * - `true` `if` `value` is a non-empty string (not just whitespace),
  * - `false` `otherwise`.
  */
-export function isNonEmptyString(value: any): value is string {
+export function isNonEmptyString(
+    value: any
+): value is string & { length: number } {
     return typeof value === 'string' && value.trim() !== '';
 }
+
 
 export function isPrimitiveValue(
     value: any
@@ -199,4 +224,58 @@ export function isPrimitiveValue(
     }
     return false;
 }
+
+
+
+/**
+ * @enum {string} **`TypeOfEnum`**
+ * @property **`STRING`** = `'string'`
+ * @property **`NUMBER`** = `'number'`
+ * @property **`BOOLEAN`** = `'boolean'`
+ * @property **`OBJECT`** = `'object'`
+ * @property **`FUNCTION`** = `'function'`
+ */
+export enum TypeOfEnum {
+    STRING = 'string',
+    NUMBER = 'number',
+    BOOLEAN = 'boolean',
+    OBJECT = 'object',
+    FUNCTION = 'function',
+}
+
+
+/**
+ * @param fieldId `string`
+ * @returns 
+ */
+export const isBooleanFieldId = (fieldId: string): boolean => {
+    return BOOLEAN_FIELD_ID_LIST.includes(fieldId) || BOOLEAN_FIELD_ID_REGEX.test(fieldId);
+}
+
+/**
+ * Represents the `boolean` value `true` for a radio field in NetSuite.
+ */
+export const RADIO_FIELD_TRUE = 'T';
+/**
+ * Represents the `boolean` value `false` for a radio field in NetSuite.
+ */
+export const RADIO_FIELD_FALSE = 'F';
+/**
+ * - `= typeof `{@link RADIO_FIELD_TRUE}` | typeof `{@link RADIO_FIELD_FALSE}`;` 
+ * @description
+ * Value representing the state of a radio field in NetSuite. (i.e. is the button filled in or not)
+ * - e.g. the Customer record's `'isperson'` field.
+ * */
+export type RadioFieldBoolean = typeof RADIO_FIELD_TRUE | typeof RADIO_FIELD_FALSE;   
+
+
+/** `re` = `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
+export const BOOLEAN_FIELD_ID_REGEX = new RegExp(/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/)
+export const BOOLEAN_TRUE_VALUES = ['true', 'yes', 'y'];
+export const BOOLEAN_FALSE_VALUES = ['false', 'no', 'n'];
+export const BOOLEAN_FIELD_ID_LIST = [
+    'isinactive', 'isprivate', 'giveaccess', 'emailtransactions', 'faxtransactions', 
+    'is1099eligible', 'isdefaultbilling', 'isdefaultshipping', 'isprimary', 'isprimaryshipto', 
+    'isprimarybilling', 'isprimaryshipping'
+];
 

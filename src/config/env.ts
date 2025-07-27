@@ -36,7 +36,7 @@ export const HUBSPOT_DEVELOPER_API_KEY = (process.env.DEVELOPER_API_KEY
     || 'MISSING_ENV_VARIABLE-DEVELOPER_API_KEY'
 );
 /**id for hubspot account. */
-export const HUBSPOT_PORTAL_ID = (process.env.HUBSPOT_PORTAL_ID 
+export const HUBSPOT_PORTAL_ID = (process.env.PORTAL_ID 
     || 'MISSING_ENV_VAR-HUBSPOT_PORTAL_ID'
 );
 
