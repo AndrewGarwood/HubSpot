@@ -1,6 +1,10 @@
 /**
- * @file src/utils/crm/types/index.ts
+ * @file src/api/crm/types/index.ts
  */
 
-export * from "./NetNew";
 export * from "./Crm";
+export * from "./Enums";
+export * from "./Endpoints"
+export * from "./Requests";
+export * from "./typeGuards";
+export * from "./NetNew";

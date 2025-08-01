@@ -116,7 +116,7 @@ export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
 mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
     appendFileSync(
         DEFAULT_LOG_FILEPATH, 
-        JSON.stringify(modifyLogObj(logObj)) + "\n", 
+        JSON.stringify(formatLogObj(logObj)) + "\n", 
         { encoding: "utf-8" }
     );
 });
@@ -139,24 +139,31 @@ export const apiLogger = new Logger<ILogObj>(API_LOGGER_SETTINGS);
 apiLogger.attachTransport((logObj: ILogObj) => {
     appendFileSync(
         API_LOG_FILEPATH, 
-        JSON.stringify(modifyLogObj(logObj), null, 4) + "\n",
+        JSON.stringify(formatLogObj(logObj), null, 4) + "\n",
         { encoding: "utf-8" }
     );
 });
-function modifyLogObj(logObj: ILogObj): ILogObj {
+
+/**
+ * compress metadata into `logObj['-1']` then return stringified `logObj`
+ * @param logObj {@link ILogObj}
+ * @returns `string`
+ */
+function formatLogObj(logObj: ILogObj | (ILogObj & ILogObjMeta)): string {
     const meta = logObj['_meta'] as IMeta;
     const { logLevelName, date, path } = meta;
     const timestamp = date ? date.toLocaleString() : '';
-    const pathString = `${path?.filePathWithLine}:${path?.fileColumn} ${path?.method ? path.method + '()' : ''}`;
+    const fileInfo = `${path?.filePathWithLine}:${path?.fileColumn}`;
+    const methodInfo = `${path?.method ? path.method + '()' : ''}`;
     delete logObj['_meta'];
-    let compositeInfo = '';
-    if (logLevelName) compositeInfo += `[${logLevelName}] `;
-    if (timestamp) compositeInfo += `(${timestamp}) `;
-    if (pathString) compositeInfo += `${pathString}`;
-    logObj['-1'] = compositeInfo.trim();
-    return logObj;
+    logObj['meta0'] = `[${logLevelName}] (${timestamp})`;
+    logObj['meta1'] = `${fileInfo} @ ${methodInfo}`;
+    // logObj['-1'] = `[${logLevelName}] (${timestamp})`;
+    // logObj['-2'] = `${fileInfo} @ ${methodInfo}`;
+    return JSON.stringify(logObj, null, 4) + "\n" 
 }
-export const INFO_LOGS: any[] = [];
+
+/**suppress logs by putting them here (do not print to console) */
+export const SUPPRESSED_LOGS: any[] = []
+export const INFO_LOGS: any[] = []
 export const DEBUG_LOGS: any[] = [];
-export const SUPPRESSED_LOGS: any[] = [];
-export { indentedStringify, trimFile, clearFile } from '../utils/io/writing';

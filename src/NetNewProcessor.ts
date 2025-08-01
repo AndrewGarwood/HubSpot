@@ -3,29 +3,30 @@
  */
 import path from "node:path";
 import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
-import { getCategoryToSkuDict } from "./config/dataLoader";
+import { getCategoryToSkuDict, getObjectPropertyDictionary } from "./config/dataLoader";
 import { 
     mainLogger as mlog, 
     apiLogger as log, 
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, 
-    indentedStringify, DEBUG_LOGS as DEBUG, INFO_LOGS as INFO, 
-    DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH, clearFile, trimFile, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
+    DEBUG_LOGS as DEBUG, INFO_LOGS as INFO, 
+    DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
 import { 
-    getDealById, CrmObjectEnum, CrmAssociationObjectEnum, getContactById, 
+    getDealById, ApiObjectEnum, CrmAssociationObjectEnum, getContactById, 
     getLineItemById, getSkuFromLineItem, isValidLineItem, 
     DealCategorization, PurchaseHistory, NetNewValueEnum,
     SkuData, sortDealsChronologically, updateSkuHistory, batchUpdatePropertyByObjectId,
     ProductCategoryEnum, SimplePublicObject,
     GetContactByIdParams,
-    SimplePublicObjectWithAssociations,
-    VALID_DEAL_STAGES,
-    INVALID_DEAL_STAGES
+    SimplePublicObjectWithAssociations
 } from "./api/crm";
 import { 
     readJsonFileAsObject as read,
     writeObjectToJson as write, 
     getCurrentPacificTime, toPacificTime,
+    clearFile,
+    trimFile,
+    indentedStringify,
 } from "./utils/io";
 import { getColumnValues, validatePath, isValidCsv } from "./utils/io/reading";
 
@@ -286,7 +287,7 @@ async function updateLineItems(
             continue;
         }
         responses.push(...await batchUpdatePropertyByObjectId(
-            CrmObjectEnum.LINE_ITEMS,
+            ApiObjectEnum.LINE_ITEMS,
             lineItemIds,
             { [NET_NEW_PROP]: enumValKey }
         ));
@@ -375,8 +376,8 @@ async function isValidDeal(
     );
     let isValidDealStage = Boolean(
         deal.properties.dealstage 
-        && (VALID_DEAL_STAGES.includes(deal.properties.dealstage) 
-            || !INVALID_DEAL_STAGES.includes(deal.properties.dealstage))
+        && (getObjectPropertyDictionary().VALID_DEAL_STAGES.includes(deal.properties.dealstage) 
+            || !getObjectPropertyDictionary().INVALID_DEAL_STAGES.includes(deal.properties.dealstage))
     );
     SUP.push(NL + `dealResponseIsValid() dealId: ${dealId}`,
         TAB + ` deal.properties.dealname: ${deal.properties.dealname}`,

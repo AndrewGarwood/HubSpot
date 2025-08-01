@@ -1,7 +1,7 @@
 /**
- * @file src/utils/io/regex/stringOperations.ts
+ * @file src/utils/regex/stringOperations.ts
  */
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL} from "../../../config";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL} from "../../config";
 import { StringCaseOptions, StringReplaceOptions } from ".";
 import { clean } from "./cleaning";
 import { distance as levenshteinDistance } from "fastest-levenshtein";
@@ -205,3 +205,30 @@ export function equivalentAlphanumericStrings(
     return false;
 }
 
+
+/** for simple regular expressions... */
+export function extractSource(
+    regex: RegExp
+): string {
+    // remove backslash and escaped character at beginning and end of regex.source
+    let source = regex.source;
+    if (stringStartsWithAnyOf(source, /\\[a-zA-Z]/)) { // e.g. remove \b at beginning of regex.source 
+        // should check source length
+        source = source.slice(2);
+    } else if (stringStartsWithAnyOf(source, /\^/)) {
+        source = source.slice(1);
+    }
+    if (source.endsWith('$')) {
+        source = source.slice(0, -1);
+    }
+    if (stringContainsAnyOf(source, /\\\./)) { // replace escaped dot with dot
+        source = source.replace(/\\\./g, '.');
+    }
+    if (stringContainsAnyOf(source, /\\\s(\*|\+)?/)) { // replace escaped whitespace with space 
+        source = source.replace(/\\\s/g, ' ');
+    }
+    if (stringContainsAnyOf(source, /(?<!\\)\?/)) { // remove unescaped question marks
+        source = source.replace(/(?<!\\)\?/g, '');
+    }
+    return clean(source);
+}

@@ -1,5 +1,5 @@
 /**
- * @file src/utils/api/types/index.ts
+ * @file src/api/types/index.ts
  */
-export * from './AxiosEnums';
-export * from './TokenResponse';
+export * from "./Axios";
+export * from "./TokenResponse";

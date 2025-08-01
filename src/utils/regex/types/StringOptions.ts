@@ -1,5 +1,5 @@
 /**
- * @file src/utils/io/regex/types/StringOptions.ts
+ * @file src/utils/regex/types/StringOptions.ts
  */
 /**
  * @typedefn **`CleanStringOptions`**

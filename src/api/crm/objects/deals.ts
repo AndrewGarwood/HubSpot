@@ -1,7 +1,7 @@
 /**
  * @file src/utils/crm/objects/deals.ts
  */
-import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponse, PublicObjectSearchRequest, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
+import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponseSummary, PublicObjectSearchRequest, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
 import { getObjectById } from "./objects";
 import { DEFAULT_DEAL_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
 import { DELAY, STOP_RUNNING } from "../../../config/env";
@@ -121,7 +121,7 @@ export async function getDealByOrderNumber(
         CrmObjectEnum.DEALS, 
         searchRequest,
         ['hs_object_id']
-    ) as PublicObjectSearchResponse;
+    ) as PublicObjectSearchResponseSummary;
     await DELAY(1000);
     const responseIsInvalid: boolean = !searchRes || !searchRes.objectIds || searchRes.objectIds.length === 0;
     if (responseIsInvalid) {

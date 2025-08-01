@@ -17,7 +17,7 @@ import {
     setFlowById, 
     isValidFlow,
     batchUpdateFlowByBranchName
-} from './automation/flows';
+} from './api/automation/flows';
 import { FlowBranchUpdate, Flow } from './api/automation/types';
 import { isNonEmptyArray } from './utils/typeValidation';
 

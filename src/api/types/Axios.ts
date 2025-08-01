@@ -1,9 +1,10 @@
 /**
- * @file src/utils/api/types/AxiosEnums.ts
+ * @file src/api/types/Axios.ts
  */
 
 /**
  * @enum {string} **`GrantTypeEnum`**
+ * @description Enum for OAuth2 grant types.
  * @property {string} AUTHORIZATION_CODE - Authorization code grant type.
  * @property {string} REFRESH_TOKEN - Refresh token grant type.
  */
@@ -14,6 +15,7 @@ export enum GrantTypeEnum {
 
 /**
  * @enum {string} **`AxiosCallEnum`**
+ * @description Enum for Axios HTTP methods.
  * @property {string} GET - HTTP GET method.
  * @property {string} POST - HTTP POST method.
  * @property {string} PUT - HTTP PUT method.
@@ -29,14 +31,22 @@ export enum AxiosCallEnum {
 
 /**
  * @enum {string} **`AxiosContentTypeEnum`**
- * @property {string} JSON - `'application/json'`
- * @property {string} TEXT - `'text/plain'`
- * @property {string} XML - `'application/xml'`
- * @property {string} FORM_URLENCODED - `'application/x-www-form-urlencoded'`
+ * @description Enum for Content-Type headers.
+ * @property {string} JSON - application/json
+ * @property {string} TEXT - text/plain
+ * @property {string} XML - application/xml
+ * @property {string} FORM_URLENCODED - application/x-www-form-urlencoded
  */
 export enum AxiosContentTypeEnum {
     JSON = 'application/json',
     PLAIN_TEXT = 'text/plain',
     XML = 'application/xml',
-    FORM_URLENCODED = 'application/x-www-form-urlencoded',
+    FORM_URL_ENCODED = 'application/x-www-form-urlencoded',
+}
+
+
+export type AxiosHeader = {
+    ['Authorization']: string;
+    ['Content-Type']?: AxiosContentTypeEnum;
+    ['Accept']?: AxiosContentTypeEnum;
 }

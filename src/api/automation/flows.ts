@@ -8,7 +8,7 @@ import {
 } from "../../config"
 import { 
     AxiosCallEnum as HTTP, AxiosContentTypeEnum as CONTENT_TYPE
-} from "../types/AxiosEnums";
+} from "../types/Axios";
 import { 
     batchGeneratePropertyContainsStringChildFilterBranch, 
     distributeFilterValuesOfListBranch, 

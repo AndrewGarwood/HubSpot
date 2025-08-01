@@ -1,25 +1,19 @@
 /**
  * @file src/utils/io/writing.ts
  */
-import fs from "fs";
-import { mainLogger as mlog, INDENT_LOG_LINE as NEW_LINE_TAB, NEW_LINE as NL } from "../../config/setupLog";
+import * as fs from "fs";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config/setupLog";
 import { OUTPUT_DIR } from "../../config/env";
 import { getCurrentPacificTime } from "./dateTime";
-import { validateFileExtension } from "./reading";
-import { DelimitedFileTypeEnum, DelimiterCharacterEnum } from "./types/Csv";
-import { hasKeys } from "../typeValidation";
-import path from "node:path";
-import { existsSync, writeFileSync } from "node:fs";
+import { validateFileExtension, getDelimiterFromFilePath } from "./reading";
+import { DelimitedFileTypeEnum, DelimiterCharacterEnum, isWriteJsonOptions, WriteJsonOptions } from "./types";
+import { hasKeys, isEmptyArray, isNonEmptyString, TypeOfEnum, } from "../typeValidation";
+import * as validate from "../argumentValidation";
+import * as path from "path";
+import { existsSync, writeFileSync } from "fs";
 
 
 
-export type WriteJsonOptions = {
-    data: Record<string, any> | string;
-    filePath: string;
-    fileName?: string;
-    indent?: number;
-    enableOverwrite?: boolean;
-}
 
 /**
  * Output JSON data to a file with `fs.writeFileSync` or `fs.appendFileSync`.
@@ -27,7 +21,6 @@ export type WriteJsonOptions = {
  * @param options.data `Record<string, any> | string` - JSON data to write to file.
  * - If `data` is a string, it will be parsed to JSON. If `data` is an object, it will be converted to JSON.
  * @param options.filePath `string` - the complete path or the path to the directory where the file will be saved. If `fileName` is not provided, it will be assumed the `filePath` contains the name and extension.
- * @param options.fileName `string` - `optional`, 'name.ext', default=`''` If `fileName` is not provided, it will be assumed the `filePath` contains the name and extension.
  * @param options.indent `number` - `optional`, default=`4`
  * @param options.enableOverwrite `boolean` - `optional`, default=`true` If `enableOverwrite` is `true`, the file will be overwritten. If `false`, the `data` will be appended to the file.
  * @returns {void}
@@ -39,7 +32,6 @@ export function writeObjectToJson(options: WriteJsonOptions): void
  * @param data `Record<string, any> | string` - JSON data to write to file
  * - If `data` is a string, it will be parsed to JSON. If `data` is an object, it will be converted to JSON.
  * @param filePath `string` - the complete path or the path to the directory where the file will be saved. If `fileName` is not provided, it will be assumed the `filePath` contains the name and extension.
- * @param fileName `string` - `optional`, 'name.ext', default=`''` If `fileName` is not provided, it will be assumed the `filePath` contains the name and extension.
  * @param indent `number` - `optional`, default=`4`
  * @param enableOverwrite `boolean` - `optional`, default=`true` If `enableOverwrite` is `true`, the file will be overwritten. If `false`, the `data` will be appended to the file.
  * @returns {void}
@@ -47,7 +39,6 @@ export function writeObjectToJson(options: WriteJsonOptions): void
 export function writeObjectToJson(
     data: Record<string, any> | string, 
     filePath: string,
-    fileName?: string,
     indent?: number,
     enableOverwrite?: boolean
 ): void
@@ -56,53 +47,63 @@ export function writeObjectToJson(
     /** {@link WriteJsonOptions} `| Record<string, any> | string`, */
     arg1: WriteJsonOptions | Record<string, any> | string, 
     filePath?: string,
-    fileName: string='',
     indent: number=4,
     enableOverwrite: boolean=true
 ): void {
     if (!arg1) {
-        mlog.error('No data to write to JSON file');
+        mlog.error('[writing.writeObjectToJson()] No data to write to JSON file');
         return;
     }
-    let data: Record<string, any> | string | undefined = arg1;
-    if (typeof arg1 === 'string') {
-        try {
-            data = JSON.parse(arg1) as Record<string, any>;
-        } catch (e) {
-            mlog.error('Error parsing string to JSON', e);
+    let data: Record<string, any> | string;
+    let outputFilePath: string;
+    let outputIndent: number = indent;
+    let outputEnableOverwrite: boolean = enableOverwrite;
+    // Handle options object overload
+    if (isWriteJsonOptions(arg1)) {
+        data = arg1.data;
+        outputFilePath = arg1.filePath;
+        outputIndent = arg1.indent ?? indent;
+        outputEnableOverwrite = arg1.enableOverwrite ?? enableOverwrite;
+    } else {
+        if (!isNonEmptyString(filePath)) {
+            mlog.error('[writing.writeObjectToJson()] filePath is required when not using WriteJsonOptions object');
             return;
         }
+        data = arg1;
+        outputFilePath = filePath;
     }
-    if (typeof arg1 === 'object' && hasKeys<Record<string, any>>(arg1 as WriteJsonOptions, ['data', 'filePath'])) {
-        data = typeof arg1.data === 'string' ? JSON.parse(arg1.data) : arg1.data;
-        filePath = arg1.filePath;
-        fileName = arg1?.fileName || fileName;
-        indent = arg1?.indent || indent;
-        enableOverwrite = arg1?.enableOverwrite || enableOverwrite;
-    } else if (typeof arg1 === 'object'&& filePath) {
-        data = arg1 as Record<string, any>;
+    
+    // Convert data to object if it's a string (should be valid JSON)
+    let objectData: Record<string, any>;
+    if (typeof data === 'string') {
+        try {
+            objectData = JSON.parse(data) as Record<string, any>;
+        } catch (error) {
+            mlog.error(
+                '[writing.writeObjectToJson()] Error parsing string to JSON',
+                error
+            );
+            return;
+        }
+    } else { // is already an object
+        objectData = data;
     }
-
-    const validationResults = validateFileExtension(
-        (fileName ? path.join(filePath || '', fileName): filePath || ''), 'json'
-    );
-    if (!validationResults.isValid) {
-        mlog.error('Invalid file path or name', validationResults);
-        return;
-    }
-    const outputPath = validationResults.validatedFilePath;
+    
+    const outputPath = validateFileExtension(outputFilePath, 'json');
     try {
-        const jsonData = JSON.stringify(data, null, indent);
-        if (enableOverwrite) {
+        const jsonData = JSON.stringify(objectData, null, outputIndent);
+        if (outputEnableOverwrite) {
             fs.writeFileSync(outputPath, jsonData, { flag: 'w' });
         } else {
             fs.appendFileSync(outputPath, jsonData, { flag: 'a' });
-        };
-    } catch (e) {
-        mlog.error('Error writing to JSON file', e);
-        throw e;
+        }
+        // mlog.info(`[writing.writeObjectToJson()] file saved to '${outputPath}'`)
+    } catch (error) {
+        mlog.error('[writing.writeObjectToJson()] Error writing to JSON file',
+            error
+        );
+        throw error;
     }
-
 }
 
 /**
@@ -123,157 +124,59 @@ export function indentedStringify(
         ? data : JSON.stringify(data, null, spaces);
     jsonString = jsonString
         .split('\n')
-        .map(line => NEW_LINE_TAB + '\t'.repeat(indent) + line)
+        .map(line => TAB + '\t'.repeat(indent) + line)
         .join('')
         .replace(/^\n\t. /, '').replace(/•/g, '');
     return jsonString;
 }
 
 /**
- * @deprecated
- * Output JSON data to the console
- * @param data `Record<string, any>`
- * @param spaces `number` - `optional`, default=`4` 
+ * @returns **`timestamp`** `string` = `(${MM}-${DD})-(${HH}-${mm}.${ss}.${ms})`
  */
-export function printJson(data:Record<string, any>, spaces: number=4) {
-    try {
-        console.log(JSON.stringify(data, null, spaces));
-    } catch (e) {
-        mlog.error(e);
-    }
+export function getFileNameTimestamp(): string {
+    const now = new Date();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const DD = String(now.getDate()).padStart(2, '0');
+    const HH = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const ms = String(now.getMilliseconds()).padStart(3, '0');
+    return `(${MM}-${DD})-(${HH}-${mm}.${ss}.${ms})`
 }
-
-/**
- * @deprecated
- * @typedefn **`ConsoleGroup`**
- * @property {string} label `string` - label for the console group
- * @property {Array<string> | string} details `string[]` - log each string in arr on new line
- * @property {boolean} collapse `boolean` - `optional`, default=`false`
- * @property {number} numTabs `number` - `optional`, default=`1`
- * @property {boolean} printToConsole `boolean` - `optional`, default=`true`
- * @property {boolean} printToFile `boolean` - `optional`, default=`true`
- * @property {string} filePath `string` - `optional`, default=`${OUTPUT_DIR}/DEFAULT_LOG.txt`
- * @property {boolean} enableOverwrite `boolean` - `optional`, default=`false`
- * @description Print a console group with the given label and log statements. Optionally print to file.
- */
-export type ConsoleGroup = {
-    label: string,
-    details?: Array<string> | string,
-    collapse?: boolean,
-    numTabs?: number,
-    printToConsole?: boolean,
-    printToFile?: boolean,
-    filePath?: string,
-    enableOverwrite?: boolean
-}
-
-
-/**
- * @deprecated
- * @param consoleGroup {@link ConsoleGroup}
- * @param consoleGroup.label `string`
- * @param consoleGroup.details `string[]` - log each string in arr on new line
- * @param consoleGroup.collapse `boolean` - `optional`, default=`false`
- * @param consoleGroup.numTabs `number` - `optional`, default=`1`
- * @param consoleGroup.printToConsole `boolean` - `optional`, default=`true`
- * @param consoleGroup.printToFile `boolean` - `optional`, default=`true`
- * @param consoleGroup.filePath `string` - `${OUTPUT_DIR}/logs/DEFAULT_LOG.txt`
- * @param consoleGroup.enableOverwrite `boolean` - `optional`, default=`false`
- * @returns {void}
- * @description Print a console group with the given label and log statements. Optionally print to file.
- */
-export function printConsoleGroup({
-    label = 'Group Name', 
-    details = [],
-    collapse = false,
-    numTabs = 0,
-    printToConsole = true,
-    printToFile = true,
-    filePath = `${OUTPUT_DIR}/logs/DEFAULT_LOG.txt`,
-    enableOverwrite = false
-}: ConsoleGroup): void {
-    let labelOffset = '\t'.repeat(numTabs);
-    let bodyOffset = '\t'.repeat(numTabs + 1);
-    label = labelOffset + `[${getCurrentPacificTime()}] ` + label
-    details = typeof details === 'string' ? [details] : details;
-    if (printToConsole) {
-        if (collapse) {
-            console.groupCollapsed(label);
-        } else {
-            console.group(label);
-        }
-        details.forEach(statement => console.log(statement));
-        console.groupEnd();
-    }
-    if (printToFile) {
-        filePath = validateFileExtension(filePath, 'txt').validatedFilePath;
-        if (enableOverwrite) {
-            fs.writeFile(
-                filePath, 
-                '\n' + labelOffset + label + '\n' + bodyOffset + details.join('\n' + bodyOffset), 
-                (err) => {
-                    if (err) {
-                        mlog.error('Error writing to file', err);
-                    }
-                }
-            );
-        } else {
-            fs.appendFile(
-                filePath, 
-                '\n' + labelOffset + label + '\n' + bodyOffset + details.join('\n' + bodyOffset), 
-                (err) => {
-                    if (err) {
-                        mlog.error('Error appending to file', err);
-                    }
-                }
-            );
-        }
-    }
-}
-
 
 /**
  * @param listData `Record<string, Array<string>>` map col names to col values
- * @param fileName string
- * @param filePath string
- * @param delimiter string - optional, default=`','`
- * @param delimiterColumn string - optional, default=`''`
+ * @param outputPath `string`
+ * @param delimiter `string` - optional, default=`'\t'`
+ * @param columnDelimiter `string` - optional, default=`''`
  */
 export function writeListsToCsv(
     listData: Record<string, Array<string>>,
-    fileName: string,
-    filePath: string,
-    delimiter: string =DelimiterCharacterEnum.COMMA,
-    delimiterColumn: string='',  
-) {
-    let fileExtension = '';
-    if (delimiter === DelimiterCharacterEnum.COMMA) {
-        fileExtension = DelimitedFileTypeEnum.CSV;
-    } else if (delimiter === DelimiterCharacterEnum.TAB) {
-        fileExtension = DelimitedFileTypeEnum.TSV;
-    }
-    const outputAddress = `${filePath}/${fileName}.${fileExtension}`;
+    outputPath: string,
+    delimiter: string = DelimiterCharacterEnum.TAB,
+    columnDelimiter: string = '',
+): void {
     const listNames = Object.keys(listData);
     const listValues = Object.values(listData);
 
     // Get the maximum length of the lists
     const maxLength = Math.max(...listValues.map(list => list.length));
-    let csvContent = listNames.join(delimiter) + '\n'; // Header row
-    
-    if (delimiterColumn && delimiterColumn.length > 0) {
-        delimiter = delimiter + delimiterColumn + delimiter;
+    let csvContent = listNames.join(delimiter) + '\n';
+
+    if (isNonEmptyString(columnDelimiter)) {
+        delimiter = delimiter + columnDelimiter + delimiter;
     }
     for (let i = 0; i < maxLength; i++) {
         const row = listValues.map(list => list[i] || '').join(delimiter);
         csvContent += row + '\n';
     }
     
-    fs.writeFile(outputAddress, csvContent, (err) => {
+    fs.writeFile(outputPath, csvContent, (err) => {
         if (err) {
             mlog.error('Error writing to CSV file', err);
             return;
         } 
-        mlog.info(`CSV file has been saved to ${outputAddress}`);
+        mlog.info(`CSV file has been saved to ${outputPath}`);
     });
 }
 
@@ -319,5 +222,43 @@ export function clearFile(...filePaths: string[]): void {
             continue;
         }
         writeFileSync(filePath, '', { encoding: 'utf-8' });
+    }
+}
+
+/**
+ * @param rows `Record<string, any>[]` - array of objects to write to CSV 
+ * @param outputPath `string` - path to the output CSV file.
+ * @returns **`void`**
+ */
+export function writeRowsToCsv(
+    rows: Record<string, any>[],
+    outputPath: string,
+): void {
+    validate.arrayArgument('writeRowsToCsv', 'rows', rows, TypeOfEnum.OBJECT);
+    validate.stringArgument('writeRowsToCsv', 'outputPath', outputPath);
+    const delimiter = getDelimiterFromFilePath(outputPath);
+    const headers = Object.keys(rows[0] || {});
+    if (isEmptyArray(headers)) {
+        mlog.error(`[writeRowsToCsv()] No headers found in rows, nothing to write.`,
+            TAB + `Intended outputPath: '${outputPath}'`,
+        );
+        return;
+    }
+    if (rows.some(row => !hasKeys(row, headers))) {
+        mlog.error(`[writeRowsToCsv()] Some rows do not have all headers!`,
+            TAB + `headers: ${JSON.stringify(headers)}`,
+            TAB + `Intended outputPath: '${outputPath}'`
+        );
+        return;
+    }
+    const csvContent: string = [headers.join(delimiter)].concat(
+        rows.map(row => headers.map(header => row[header] || '').join(delimiter))
+    ).join('\n');
+    try {
+        fs.writeFileSync(outputPath, csvContent, { encoding: 'utf-8' });
+        mlog.info(`[writeRowsToCsv()] file has been saved to '${outputPath}'`);
+    } catch (e) {
+        mlog.error('[writeRowsToCsv()] Error writing to CSV file', e);
+        throw e;
     }
 }

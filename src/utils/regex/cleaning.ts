@@ -1,10 +1,12 @@
 /**
- * @file src/utils/io/regex/cleaning.ts
+ * @file src/utils/regex/cleaning.ts
  */
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../../config";
-import { isNonEmptyArray } from "../../typeValidation";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config";
+import { isNonEmptyArray } from "../typeValidation";
 import { RegExpFlagsEnum } from "./configureParameters";
-import { CleanStringOptions, isCleanStringOptions, StringCaseOptions, StringPadOptions, StringReplaceOptions, StringStripOptions } from "../";
+import { CleanStringOptions, StringCaseOptions, StringPadOptions, 
+    StringReplaceOptions, StringStripOptions } from "./";
+import { isCleanStringOptions } from "./types/typeGuards";
 
 export function clean(s: string, options?: CleanStringOptions): string
 /**
@@ -12,7 +14,7 @@ export function clean(s: string, options?: CleanStringOptions): string
  * - converts to string and trims, then: 
  * - applies options in this order: `StringReplaceOptions`, `StringStripOptions`, `StringCaseOptions`, `StringPadOptions`
  * - Removes leading+trailing spaces, extra spaces, commas, and dots from a string (e.g. `'..'` becomes `'.'`)
- * - optionally applies 4 option params with: {@link String.replace}, {@link applyStripOptions}, {@link applyCaseOptions}, and {@link applyPadOptions}.
+ * - optionally applies 4 option params with: {@link string.replace}, {@link applyStripOptions}, {@link applyCaseOptions}, and {@link applyPadOptions}.
  * @param s - the `string` to clean
  * @param stripOptions — {@link StringStripOptions}
  * - `optional` strip options to apply to the string

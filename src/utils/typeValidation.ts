@@ -2,7 +2,7 @@
  * @file src/utils/typeValidation.ts
  */
 
-import { equivalentAlphanumericStrings as equivalentAlphanumeric } from "./regex/index";
+import { equivalentAlphanumericStrings } from "./regex/index";
 
 /**
  * @param value `any` the value to check
@@ -70,7 +70,7 @@ export function isEmptyArray(value: any): value is Array<any> & { length: 0 } {
 /**
  * @param value `any`
  * @returns **`isIntegerArray`** `boolean` = `value is Array<number> & { length: number }`
- * - **`true`** if `value` is an array with `length > 0` and each of its elements is an integer
+ * - **`true`** if `value` is an array with `length > 0` and each of its elements is an `integer`
  * - **`false`** `otherwise`
  */
 export function isIntegerArray(
@@ -83,6 +83,20 @@ export function isIntegerArray(
             && Number.isInteger(arrElement)
             && arrElement >= 0
     ))
+}
+
+/**
+ * @param value `any`
+ * @returns **`isStringArray`** `boolean` = `value is Array<string> & { length: number }`
+ * - **`true`** if `value` is an array with `length > 0` and each of its elements is a `string`
+ * - **`false`** `otherwise`
+ */
+export function isStringArray(
+    value: any
+): value is Array<string> & { length: number } {
+    return (isNonEmptyArray(value) 
+        && value.every(arrElement => typeof arrElement === 'string')
+    );
 }
 
 /**
@@ -191,7 +205,7 @@ export function areEquivalentObjects(
         } else if (typeof valA === "object" && valA && typeof valB === "object" && valB) {
             return areEquivalentObjects(valA, valB);
         }
-        return equivalentAlphanumeric(valA, valB);
+        return equivalentAlphanumericStrings(valA, valB);
     });
 }
 
@@ -243,39 +257,4 @@ export enum TypeOfEnum {
     FUNCTION = 'function',
 }
 
-
-/**
- * @param fieldId `string`
- * @returns 
- */
-export const isBooleanFieldId = (fieldId: string): boolean => {
-    return BOOLEAN_FIELD_ID_LIST.includes(fieldId) || BOOLEAN_FIELD_ID_REGEX.test(fieldId);
-}
-
-/**
- * Represents the `boolean` value `true` for a radio field in NetSuite.
- */
-export const RADIO_FIELD_TRUE = 'T';
-/**
- * Represents the `boolean` value `false` for a radio field in NetSuite.
- */
-export const RADIO_FIELD_FALSE = 'F';
-/**
- * - `= typeof `{@link RADIO_FIELD_TRUE}` | typeof `{@link RADIO_FIELD_FALSE}`;` 
- * @description
- * Value representing the state of a radio field in NetSuite. (i.e. is the button filled in or not)
- * - e.g. the Customer record's `'isperson'` field.
- * */
-export type RadioFieldBoolean = typeof RADIO_FIELD_TRUE | typeof RADIO_FIELD_FALSE;   
-
-
-/** `re` = `/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/` */
-export const BOOLEAN_FIELD_ID_REGEX = new RegExp(/(^(is|give|send|fax|email)[a-z0-9]{2,}$)/)
-export const BOOLEAN_TRUE_VALUES = ['true', 'yes', 'y'];
-export const BOOLEAN_FALSE_VALUES = ['false', 'no', 'n'];
-export const BOOLEAN_FIELD_ID_LIST = [
-    'isinactive', 'isprivate', 'giveaccess', 'emailtransactions', 'faxtransactions', 
-    'is1099eligible', 'isdefaultbilling', 'isdefaultshipping', 'isprimary', 'isprimaryshipto', 
-    'isprimarybilling', 'isprimaryshipping'
-];
 

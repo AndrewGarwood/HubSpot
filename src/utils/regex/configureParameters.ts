@@ -3,7 +3,7 @@
  */
 import { StringCaseOptions, StringPadOptions, StringStripOptions, StringReplaceParams, 
     StringReplaceOptions, CleanStringOptions } from "./types";
-import { getRegexConstants } from '../../../config/dataLoader';
+import { getRegexConstants } from '../../config/dataLoader';
 
 // These are now loaded via the dataLoader system
 export function getCompanyKeywordList(): string[] {

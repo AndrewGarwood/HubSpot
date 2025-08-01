@@ -1,10 +1,7 @@
 /**
- * @file src/crm/types/Crm.ts
+ * @file src/api/crm/types/Crm.ts
  */
-import { 
-    SimplePublicObject as HS_SimplePublicObject, 
-    SimplePublicObjectWithAssociations as HS_SimplePublicObjectWithAssociations 
-} from "@hubspot/api-client/lib/codegen/crm/objects";
+import { FilterOperatorEnum } from "./Enums";
 
 /**
  * @interface **`Filter`**
@@ -34,11 +31,14 @@ export interface FilterGroup {
 /**
  * @interface **`PublicObjectSearchRequest`**
  * @property **`query`** `string`
- * @property **`limit`** `number`
- * @property **`after`** `string | number`
- * @property **`sorts`** `Array<string>`
- * @property **`properties`** `Array<string>`
- * @property **`filterGroups`** `Array<`{@link FilterGroup}`>`
+ * @property **`limit`** `number` `optional`
+ * @property **`after`** `string | number` `optional`
+ * @property **`sorts`** `Array<string>` `optional`
+ * @property **`properties`** `Array<string>` `optional`
+ * - `for` each `result` in `SearchResponse.results` 
+ * `result.properties.keys()` === `SearchRequest.properties` 
+ * @property **`filterGroups`** `Array<`{@link FilterGroup}`>` - `maximum` allowed length = `5`
+ * - `maximum` number of filters = `18` -> `sum(filterGroups.map(fg => fg.filters.length))` must be `<= 18`
  */
 export interface PublicObjectSearchRequest {
     query?: string;
@@ -46,24 +46,61 @@ export interface PublicObjectSearchRequest {
     after?: string | number;
     sorts?: Array<string>;
     properties?: Array<string>;
+    /** 
+     * `Array<`{@link FilterGroup}`>` 
+     * - `maximum` allowed length = `5`
+     * - `maximum` number of `filters` = `18` 
+     * -> `sum(filterGroups.map(fg => fg.filters.length))` must be `<= 18` 
+     * */
     filterGroups?: Array<FilterGroup>;
 }
 /**
- * To include multiple filter criteria, you can group filters within filterGroups:
- * To apply AND logic, include a comma-separated list of conditions within one set of filters.
- * To apply OR logic, include multiple filters within a filterGroup.
- * You can include a maximum of five filterGroups with up to 6 filters in each group, 
- * with a maximum of 18 filters in total. If you've included too many groups 
- * or filters, you'll receive a VALIDATION_ERROR error response.
+ * - To include multiple filter criteria, you can group `filters` within `filterGroups`:
+ * - To apply `AND` logic, include a comma-separated list of conditions within `one` set of filters.
+ * - To apply `OR` logic, include multiple filters within a `filterGroup`.
+ * - You can include a maximum of `five` `filterGroups` with up to `6` filters in each group, 
+ * with a `maximum of 18 filters` in total. If you've included too many groups 
+ * or filters, you'll receive a `VALIDATION_ERROR` error response.
  * */
+/*
+ * @example filterGroups: Array<FilterGroup>
+For example, the request below searches for contacts with  
+    (first name Alice `AND` a last name other than Smith), 
+    `OR` 
+    (contacts that don't have a value for the property email)
+"filterGroups": [
+    {
+        "filters": [
+            {
+                "propertyName": "firstname",
+                "operator": "EQ",
+                "value": "Alice"
+            },
+            {
+                "propertyName": "lastname",
+                "operator": "NEQ",
+                "value": "Smith"
+            }
+        ]
+    },
+    {
+        "filters": [{
+            "propertyName": "email",
+            "operator": "NOT_HAS_PROPERTY"
+        }]
+    }
+]
+*/
+
+
 /**
- * @typedefn **`PublicObjectSearchResponse`**
+ * @typedefn **`PublicObjectSearchResponseSummary`**
  * @property **`objectIds`** `Array<string>`
  * @property **`objects`** `Array<`{@link SimplePublicObject}`>`
  * @property **`after`** `string | number`
  * @property **`total`** `number`
  */
-export type PublicObjectSearchResponse = {
+export type PublicObjectSearchResponseSummary = {
     objectIds: Array<string>;
     objects: Array<SimplePublicObject>;
     after: string | number;
@@ -176,7 +213,7 @@ export interface Paging {
 
 /**
  * @interface **`ForwardPaging`**
- * @property {NextPage} next {@link NextPage}
+ * @property **`next`** {@link NextPage}
  */
 export interface ForwardPaging {
     next: NextPage;
@@ -200,81 +237,4 @@ export interface NextPage {
 export interface PreviousPage {
     link?: string;
     before: string;
-}
-/**
- * strings used as dictionary keys to access different parts of the CRM API with `hubspotClient`.
- * @example 
- * hubspotClient.crm[CrmObjectEnum.CONTACTS].basicApi 
- * // is equivalent to 
- * hubspotClient.crm.contacts.basicApi
- * @enum {string} **`CrmObjectEnum`**
- * @readonly
- * @property **`CONTACTS`** - `'contacts'`
- * @property **`DEALS`** - `'deals'`
- * @property **`COMPANIES`** - `'companies'`
- * @property **`PRODUCTS`** - `'products'`
- * @property **`LINE_ITEMS`** - `'lineItems'`
- * @property **`TICKETS`** - `'tickets'`
- */
-export enum CrmObjectEnum {
-    CONTACTS = 'contacts',
-    DEALS = 'deals',
-    COMPANIES = 'companies',
-    PRODUCTS = 'products',
-    LINE_ITEMS = 'lineItems',
-    TICKETS = 'tickets'
-}
-
-/**
- * @note redundant... except for LINE_ITEMS
- * @enum {string} **`CrmAssociationObjectEnum`**
- * @readonly
- * @property **`CONTACTS`** - `'contacts'`
- * @property **`DEALS`** - `'deals'`
- * @property **`COMPANIES`** - `'companies'`
- * @property **`PRODUCTS`** - `'products'`
- * @property **`LINE_ITEMS`** - `line_items`
- * @property **`TICKETS`** - `'tickets'`
- */
-export enum CrmAssociationObjectEnum {
-    CONTACTS = 'contacts',
-    DEALS = 'deals',
-    COMPANIES = 'companies',
-    PRODUCTS = 'products',
-    LINE_ITEMS = 'line_items',
-    TICKETS = 'tickets'
-}
-
-/**
- * @enum {string} **`FilterOperatorEnum`**
- * @readonly
- * @property **`LESS_THAN`** - Less than the specified value.
- * @property **`LESS_THAN_OR_EQUAL_TO`** - Less than or equal to the specified value.
- * @property **`GREATER_THAN`** - Greater than the specified value.
- * @property **`GREATER_THAN_OR_EQUAL_TO`** - Greater than or equal to the specified value.
- * @property **`EQUAL_TO`** - Equal to the specified value.
- * @property **`NOT_EQUAL_TO`** - Not equal to the specified value.
- * @property **`BETWEEN`** - Within the specified range. In your request, use key-value pairs to set highValue and value. Refer to the example below the table.
- * @property **`IN`** - Included within the specified list. Searches by exact match. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase. Refer to the example below the table.
- * @property **`NOT_IN`** - Not included within the specified list. In your request, include the list values in a values array. When searching a string property with this operator, values must be lowercase.
- * > `IN / NOT_IN` for enumeration properties only?
- * @property **`HAS_PROPERTY`** - Has a value for the specified property.
- * @property **`NOT_HAS_PROPERTY`** - Doesn't have a value for the specified property.
- * @property **`CONTAINS_TOKEN`** - Contains a token. In your request, you can use wildcards (*) to complete a partial search. For example, use the value *@hubspot.com to retrieve contacts with a HubSpot email address.
- * @property **`NOT_CONTAINS_TOKEN`** - Doesn't contain a token.
- */
-export enum FilterOperatorEnum {
-    LESS_THAN = 'LT',
-    LESS_THAN_OR_EQUAL_TO = 'LTE',
-    GREATER_THAN = 'GT',
-    GREATER_THAN_OR_EQUAL_TO = 'GTE',
-    EQUAL_TO = 'EQ',
-    NOT_EQUAL_TO = 'NEQ',
-    BETWEEN = 'BETWEEN',
-    IN = 'IN',
-    NOT_IN = 'NOT_IN',
-    HAS_PROPERTY = 'HAS_PROPERTY',
-    NOT_HAS_PROPERTY = 'NOT_HAS_PROPERTY',
-    CONTAINS_TOKEN = 'CONTAINS_TOKEN',
-    NOT_CONTAINS_TOKEN = 'NOT_CONTAINS_TOKEN'
 }

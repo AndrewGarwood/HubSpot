@@ -15,7 +15,7 @@ import {
     FilterOperatorEnum,
     SimplePublicObject,
     SimplePublicObjectWithAssociations,
-    PublicObjectSearchResponse, 
+    PublicObjectSearchResponseSummary, 
     PublicObjectSearchRequest, 
     Filter, 
     FilterGroup
@@ -288,13 +288,13 @@ export async function batchSetPropertyByObjectId(
  * - {@link FilterGroup} = `Array<`{@link Filter}`>` 
  * - {@link Filter} = `{ propertyName`?: `string`, `operator`?: {@link FilterOperatorEnum}, `value`?: `string | number }`
  * @param responseProps `Array<string>` — default=`['hs_object_id', 'name']`
- * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponse}`>`
+ * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
     objectType: CrmObjectEnum,
     searchRequest: PublicObjectSearchRequest,
     responseProps?: string[],
-): Promise<PublicObjectSearchResponse>;
+): Promise<PublicObjectSearchResponseSummary>;
 
 /** 
  * @param objectType {@link CrmObjectEnum}
@@ -304,7 +304,7 @@ export async function searchObjectByProperty(
  * @param responseProps `Array<string>` — default=`['hs_object_id', 'name']`
  * @param searchLimit `number <= 200` — default=`200`
  * @param after `number | string` — default=`0`
- * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponse}`>`
+ * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
     objectType: CrmObjectEnum,
@@ -312,7 +312,7 @@ export async function searchObjectByProperty(
     responseProps?: string[],
     searchLimit?: number,
     after?: string | number,
-): Promise<PublicObjectSearchResponse>;
+): Promise<PublicObjectSearchResponseSummary>;
 
 
 /** 
@@ -321,7 +321,7 @@ export async function searchObjectByProperty(
  * @param responseProps `Array<string>` — default=`['hs_object_id', 'name']`
  * @param searchLimit `number <= 200` — default=`200`
  * @param after `number | string` — default=`0`
- * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponse}`>`
+ * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
     objectType: CrmObjectEnum,
@@ -329,11 +329,11 @@ export async function searchObjectByProperty(
     responseProps: string[] = ['hs_object_id', 'name'],
     searchLimit: number = 200,
     after: string | number = 0,
-): Promise<PublicObjectSearchResponse> {
+): Promise<PublicObjectSearchResponseSummary> {
     let searchRequest: PublicObjectSearchRequest = {};
     let searchResponse = { 
         objectIds: [], objects: [], after: -1, total: 0 
-    } as PublicObjectSearchResponse;
+    } as PublicObjectSearchResponseSummary;
     if (Array.isArray(arg2)) {
         searchRequest = {
             filterGroups: arg2,

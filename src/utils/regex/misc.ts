@@ -1,8 +1,8 @@
 /**
- * @file src/utils/io/regex/misc.ts
+ * @file src/utils/regex/misc.ts
  */
-import { isNonEmptyArray } from "../../typeValidation";
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../../config";
+import { isNonEmptyArray } from "../typeValidation";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config";
 
 /**
  * `re` = `/^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\s*$/`
@@ -30,7 +30,7 @@ export function extractSku(skuValue: string): string {
     // e.g. skuValue: string = 'Miracu:3FX18101802GA (Miracu Thread Forte Fix 10 units  (18GX100mm))';
     if (skuPattern.test(skuValue)) {
         const match = skuValue.match(skuPattern);
-        if (isNonEmptyArray(match)) {
+        if (match && isNonEmptyArray(match)) {
             return match[0].trim();
         } 
     } else if (skuExceptions.includes(skuValue)) {
