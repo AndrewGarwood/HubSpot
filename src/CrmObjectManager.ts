@@ -5,11 +5,13 @@ import {
     getIndexedColumnValues,
     getRows,
     isValidCsv,
-    writeObjectToJson as write, 
-    indentedStringify
+    writeObjectToJson as write,
+    readJsonFileAsObject as read, 
+    indentedStringify, getFileNameTimestamp
 } from "./utils/io";
-import { DATA_DIR, ONE_DRIVE_DIR, STOP_RUNNING, DELAY, 
-    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL 
+import { DATA_DIR, ONE_DRIVE_DIR, STOP_RUNNING, DELAY, CLOUD_LOG_DIR,
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL, 
+    initializeData, DataDomainEnum
 } from "./config";
 import { searchObjectByProperty,
     updatePropertyByObjectId,
@@ -20,7 +22,7 @@ import { searchObjectByProperty,
     Filter, 
     FilterGroup, 
     PublicObjectSearchRequest as SearchRequest, 
-    PublicObjectSearchResponseSummary, 
+    PublicObjectSearchResponseSummary as SearchResponseSummary, 
     CrmAssociationObjectEnum, 
     CrmObjectTypeIdEnum,
     ApiObjectEnum,
@@ -41,24 +43,25 @@ import { JOB_TITLE_SUFFIX_PATTERN,
     extractSource
 } from "./utils/regex";
 import * as validate from "./utils/argumentValidation";
-import { isNonEmptyString } from "./utils/typeValidation";
-// define types from interfaces because the 
-// typescript.experimental.expandableHover isn't working yet 
-type Address = {
+import { isNonEmptyString, isNullLike } from "./utils/typeValidation";
+
+export type Address = {
     zipCode: string;
     stateAbbreviation: string;
     stateName: string;
     placeName: string;
     addressLine1: string;
+    addressLine2?: string;
     streetNumber: string;
     streetSuffix: string;
     streetName: string;
     id: string;
     formattedAddress?: string;
-} | IParsedAddress;
+};
 type StateCities = {
     [stateName: string]: string[];
-} | IStateCities;
+};
+
 function Filter(
     propertyName: string,
     operator: FilterOperatorEnum,
@@ -68,6 +71,13 @@ function Filter(
         propertyName, operator, value
     }
 }
+
+// function SearchRequest(
+//     properties: string[],
+//     filterGroups: FilterGroup[]
+// ): SearchRequest {
+//     return { properties, filterGroups }
+// }
 
 type EntitySearchMeta = {
     rowIndex: number;
@@ -81,8 +91,47 @@ enum SourceColumnEnum {
     ENTITY = 'Entity',
     ADDRESS = 'Address'
 }
+
+const MAX_NUM_FILTER_GROUPS = 5;
+const MAX_NUM_FILTERS = 18;
+
 async function main() {
     const source = `[CrmObjectManager.main()]`;
+    try {
+        await initializeData(DataDomainEnum.REGEX, DataDomainEnum.CRM);
+        mlog.info(`${source} ✓ Application data initialized successfully`);
+    } catch (error) {
+        mlog.error(`${source} ✗ Failed to initialize application data:`, error);
+        STOP_RUNNING(1);
+    }
+    const resultsFilePath = path.join(CLOUD_LOG_DIR, `searches`,`apiSearch_entResults.json`);
+    const results = read(resultsFilePath) as {
+        [entity: string]: {
+            strict: { [searchLabel: string]: SearchResponseSummary },
+            lax: { [searchLabel: string]: SearchResponseSummary },
+        }
+    };
+    let contacts: { [entity: string]: string[] } = {}
+    for (const ent in results) {
+        for (const [label, res] of Object.entries(results[ent].strict)) {
+            if (res.objectIds.length === 0) { continue }
+            for (const id of res.objectIds) {
+                if (!contacts[ent].includes(id)) {
+                    contacts[ent].push(id);
+                }
+            }
+        }
+    }
+    // write(contacts, path.join(CLOUD_LOG_DIR, `searches`, `entity_match_contactIds.json`));
+    STOP_RUNNING(0);
+}
+main().catch((err) => {
+    mlog.error("[CrmObjectManager.main()] ERROR:", err);
+    STOP_RUNNING(1);
+});
+
+async function runSearch(): Promise<void> {
+    const source = `[CrmObjectManager.runSearch()]`;
     const entFile = path.join(DATA_DIR, 'reports', 'client_entity_list.tsv');
     if (!isValidCsv(entFile, Object.values(SourceColumnEnum))) {
         mlog.error([`${source} Error: invalid entity tsv file provided`]);
@@ -98,143 +147,234 @@ async function main() {
         `     num unique ents:  ${Object.keys(targetEntDict).length}`,
         `num unique addresses:  ${Object.keys(targetAddressDict).length}`,
     ].join(TAB));
-    
     const entMetaArray: EntitySearchMeta[] = []
     for (let i = 0; i < entRows.length; i++) {
         const { Address: addr, Entity: ent } = entRows[i];
-        entMetaArray.push({
-            rowIndex: i, 
-            entity: ent, 
-            ogAddress: addr, 
-            parsedAddress: parseAddress(addr),
-        })
+        try {
+            entMetaArray.push({
+                rowIndex: i, 
+                entity: ent.trim(), 
+                ogAddress: addr.trim(), 
+                parsedAddress: parseAddress(addr.trim()),
+            });
+        } catch (e) {
+            mlog.error([`${source} Error parsing address from entRow ${i}`,
+                ` entity: '${ent.trim()}'`,
+                `address: '${addr.trim()}'`,
+                `  error:  ${e as any}`
+            ].join(TAB));
+            STOP_RUNNING(1);
+        }
     }
     const entSearches: { 
         [entity: string]: { 
             strict: { [searchLabel: string]: SearchRequest }, 
             lax: { [searchLabel: string]: SearchRequest } 
         } 
-    } = {}
+    } = {};
+    const entResults: {
+        [entity: string]: {
+            strict: { [searchLabel: string]: SearchResponseSummary },
+            lax: { [searchLabel: string]: SearchResponseSummary },
+        }
+    } = {};
+    // const responseProperties = getObjectPropertyDictionary().DEFAULT_CONTACT_PROPERTIES;
     for (const meta of entMetaArray) {
-        entSearches[meta.entity] = {
-            strict: {}, 
+        const ent = meta.entity;
+        let addressVariants: Address[] = await generateAddressVariants(meta.parsedAddress);
+        entSearches[ent] = {
+            strict: {
+                ENTITY_NAME_EQUALS: {
+                    filterGroups: [
+                        { filters: await generateEntityFilters(meta, FilterOperatorEnum.EQUAL_TO, true) },
+                        { filters: await generateEntityFilters(meta, FilterOperatorEnum.EQUAL_TO, false) }
+                    ] as FilterGroup[]
+                } as SearchRequest,
+            }, 
+            lax: {
+                ENTITY_NAME_CONTAINS: {
+                    filterGroups: [
+                        { filters: await generateEntityFilters(meta, FilterOperatorEnum.CONTAINS_TOKEN, true) },
+                        { filters: await generateEntityFilters(meta, FilterOperatorEnum.CONTAINS_TOKEN, false) }
+                    ] as FilterGroup[]
+                } as SearchRequest,
+            }
+        }
+        for (let i = 0; i < addressVariants.length; i++) {
+            const billing1 = await generateAddressFilters(
+                addressVariants[i], 
+                ContactPropertyEnum.STREET_LINE_1, 
+                FilterOperatorEnum.CONTAINS_TOKEN, 
+                false, 
+                ContactPropertyEnum.STATE, 
+                false,
+                ContactPropertyEnum.ZIP
+            );
+            const billing2 = await generateAddressFilters(
+                addressVariants[i], 
+                ContactPropertyEnum.STREET_LINE_1, 
+                FilterOperatorEnum.CONTAINS_TOKEN, 
+                true, 
+                ContactPropertyEnum.STATE, 
+                false,
+                ContactPropertyEnum.ZIP
+            );
+            const shipping1 = await generateAddressFilters(
+                addressVariants[i],
+                ContactPropertyEnum.SHIPPING_ADDRESS_LINE_1,
+                FilterOperatorEnum.CONTAINS_TOKEN,
+                false, 
+                ContactPropertyEnum.SHIPPING_STATE,
+                true,
+                ContactPropertyEnum.SHIPPING_POSTAL_CODE
+            )
+            const shipping2 = await generateAddressFilters(
+                addressVariants[i],
+                ContactPropertyEnum.SHIPPING_ADDRESS_LINE_1,
+                FilterOperatorEnum.CONTAINS_TOKEN,
+                false, 
+                ContactPropertyEnum.SHIPPING_STATE,
+                false,
+                ContactPropertyEnum.SHIPPING_POSTAL_CODE
+            )
+            entSearches[ent].strict[`ADDRESS_EQUALS_${i}`] = {
+                filterGroups: [
+                    { filters: billing1 },
+                    { filters: billing2 },
+                    { filters: shipping1 },
+                    { filters: shipping2 }
+                ]
+            } as SearchRequest
+        }
+    }
+    for (const ent in entSearches) {
+        entResults[ent] = {
+            strict: {},
             lax: {}
         }
-    }
-    STOP_RUNNING(0);
-}
-main().catch((err) => {
-    mlog.error("[CrmObjectManager.main()] ERROR:", err);
-    STOP_RUNNING(1);
-});
-
-const contactResponseProps = [
-    "hs_object_id", "firstname", "lastname", "company", 
-    
-    "address", "street_address_2", "city", "state", "zip", "country", "phone", "email", 
-    
-    "unific_shipping_address_line_1", "unific_shipping_address_line_2", 
-    "unific_shipping_city", "unific_shipping_state","unific_shipping_postal_code",
-    "unific_shipping_country", "unific_shipping_phone"
-
-]
-/**
- * - {@link COMPANY_ABBREVIATION_PATTERN}, {@link COMPANY_KEYWORDS_PATTERN}
- * - {@link LAST_NAME_COMMA_FIRST_NAME_PATTERN}
- * @param value `string`
- * @returns **`isPerson`** `boolean`
- */
-function isPerson(value: string): boolean {
-    if (LAST_NAME_COMMA_FIRST_NAME_PATTERN.test(value)) {
-        return true;
-    }
-    if (COMPANY_ABBREVIATION_PATTERN.test(value) 
-        || COMPANY_KEYWORDS_PATTERN.test(value)
-        || stringContainsAnyOf(value, /[0-9@]+/, RegExpFlagsEnum.GLOBAL)) {
-        return false;
-    }
-    return false;
-}
-
-/**
- * generate search request that can be satisfied if any of the strict filtergroups in req.filterGroups are met; 
- * @param meta {@link EntitySearchMeta}
- * @param responseProps 
- * @returns 
- */
-async function generateStrictNameFilterGroup(
-    meta: EntitySearchMeta,
-): Promise<FilterGroup[]> {
-    const filterGroups: FilterGroup[] = [];
-    // if meta.entity isPerson, then 
-    // search contact.firstname = extractName(meta.entity).first
-    // && contact.lastname = extractName(meta.entity).last
-    const { entity } = meta;
-    if (isPerson(entity)) {
-        let nameWithPossibleSuffix = extractName(entity);
-        let nameWithoutSuffx = extractName(entity, false);
-        for (const name of [nameWithPossibleSuffix, nameWithoutSuffx]) {
-            let { first, last } = name;
-            if (!last) continue
-            filterGroups.push({
-                filters: [
-                    Filter(ContactPropertyEnum.FIRST_NAME, FilterOperatorEnum.EQUAL_TO, first),
-                    Filter(ContactPropertyEnum.LAST_NAME, FilterOperatorEnum.EQUAL_TO, last)
-                ]
-            })
+        let { strict, lax } = entSearches[ent];
+        for (const [label, req] of Object.entries(strict)) {
+            entResults[ent].strict[label] = await searchObjectByProperty(
+                ApiObjectEnum.CONTACTS, req, 
+            ) as SearchResponseSummary;
+            await DELAY(2000, null);
         }
-    } else { // entity is a company name
-        let companyWithoutSuffix = clean(entity, {
-            replace: [{searchValue: COMPANY_ABBREVIATION_PATTERN, replaceValue: ''}]
-        });
-        filterGroups.push({
-            filters: [
-                Filter(ContactPropertyEnum.COMPANY_NAME, FilterOperatorEnum.EQUAL_TO, entity),
-                Filter(ContactPropertyEnum.COMPANY_NAME, FilterOperatorEnum.EQUAL_TO, companyWithoutSuffix)
+        for (const [label, req] of Object.entries(lax)) {
+            entResults[ent].lax[label] = await searchObjectByProperty(
+                ApiObjectEnum.CONTACTS, req, 
+            );
+            await DELAY(2000, null);
+        }
+    }
+    let numNonEmptyResults = Object.keys(entResults).reduce((acc, ent) => {
+        let searchDict = entResults[ent];
+        if (Object.keys(searchDict.strict).some(searchLabel => searchDict.strict[searchLabel].total > 0)) {
+            acc++;
+        }
+        return acc;
+    }, 0);
+    mlog.debug(`numNonEmptyResults: ${numNonEmptyResults}`);
+    write(entResults, path.join(ONE_DRIVE_DIR, `apiSearch_entResults.json`));
+}
+
+async function generateNameFilters(
+    value: string,
+    operator: FilterOperatorEnum = FilterOperatorEnum.EQUAL_TO,
+    includeSuffix: boolean = true
+): Promise<Filter[]> {
+    const filters: Filter[] = [];
+    let name = extractName(value, includeSuffix);
+    let { first, last } = name;
+    if (!last) return []
+    filters.push(
+        Filter(ContactPropertyEnum.FIRST_NAME, operator, first),
+        Filter(ContactPropertyEnum.LAST_NAME, operator, last)
+    )
+    return filters;
+}
+
+async function generateCompanyFilters(
+    value: string,
+    operator: FilterOperatorEnum = FilterOperatorEnum.EQUAL_TO,
+    includeSuffix: boolean = true
+): Promise<Filter[]> {
+    if (!includeSuffix) {
+        value = clean(value, {
+            replace: [
+                {searchValue: COMPANY_ABBREVIATION_PATTERN, replaceValue: ''},
+                {searchValue: /P\.A\.\s*$/, replaceValue: ''},
             ]
         });
     }
-    return filterGroups;
-}
-const MAX_NUM_FILTER_GROUPS = 5;
-async function generateStrictAddressFilterGroup(
-    meta: EntitySearchMeta,
-): Promise<FilterGroup[]> {
-    const filterGroups: FilterGroup[] = [];
-    let addressVariants: Address[] = await generateAddressVariants(meta.parsedAddress);
-    addressVariants = addressVariants.slice(0, MAX_NUM_FILTER_GROUPS);
-    return filterGroups;
+    return [Filter(ContactPropertyEnum.COMPANY_NAME, operator, value)];
 }
 
-const streetAbbreviations = [
-    { abbrev: /\bSt\.?$/i, full: 'Street' },
-    { abbrev: /\bRd\.?$/i, full: 'Road' },
-    { abbrev: /\bAve\.?$/i, full: 'Avenue' },
-    { abbrev: /\bBlvd\.?$/i, full: 'Boulevard' },
-    { abbrev: /\bDr\.?$/i, full: 'Drive' },
-    { abbrev: /\bLn\.?$/i, full: 'Lane' },
-    { abbrev: /\bCt\.?$/i, full: 'Court' },
-    { abbrev: /\bPl\.?$/i, full: 'Place' },
-    { abbrev: /\bCir\.?$/i, full: 'Circle' },
-    { abbrev: /\bCtr\.?$/i, full: 'Center'},
-    { abbrev: /\bPkwy\.?$/i, full: 'Parkway' },
-    { abbrev: /\bTer\.?$/i, full: 'Terrace' },
-    { abbrev: /\bSq\.?$/i, full: 'Square' }
-];
-const MAX_NUM_FILTERS = 18;
+
+/**
+ * @param meta {@link EntitySearchMeta}
+ * @returns **`filterGroups`** `Array<`{@link FilterGroup}`>`
+ */
+async function generateEntityFilters(
+    meta: EntitySearchMeta,
+    operator: FilterOperatorEnum = FilterOperatorEnum.EQUAL_TO,
+    includeSuffix: boolean = true
+): Promise<Filter[]> {
+    const { entity } = meta;
+    if (isPerson(entity)) {
+        return await generateNameFilters(entity, operator, includeSuffix);
+    } else { // entity is a company name
+        return await generateCompanyFilters(entity, operator, includeSuffix);
+    }
+}
+
+/**
+ * @TODO make args optional and only return filters for args passed in.
+ * @param address 
+ * @param street1Property 
+ * @param streetOperator 
+ * @param appendStreet2 
+ * @param stateProperty 
+ * @param useStateAbbreviation 
+ * @param zipProperty 
+ * @returns **`filters`** {@link Filter}`[]` `filters.length === 4`
+ */
+async function generateAddressFilters(
+    address: Address,
+    street1Property: ContactPropertyEnum.STREET_LINE_1 | ContactPropertyEnum.SHIPPING_ADDRESS_LINE_1,
+    streetOperator: FilterOperatorEnum,
+    appendStreet2: boolean,
+    stateProperty: ContactPropertyEnum.STATE | ContactPropertyEnum.SHIPPING_STATE,
+    useStateAbbreviation: boolean,
+    zipProperty: ContactPropertyEnum.ZIP | ContactPropertyEnum.SHIPPING_POSTAL_CODE
+): Promise<Filter[]> {
+    const filters: Filter[] = [
+        Filter(ContactPropertyEnum.CITY, FilterOperatorEnum.EQUAL_TO, address.placeName),
+        Filter(street1Property, streetOperator, 
+            (appendStreet2 
+                ? `${address.addressLine1} ${address.addressLine2 || ''}` 
+                : address.addressLine1
+            ).trim()
+        ),
+        Filter(stateProperty, FilterOperatorEnum.EQUAL_TO,
+            (useStateAbbreviation 
+                ? address.stateAbbreviation 
+                : address.stateName
+            )
+        ),
+        Filter(zipProperty, FilterOperatorEnum.CONTAINS_TOKEN, address.zipCode)
+    ]
+    return filters;
+}
+
 async function generateAddressVariants(
     addr: Address
 ): Promise<Address[]> {
     const source = `[CrmObjectManager.generateAddressVariants()]`;
     validate.objectArgument(source, {addr});
-    const addressVariants: Address[] = [addr];
-
-    let stateValues: string[] = [];
-    if (isNonEmptyString(addr.stateAbbreviation)) stateValues.push(addr.stateAbbreviation);
-    if (isNonEmptyString(addr.stateName)) stateValues.push(addr.stateName);
+    const variants: Address[] = [addr];
     let ogStreetValues: string[] = [];
     let variantStreetValues: string[] = [];
-    let streetValues: string[] = [];
+    let line1Variants: string[] = [];
     if (isNonEmptyString(addr.addressLine1)) {
         for (const { abbrev, full } of streetAbbreviations) {
             ogStreetValues.push(addr.addressLine1);
@@ -244,26 +384,20 @@ async function generateAddressVariants(
                 variantStreetValues.push(addr.addressLine1.replace(full, extractSource(abbrev)));
             }
         }
-        streetValues = [...ogStreetValues, ...variantStreetValues];
     }
-    while (stateValues.length * streetValues.length > MAX_NUM_FILTERS) {
-        streetValues.pop(); // remove last street value until we are under the limit
-    }
-    for (const street of streetValues) {
-        for (const state of stateValues) {
-            const variant: Address = {
-                ...addr,
-                addressLine1: street,
-                stateAbbreviation: state,
-                stateName: state,
-                id: `${street}-${state}-${addr.zipCode}`.replace(/\s+/g, '-').toLowerCase()
-            };
-            if (!addressVariants.some(av => av.id === variant.id)) {
-                addressVariants.push(variant);
-            }
+    line1Variants = [...ogStreetValues, ...variantStreetValues];
+    for (const street of line1Variants) {
+        let a1: Address = {
+            ...addr,
+            addressLine1: street,
+            id: `${street}-${addr.stateAbbreviation}-${addr.zipCode}`
+                .replace(/\s+/g, '-').toLowerCase()
+        };
+        if (!variants.some(a => a.id === a1.id)) {
+            variants.push(a1);
         }
     }
-    return addressVariants;
+    return variants;
 }
 
 enum ContactPropertyEnum {
@@ -286,4 +420,45 @@ enum ContactPropertyEnum {
     SHIPPING_POSTAL_CODE = 'unific_shipping_postal_code',
     SHIPPING_COUNTRY = 'unific_shipping_country',
     SHIPPING_PHONE = 'unific_shipping_phone'
+}
+
+/** @TODO make a type for this and/or put in the regex utils folder */
+const streetAbbreviations = [
+    { abbrev: /\bSt\.?$/i, full: 'Street' },
+    { abbrev: /\bRd\.?$/i, full: 'Road' },
+    { abbrev: /\bAve\.?$/i, full: 'Avenue' },
+    { abbrev: /\bBlvd\.?$/i, full: 'Boulevard' },
+    { abbrev: /\bDr\.?$/i, full: 'Drive' },
+    { abbrev: /\bLn\.?$/i, full: 'Lane' },
+    { abbrev: /\bCt\.?$/i, full: 'Court' },
+    { abbrev: /\bPl\.?$/i, full: 'Place' },
+    { abbrev: /\bCir\.?$/i, full: 'Circle' },
+    { abbrev: /\bCtr\.?$/i, full: 'Center'},
+    { abbrev: /\bPkwy\.?$/i, full: 'Parkway' },
+    { abbrev: /\bTer\.?$/i, full: 'Terrace' },
+    { abbrev: /\bSq\.?$/i, full: 'Square' }
+];
+
+
+/**
+ * - {@link COMPANY_ABBREVIATION_PATTERN}, {@link COMPANY_KEYWORDS_PATTERN}
+ * @param value `string`
+ * @returns **`isPerson`** `boolean`
+ */
+function isPerson(value: string): boolean {
+    const isCompany = COMPANY_ABBREVIATION_PATTERN.test(value) 
+        || COMPANY_KEYWORDS_PATTERN.test(value)
+        || stringContainsAnyOf(value, /[0-9@]+/, RegExpFlagsEnum.GLOBAL);
+    if ((LAST_NAME_COMMA_FIRST_NAME_PATTERN.test(value) 
+        || JOB_TITLE_SUFFIX_PATTERN.test(value)
+        && !isCompany)) { 
+        // mlog.debug([`[CrmObjectManager.isPerson()] value = '${value}' -> return true`,].join(TAB))
+        return true;
+    }
+    if (isCompany) {
+        // mlog.debug([`[CrmObjectManager.isPerson()] value = '${value}' -> return false`,].join(TAB))
+        return false;
+    }
+    // mlog.debug([`[CrmObjectManager.isPerson()] value = '${value}' -> return true`,].join(TAB))
+    return true;
 }

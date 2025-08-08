@@ -1,10 +1,14 @@
 /**
  * @file src/crm/objects/contacts.ts
  */
-import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
+import { ApiObjectEnum as BasicCrmObjects, 
+    CrmAssociationObjectEnum as Associations, SimplePublicObject, 
+    SimplePublicObjectWithAssociations } from "../types";
 import { getObjectById } from "./objects";
-import { DEFAULT_CONTACT_PROPERTIES } from "../constants";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
+import { getObjectPropertyDictionary as getCrmConstants } from "../../../config/dataLoader";
+import { 
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL 
+} from "../../../config/setupLog";
 
 /**
  * @property {string} contactId `string` = `hs_object_id`
@@ -55,7 +59,7 @@ export async function getContactById(
 export async function getContactById(
     /**string | number | GetContactByIdParams */
     arg1: string | number | GetContactByIdParams,
-    properties: string[] = DEFAULT_CONTACT_PROPERTIES,
+    properties: string[] = getCrmConstants().DEFAULT_CONTACT_PROPERTIES ?? [],
     propertiesWithHistory?: string[],
     associations: Array<Associations.DEALS | Associations.COMPANIES | Associations.TICKETS>=[Associations.DEALS],
     archived: boolean = false
@@ -65,7 +69,7 @@ export async function getContactById(
         ? arg1 as GetContactByIdParams // if params passed as an object, assume it's GetContactByIdParams use it directly
         : { // if params passed indivudually, assign them to params and handle defaults
             contactId: arg1,
-            properties: properties || DEFAULT_CONTACT_PROPERTIES,
+            properties: properties ?? getCrmConstants().DEFAULT_CONTACT_PROPERTIES ?? [],
             propertiesWithHistory: propertiesWithHistory || undefined,
             associations: associations || [Associations.DEALS],
             archived: archived || false

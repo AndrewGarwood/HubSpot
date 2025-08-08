@@ -3,7 +3,7 @@
  */
 import path from "node:path";
 import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
-import { getCategoryToSkuDict, getObjectPropertyDictionary } from "./config/dataLoader";
+import { getCategoryToSkuDict, getObjectPropertyDictionary, isDataInitialized, initializeData, DataDomainEnum } from "./config/dataLoader";
 import { 
     mainLogger as mlog, 
     apiLogger as log, 
@@ -26,9 +26,10 @@ import {
     getCurrentPacificTime, toPacificTime,
     clearFile,
     trimFile,
-    indentedStringify,
+    indentedStringify, getFileNameTimestamp
 } from "./utils/io";
 import { getColumnValues, validatePath, isValidCsv } from "./utils/io/reading";
+import { isNonEmptyArray } from "./utils/typeValidation";
 
 /**  */
 const NET_NEW_PROP = 'is_net_new';
@@ -49,17 +50,19 @@ main().catch((error) => {
 async function main() {
     clearFile(DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH);
     const startTime = new Date();
-
+    if (!isDataInitialized()) {
+        await initializeData();
+    }
     const useSubset: boolean = false; // set to true to use a subset of contacts for testing
-    const filePath = `${DATA_DIR}/Contacts With June 2025 Deals.csv`;
+    const filePath = path.join(DATA_DIR, `Contacts With July 2025 Deals.tsv`)
     const EXPORT_CSV_CONTACT_ID_COLUMN = 'Contact ID';
     validatePath(filePath)
     if (!isValidCsv(filePath, [EXPORT_CSV_CONTACT_ID_COLUMN])) {
-        mlog.error(`Error in main(): Invalid CSV file at '${filePath}'`);
+        mlog.error(`[NetNewProcessor.main()]: Invalid input file at '${filePath}'`);
         STOP_RUNNING(1);
     }
     const ALL_CONTACTS = await getColumnValues(filePath, EXPORT_CSV_CONTACT_ID_COLUMN);
-    const contactIds = useSubset ? ALL_CONTACTS.slice(3, 5) : ALL_CONTACTS;
+    const contactIds = useSubset ? ALL_CONTACTS.slice(3, 10) : ALL_CONTACTS;
     mlog.info(`[START NetNewProcessor.main()]`,
         TAB + `   filePath: '${filePath}'`,
         TAB + `  useSubset:  ${useSubset}`,
@@ -73,7 +76,7 @@ async function main() {
         TAB + `     Number of Deals Processed: ${NUMBER_OF_DEALS_PROCESSED}`,
         TAB + `Number of Line Items Processed: ${NUMBER_OF_LINE_ITEMS_PROCESSED}`,
     );
-    write({MISSING_SKUS: MISSING_SKUS}, path.join(OUTPUT_DIR, 'missingSkus.json'));
+    if (isNonEmptyArray(MISSING_SKUS)) write({MISSING_SKUS}, path.join(OUTPUT_DIR, `${getFileNameTimestamp()}_missingSkus.json`));
     MISSING_SKUS.length = 0;
     trimFile(undefined, DEFAULT_LOG_FILEPATH);
     STOP_RUNNING(0);
@@ -103,7 +106,7 @@ export async function updateContactLineItems(
         for (let [subsetIndex, contactId] of contactIdBatch.entries()) {
             let history =  await processContact(contactId) as PurchaseHistory;
             INFO.push(
-                NL  + `Contact ${subsetIndex+1} of Batch ${batchIndex+1} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
+                NL  + `Contact ${subsetIndex+1}/${contactIdBatch.length} of Batch ${batchIndex+1}/${contactBatches.length} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
                 TAB + `   netNewLineItems.length: ${history.netNewLineItems.length}`,
                 TAB + `recurringLineItems.length: ${history.recurringLineItems.length}`,
                 TAB + `        Categories Bought: ${JSON.stringify(Object.keys(history.categoriesBought))}`,
@@ -212,7 +215,7 @@ async function processContact(
             }
         }        
     } catch (e) {
-        mlog.error('Error in processContact():', e);
+        mlog.error('Error in processContact():', indentedStringify(e as any));
     }
     if (DEBUG.length > 0) mlog.debug(...DEBUG);
     DEBUG.length = 0; // clear the infoLogs array

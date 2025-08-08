@@ -2,18 +2,16 @@
  * @file src/crm/objects/lineItems.ts
  */
 import { 
-    CrmObjectEnum, 
+    ApiObjectEnum as CrmObjectEnum, 
     CrmAssociationObjectEnum as Associations, 
     SimplePublicObject, 
     SimplePublicObjectWithAssociations 
-} from "../types/Crm";
+} from "../types";
 import { getObjectById } from "./objects";
-import { DEFAULT_LINE_ITEM_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
-
-import { getCategoryToSkuDict } from "../../../config/dataLoader";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
+import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../../config/setupLog";
 import { STOP_RUNNING } from "../../../config/env";
 import { isNullLike } from "../../../utils/typeValidation";
+import { getCategoryToSkuDict, getObjectPropertyDictionary } from "../../../config";
 /**
  * @property {string} lineItemId `string` = `lineItem.hs_object_id`
  * @property {string[]} properties `string[]` defaults to {@link DEFAULT_LINE_ITEM_PROPERTIES}.
@@ -63,7 +61,7 @@ export async function getLineItemById(
 export async function getLineItemById(
     /**lineItemIdOrParams: string | number | GetLineItemByIdParams */
     arg1: string | number | GetLineItemByIdParams,
-    properties: string[] = DEFAULT_LINE_ITEM_PROPERTIES,
+    properties: string[] = getObjectPropertyDictionary().DEFAULT_LINE_ITEM_PROPERTIES ?? [],
     propertiesWithHistory?: string[],
     associations?: Array<Associations.DEALS | Associations.PRODUCTS>,
     archived: boolean=false
@@ -73,7 +71,7 @@ export async function getLineItemById(
         ? arg1 as GetLineItemByIdParams
         : {
             lineItemId: arg1 as string,
-            properties: properties || DEFAULT_LINE_ITEM_PROPERTIES,
+            properties: properties || (getObjectPropertyDictionary().DEFAULT_LINE_ITEM_PROPERTIES ?? []),
             propertiesWithHistory: propertiesWithHistory || undefined,
             associations: associations || undefined,
             archived: archived || false
@@ -196,7 +194,8 @@ export function isValidLineItem(
         && price > 0 
         && !getCategoryToSkuDict().Marketing.has(sku as string) 
         && !(sku as string).startsWith('MM-') 
-        && (VALID_DEAL_STAGES.includes(dealStage) || !INVALID_DEAL_STAGES.includes(dealStage))
+        && (getObjectPropertyDictionary().VALID_DEAL_STAGES.includes(dealStage) 
+        || !getObjectPropertyDictionary().INVALID_DEAL_STAGES.includes(dealStage))
     );
     return isValid;
 }

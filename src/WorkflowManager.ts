@@ -2,14 +2,11 @@
  * @file src/WorkflowManager.ts
  */
 import { 
-    // dataLoader.ts
     TerritoryData,
     isDataInitialized,
     initializeData,
     getTerritoryData,
-    // env.ts
     STOP_RUNNING, DELAY,
-    // setupLog.ts
     mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL, INFO_LOGS as INFO
 } from './config';
 import { 

@@ -141,6 +141,25 @@ export function getRegexConstants(): RegexConstants {
 }
 
 /**
+ * `Sync` Get company keyword list
+ * @returns **`COMPANY_KEYWORD_LIST`** `string[]`
+ */
+export function getCompanyKeywordList(): string[] {
+    const constants = getRegexConstants();
+    return constants.COMPANY_KEYWORD_LIST;
+}
+
+/**
+ * Get job title suffix list
+ * @returns **`JOB_TITLE_SUFFIX_LIST`** `string[]`
+ */
+export function getJobTitleSuffixList(): string[] {
+    const constants = getRegexConstants();
+    return constants.JOB_TITLE_SUFFIX_LIST;
+}
+
+
+/**
  * @returns **`CATEGORY_TO_SKU_DICT`** = `Record<string, Set<string>>` 
  * = `{ [category: string]: Set<string> }`
  */
@@ -197,6 +216,7 @@ async function loadCrmData(
     validate.multipleExistingFileArguments(source, '.json',
         {categoryPath, crmDictionaryPath}
     );
+    INFO.push(NL+`${source} (START)`);
     let crmDictionary = read(crmDictionaryPath);
     if (isNull(crmDictionary)) {
         throw new Error(`${source} Invalid default object properties data. Unable to read json from '${categoryPath}'`);
@@ -228,7 +248,7 @@ async function loadCrmData(
             continue;
         }
         categorySetData[category] = new Set(skus);
-        INFO.push(TAB+`${source} Loaded Category "${category}" with ${skus.length} SKU(s)`);
+        INFO.push(TAB+`Loaded Category "${category}" with ${skus.length} SKU(s)`);
     }
     return {
         CATEGORY_TO_SKU_DICT: categorySetData,
@@ -281,7 +301,7 @@ async function loadTerritoryData(
         contactFlowId,
         territoryFileName,
         territoryFilenamePrefix,
-        branchDictionaryFileName: TERRITORY_BRANCH_NAME_DICT_FILEPATH,
+        branchDictionaryFileName,
         east: EAST_SHEET_NAME,
         west: WEST_SHEET_NAME,
         territoryColumn: TERRITORY_COLUMN_NAME,
@@ -297,6 +317,8 @@ async function loadTerritoryData(
     }
     const territoryDataPath = path.join(ONE_DRIVE_DIR, territoryFileName);
     validate.existingFileArgument(source, '.xlsx', {territoryDataPath});
+    const TERRITORY_BRANCH_NAME_DICT_FILEPATH = path.join(TERRITORY_DIR, branchDictionaryFileName);
+    validate.existingFileArgument(source, '.json', {TERRITORY_BRANCH_NAME_DICT_FILEPATH});
     
     const zipParseOptions = {
         valuePadOptions: {

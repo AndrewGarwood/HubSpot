@@ -1,12 +1,17 @@
 /**
- * @file src/utils/crm/objects/deals.ts
+ * @file src/crm/objects/deals.ts
  */
-import { CrmObjectEnum as BasicCrmObjects, CrmAssociationObjectEnum as Associations, CrmObjectEnum, FilterOperatorEnum, FilterGroup, Filter, PublicObjectSearchResponseSummary, PublicObjectSearchRequest, SimplePublicObject, SimplePublicObjectWithAssociations } from "../types/Crm";
+import { ApiObjectEnum as BasicCrmObjects, 
+    CrmAssociationObjectEnum as Associations,
+    FilterOperatorEnum, FilterGroup, Filter, 
+    PublicObjectSearchResponseSummary, PublicObjectSearchRequest,
+    SimplePublicObject, SimplePublicObjectWithAssociations 
+} from "../types";
 import { getObjectById } from "./objects";
-import { DEFAULT_DEAL_PROPERTIES, VALID_DEAL_STAGES, INVALID_DEAL_STAGES } from "../constants";
 import { DELAY, STOP_RUNNING } from "../../../config/env";
+import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../../config/setupLog";
+import { getObjectPropertyDictionary as getCrmConstants } from "../../../config/dataLoader";
 import { searchObjectByProperty } from "../properties";
-import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL, indentedStringify } from "../../../config/setupLog";
 
 /**
  * @property {string} dealId `string` = `hs_object_id`
@@ -57,7 +62,7 @@ export async function getDealById(
 export async function getDealById(
     /**string | number | GetDealByIdParams */
     arg1: string | number | GetDealByIdParams,
-    properties: string[] = DEFAULT_DEAL_PROPERTIES,
+    properties: string[] = getCrmConstants().DEFAULT_DEAL_PROPERTIES ?? [],
     propertiesWithHistory?: string[],
     associations: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>=[Associations.LINE_ITEMS],
     archived: boolean=false
@@ -67,7 +72,7 @@ export async function getDealById(
         ? arg1 as GetDealByIdParams
         : {
             dealId: arg1 as string,
-            properties: properties || DEFAULT_DEAL_PROPERTIES,
+            properties: properties ?? getCrmConstants().DEFAULT_DEAL_PROPERTIES ?? [],
             propertiesWithHistory: propertiesWithHistory || undefined,
             associations: associations || [Associations.LINE_ITEMS],
             archived: archived || false
@@ -114,13 +119,12 @@ export async function getDealByOrderNumber(
         limit: 5,
         after: undefined,
         sorts: undefined,
-        properties: properties || DEFAULT_DEAL_PROPERTIES,
+        properties: properties ?? getCrmConstants().DEFAULT_DEAL_PROPERTIES ?? [],
         filterGroups: filterGroups,
     }
     const searchRes = await searchObjectByProperty(
-        CrmObjectEnum.DEALS, 
-        searchRequest,
-        ['hs_object_id']
+        BasicCrmObjects.DEALS, 
+        searchRequest
     ) as PublicObjectSearchResponseSummary;
     await DELAY(1000);
     const responseIsInvalid: boolean = !searchRes || !searchRes.objectIds || searchRes.objectIds.length === 0;

@@ -1,16 +1,15 @@
 /**
- * @file src/crm/properties.ts
+ * @file src/api/crm/properties.ts
  */
 import { hubspotClient, DELAY } from "../../config/env";
 import { 
-    mainLogger as mlog, 
-    apiLogger as log, 
+    mainLogger as mlog, apiLogger as alog,
     INDENT_LOG_LINE as TAB, 
     NEW_LINE as NL, 
     INFO_LOGS as INFO 
 } from "../../config/setupLog";
 import { 
-    CrmObjectEnum,
+    ApiObjectEnum,
     CrmAssociationObjectEnum, 
     FilterOperatorEnum,
     SimplePublicObject,
@@ -26,6 +25,7 @@ import {
     SimplePublicObjectInput as HS_SimplePublicObjectInput,
     CollectionResponseWithTotalSimplePublicObjectForwardPaging as HS_CollectionResponse 
 } from "@hubspot/api-client/lib/codegen/crm/objects";
+import * as validate from "../../utils/argumentValidation";
 
 let NUMBER_OF_CHANGES = 0;
 
@@ -34,45 +34,23 @@ let NUMBER_OF_CHANGES = 0;
  * 1. call {@link getObjectById}`(objectType, objectId, Object.keys(propDict))`
  * 2. for `key` of `propDict`: see if `response.properties[key]` === `propDict[key]`
  * 3. log if they are the same and return, no need to call `api.update` else, call `api.update`
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param objectId `string`
  * @param propDict `Record<string, any>` for each `key` in `Object.keys(propDict)`, if `object[key]` != `properties[key]` then set `CrmObject[key]` = `properties[key]`
  * @param idProperty `string | undefined`
  * @returns **`updateRes`** = `Promise<`{@link SimplePublicObject}`>` 
  */
 export async function updatePropertyByObjectId(
-    objectType: CrmObjectEnum, 
+    objectType: ApiObjectEnum, 
     objectId: string | number, 
     propDict: Record<string, any>,
     idProperty: string | undefined = undefined
 ): Promise<SimplePublicObject> {
+    const source = `${__filename}.updatePropertyByObjectId`;
+    validate.enumArgument(source, {ApiObjectEnum}, {objectType});
+    validate.numericStringArgument(source, {objectId});
+    validate.objectArgument(source, {propDict});
     let updateRes = {} as SimplePublicObject;
-    if (!objectType || typeof objectType !== 'string') {
-        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectType' param.`,
-            TAB + `Expected a string, but received: ${typeof objectType} = ${objectType}`
-        );
-        return updateRes;
-    }
-    if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
-        objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
-    } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
-        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectType' param.`,
-            TAB + `Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`
-        );
-        return updateRes;
-    }
-    if (!objectId || (typeof objectId !== 'string' && typeof objectId !== 'number')) {
-        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'objectId' param.`,
-            TAB + `Expected a string or number, but received: ${typeof objectId} = ${objectId}`
-        );
-        return updateRes;
-    }
-    if (!propDict || typeof propDict !== 'object' || Object.keys(propDict).length === 0) {
-        mlog.error(`[ERROR setPropertyByObjectId()]: Invalid 'propDict' param.`,
-            TAB + `Expected Record<string, any>, but received: ${typeof propDict} = ${JSON.stringify(propDict || {})}`
-        );
-        return updateRes;
-    }
     const debugLogs: any[] = [
         `[START updatePropertyByObjectId(type: '${objectType}')]`
     ];
@@ -92,7 +70,7 @@ export async function updatePropertyByObjectId(
     for (let propName of Object.keys(propDict)) {
         const initialPropValue =  String(initialObjectRes.properties[propName]);
         if (initialPropValue === propDict[propName]) { continue; }
-        log.debug(
+        alog.debug(
             NL + `Property '${propName}' has changed for ${objectType} with id='${objectId}'`,
             TAB + `Initial Value: ${initialPropValue}`,
             TAB + `    New Value: ${propDict[propName]}`
@@ -101,7 +79,7 @@ export async function updatePropertyByObjectId(
     }
     if (propsWithChanges.length === 0) {
         debugLogs.push(TAB + `No changes made for ${objectType} with id='${objectId}' (All property valeus are the same)`);
-        log.debug(...debugLogs);
+        alog.debug(...debugLogs);
         return initialObjectRes;
     }
     NUMBER_OF_CHANGES += propsWithChanges.length;
@@ -114,11 +92,11 @@ export async function updatePropertyByObjectId(
         updateRes = await objectApi.update(
             String(objectId), simpleObjectInput, idProperty
         ) as SimplePublicObject;
-        // debugLogs.push(
-        //     TAB + `Updated ${objectType} with id='${objectId}'`,
-        //     TAB + `propsWithChanges: ${JSON.stringify(propsWithChanges)}`,
-        //     TAB +` -> returning update response.`
-        // );
+        debugLogs.push(
+            TAB + `Updated ${objectType} with id='${objectId}'`,
+            TAB + `propsWithChanges: ${JSON.stringify(propsWithChanges)}`,
+            TAB +` -> returning update response.`
+        );
     } catch (e) {
         mlog.error(`Error updating ${objectType} with id='${objectId}'`,
             TAB + `properties=${JSON.stringify(simpleObjectInput.properties)}`, 
@@ -126,19 +104,19 @@ export async function updatePropertyByObjectId(
             TAB + `Error:`, e
         );
     }
-    mlog.debug(...debugLogs);
+    // mlog.debug(...debugLogs);
     return updateRes;
 }
 
 /**
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param objectIds `Array<string>` — `string` ids of the objects to update
  * @param propDict `Record<string, any>` for each `key` in `Object.keys(propDict)`, if `CrmObject[key]` != `properties[key]` then set `CrmObject[key]` = `properties[key]`
  * @param idProperty `string | undefined`
  * @returns **`responses`** = `Promise<`{@link SimplePublicObject}`[]>`
  */
 export async function batchUpdatePropertyByObjectId(
-    objectType: CrmObjectEnum,
+    objectType: ApiObjectEnum,
     objectIds: Array<string>,
     propDict: Record<string, any>,
     idProperty: string | undefined = undefined
@@ -154,12 +132,9 @@ export async function batchUpdatePropertyByObjectId(
                 idProperty
             );
             await DELAY(1000, null);
-            //     ` > batchUpdatePropertyByObjectId() Finished update (${i+1}/${objectIds.length}) for ${objectType}`,
-            //     ` -> Pausing for 1 second.`
-            // );
             i++;
             if (!updateRes) {
-                mlog.error(`batchUpdatePropertyByObjectId(): Error at objectIds[index=${i}]`,
+                mlog.error(`[batchUpdatePropertyByObjectId()]: Error at objectIds[index=${i}]`,
                     TAB + `undefined response for ${objectType} with id='${objectId}'`
                 );
                 continue;
@@ -173,21 +148,21 @@ export async function batchUpdatePropertyByObjectId(
         );
         NUMBER_OF_CHANGES = 0; // reset for next batch
     } catch (e) {
-        mlog.error(`Error updating ${objectType}s with IDs: ${objectIds}:`, e);
+        mlog.error(`[batchUpdatePropertyByObjectId()]: Error updating ${objectType}s with IDs: ${objectIds}:`, e);
     }
     return responses;
 }
 
 
 /**
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param objectId `string`
  * @param properties `Record<string, any>` for each `key` in `properties`, set `CrmObject[key]` = `properties[key]`
  * @param idProperty `string | undefined`
  * @returns **`response`** = `Promise<`{@link SimplePublicObject} | `undefined>`
  */
 export async function setPropertyByObjectId(
-    objectType: CrmObjectEnum, 
+    objectType: ApiObjectEnum, 
     objectId : string | number, 
     properties: Record<string, any>,
     idProperty: string | undefined = undefined
@@ -200,10 +175,10 @@ export async function setPropertyByObjectId(
         mlog.error(`[setPropertyByObjectId()] Invalid objectId provided. Expected a string or number.`);
         return undefined;
     }
-    if (Object.keys(CrmObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
-        objectType = CrmObjectEnum[objectType.toUpperCase() as keyof typeof CrmObjectEnum];
-    } else if (Object.values(CrmObjectEnum).indexOf(objectType) === -1) {
-        mlog.error(`[setPropertyByObjectId()] Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`, JSON.stringify(CrmObjectEnum));
+    if (Object.keys(ApiObjectEnum).indexOf(objectType.toUpperCase()) !== -1) {
+        objectType = ApiObjectEnum[objectType.toUpperCase() as keyof typeof ApiObjectEnum];
+    } else if (Object.values(ApiObjectEnum).indexOf(objectType) === -1) {
+        mlog.error(`[setPropertyByObjectId()] Invalid objectType provided. objectType must be a key or value of CrmObjectEnum.`, JSON.stringify(ApiObjectEnum));
         return undefined;
     }
     const propsToSet: HS_SimplePublicObjectInput = { properties: properties };
@@ -226,7 +201,7 @@ export async function setPropertyByObjectId(
  * @returns **`responses`** = `Promise<`{@link SimplePublicObject}`[]>`
  */
 export async function batchSetPropertyByObjectId( 
-    objectType: CrmObjectEnum, 
+    objectType: ApiObjectEnum, 
     objectIds: Array<string>, 
     properties: Record<string, any>, 
     idProperty?: string
@@ -283,21 +258,19 @@ export async function batchSetPropertyByObjectId(
 
 
 /**
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param searchRequest — {@link PublicObjectSearchRequest} = `{ filterGroups`?: `Array<`{@link FilterGroup}`>`, `properties`?: `Array<string>`, `limit`?: `number`, `after`?: `string | number }`
  * - {@link FilterGroup} = `Array<`{@link Filter}`>` 
  * - {@link Filter} = `{ propertyName`?: `string`, `operator`?: {@link FilterOperatorEnum}, `value`?: `string | number }`
- * @param responseProps `Array<string>` — default=`['hs_object_id', 'name']`
  * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
-    objectType: CrmObjectEnum,
+    objectType: ApiObjectEnum,
     searchRequest: PublicObjectSearchRequest,
-    responseProps?: string[],
 ): Promise<PublicObjectSearchResponseSummary>;
 
 /** 
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param filterGroups — `Array<`{@link FilterGroup}`>`
  * - {@link FilterGroup} = `Array<`{@link Filter}`>` 
  * - {@link Filter} = `{ propertyName`?: `string`, `operator`?: {@link FilterOperatorEnum}, `value`?: `string | number }`
@@ -307,7 +280,7 @@ export async function searchObjectByProperty(
  * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
-    objectType: CrmObjectEnum,
+    objectType: ApiObjectEnum,
     filterGroups: FilterGroup[],
     responseProps?: string[],
     searchLimit?: number,
@@ -316,7 +289,7 @@ export async function searchObjectByProperty(
 
 
 /** 
- * @param objectType {@link CrmObjectEnum}
+ * @param objectType {@link ApiObjectEnum}
  * @param arg2 `Array<`{@link FilterGroup}`>` | {@link PublicObjectSearchRequest}
  * @param responseProps `Array<string>` — default=`['hs_object_id', 'name']`
  * @param searchLimit `number <= 200` — default=`200`
@@ -324,14 +297,14 @@ export async function searchObjectByProperty(
  * @returns **`searchResponse`** = `Promise<`{@link PublicObjectSearchResponseSummary}`>`
  */
 export async function searchObjectByProperty(
-    objectType: CrmObjectEnum,
+    objectType: ApiObjectEnum,
     arg2: FilterGroup[] | PublicObjectSearchRequest,
     responseProps: string[] = ['hs_object_id', 'name'],
     searchLimit: number = 200,
     after: string | number = 0,
 ): Promise<PublicObjectSearchResponseSummary> {
     let searchRequest: PublicObjectSearchRequest = {};
-    let searchResponse = { 
+    let responseSummary = { 
         objectIds: [], objects: [], after: -1, total: 0 
     } as PublicObjectSearchResponseSummary;
     if (Array.isArray(arg2)) {
@@ -345,7 +318,7 @@ export async function searchObjectByProperty(
         searchRequest = arg2 as PublicObjectSearchRequest;
     } else {
         mlog.error(`searchObjectByProperty() Invalid filterGroups or searchRequest provided. Expected an array of FilterGroup or a PublicObjectSearchRequest object.`);
-        return searchResponse;
+        return responseSummary;
     }
     try {
         const apiResponse = await hubspotClient.crm[objectType].searchApi.doSearch(
@@ -353,17 +326,23 @@ export async function searchObjectByProperty(
         ) as HS_CollectionResponse;
         
         
-        searchResponse.objectIds = apiResponse.results.map(object => object.id),
-        searchResponse.objects = apiResponse.results as SimplePublicObject[],
-        searchResponse.after = apiResponse && apiResponse.paging && apiResponse.paging.next && apiResponse.paging.next.after ? apiResponse.paging.next.after : -1,
-        searchResponse.total = apiResponse.total
+        responseSummary.objectIds = apiResponse.results.map(object => object.id) ?? [],
+        responseSummary.objects = apiResponse.results as SimplePublicObject[] ?? [],
+        responseSummary.after = (apiResponse 
+            && apiResponse.paging 
+            && apiResponse.paging.next 
+            && apiResponse.paging.next.after 
+            ? apiResponse.paging.next.after 
+            : -1
+        ),
+        responseSummary.total = apiResponse.total ?? 0
         
-        if (searchResponse.total === 0 || searchResponse.objectIds.length === 0) {
-            mlog.warn(`No '${objectType}' object found with filterGroups =`, JSON.stringify(arg2));
-        }
-        mlog.debug(`Found ${searchResponse.total} ${objectType}(s)`);
+        // if (searchResponse.total === 0 || searchResponse.objectIds.length === 0) {
+        //     mlog.warn(`No '${objectType}' object found with filterGroups =`, JSON.stringify(arg2));
+        // }
+        alog.debug(`Found ${responseSummary.total} ${objectType}(s)`);
     } catch (e) {
         mlog.error(`ERROR in searchObjectByProperty() when searching for ${objectType}` , (e as any).body);
     }
-    return searchResponse;
+    return responseSummary;
 }

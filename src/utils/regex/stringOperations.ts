@@ -2,10 +2,11 @@
  * @file src/utils/regex/stringOperations.ts
  */
 import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL} from "../../config";
-import { StringCaseOptions, StringReplaceOptions } from ".";
+import { CleanStringOptions, StringCaseOptions, StringReplaceOptions } from ".";
+import { RegExpFlagsEnum, StringReplaceParams } from "./types/StringOptions";
 import { clean } from "./cleaning";
 import { distance as levenshteinDistance } from "fastest-levenshtein";
-import { RegExpFlagsEnum } from "./configureParameters";
+import { isNonEmptyArray } from "../typeValidation";
 
 
 
@@ -34,16 +35,22 @@ export function stringEndsWithAnyOf(
     if (typeof suffixes === 'string') {
         suffixes = [suffixes]; // Convert string to array of suffixes
     }
+    let flagString = (isNonEmptyArray(flags) 
+        ? flags.join('') 
+        : suffixes instanceof RegExp && suffixes.flags
+        ? suffixes.flags 
+        : undefined 
+    );
     if (Array.isArray(suffixes)) {   
         /** Escape special regex characters in suffixes and join them with '|' (OR) */
         const escapedSuffixes = suffixes.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         const pattern = `(${escapedSuffixes.join('|')})\\s*$`;
-        regex = new RegExp(pattern, flags?.join('') || undefined);
+        regex = new RegExp(pattern, flagString);
     } else if (suffixes instanceof RegExp) {
-        let source = suffixes.source.endsWith('\\s*$') 
-            ? suffixes.source 
-            : suffixes.source + '\\s*$';
-        regex = new RegExp(source, flags?.join('') || undefined);    
+        regex = (suffixes.source.endsWith('$') 
+            ? new RegExp(suffixes, flagString) 
+            : new RegExp(suffixes.source + '\\s*$', flagString)
+        );
     }
 
     if (!regex) {
@@ -76,16 +83,22 @@ export function stringStartsWithAnyOf(
     if (typeof prefixes === 'string') {
         prefixes = [prefixes]; // Convert string to array of prefixes
     }
+    let flagString = (isNonEmptyArray(flags) 
+        ? flags.join('') 
+        : prefixes instanceof RegExp && prefixes.flags 
+        ? prefixes.flags 
+        : undefined
+    ); 
     if (Array.isArray(prefixes)) {   
         /** Escape special regex characters in suffixes and join them with '|' (OR) */
         const escapedPrefixes = prefixes.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         const pattern = `^\\s*(${escapedPrefixes.join('|')})`;
-        regex = new RegExp(pattern, flags?.join('') || undefined);
+        regex = new RegExp(pattern, flagString);
     } else if (prefixes instanceof RegExp) {
-        let source = prefixes.source.startsWith('^\\s*') 
-            ? prefixes.source 
-            : '^\\s*' + prefixes.source;
-        regex = new RegExp(source, flags?.join('') || undefined); 
+        regex = (prefixes.source.startsWith('^') 
+            ? new RegExp(prefixes, flagString)
+            : new RegExp('^\\s*' + prefixes.source, flagString)
+        ); 
     }
 
     if (!regex) {
@@ -117,13 +130,19 @@ export function stringContainsAnyOf(
     if (typeof substrings === 'string') {
         substrings = [substrings]; // Convert string to array of substrings
     }
+    let flagString = (isNonEmptyArray(flags) 
+        ? flags.join('') 
+        : substrings instanceof RegExp && substrings.flags
+        ? substrings.flags 
+        : undefined
+    );
     if (Array.isArray(substrings)) {   
         /** Escape special regex characters in suffixes and join them with '|' (OR) */
         const escapedSubstrings = substrings.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         const pattern = `(${escapedSubstrings.join('|')})`;
-        regex = new RegExp(pattern, flags?.join('') || undefined);
+        regex = new RegExp(pattern, flagString);
     } else if (substrings instanceof RegExp) {
-        regex = new RegExp(substrings.source, flags?.join('') || undefined); 
+        regex = new RegExp(substrings, flagString); 
     }
 
     if (!regex) {
@@ -152,18 +171,14 @@ export function equivalentAlphanumericStrings(
     tolerance: number = 0.90,
 ): boolean {
     if (!s1 || !s2) return false;
-    let s1Alphabetical = clean(s1,
-        undefined, 
-        { toLower: true } as StringCaseOptions, 
-        undefined, 
-        [{searchValue: /[^A-Za-z0-9]/g, replaceValue: '' }] as StringReplaceOptions
-    ).split('').sort().join('');
-    let s2Alphabetical = clean(s2, 
-        undefined, 
-        { toLower: true } as StringCaseOptions, 
-        undefined, 
-        [{searchValue: /[^A-Za-z0-9]/g, replaceValue: '' }] as StringReplaceOptions
-    ).split('').sort().join('');
+    const cleanOptions = {
+        case: { toLower: true } as StringCaseOptions, 
+        replace: [
+            {searchValue: /[^A-Za-z0-9]/g, replaceValue: '' }
+        ] as StringReplaceOptions
+    } as CleanStringOptions;
+    let s1Alphabetical = clean(s1, cleanOptions).split('').sort().join('');
+    let s2Alphabetical = clean(s2, cleanOptions).split('').sort().join('');
     if (s1Alphabetical.length === 0 || s2Alphabetical.length === 0) {
         return false;
     }
@@ -206,29 +221,32 @@ export function equivalentAlphanumericStrings(
 }
 
 
-/** for simple regular expressions... */
+/** for simple regular expressions... 
+ * so like not ones that have parentheses, pipes, or curly braced numbers */
 export function extractSource(
     regex: RegExp
 ): string {
-    // remove backslash and escaped character at beginning and end of regex.source
-    let source = regex.source;
-    if (stringStartsWithAnyOf(source, /\\[a-zA-Z]/)) { // e.g. remove \b at beginning of regex.source 
-        // should check source length
-        source = source.slice(2);
-    } else if (stringStartsWithAnyOf(source, /\^/)) {
-        source = source.slice(1);
+    if (!regex) return '';
+    const REMOVE_ENDPOINT_CHARS: StringReplaceParams = {
+        searchValue: /(^(\^|\\b)|(\$|\\b)$)/g, replaceValue: ''
+    };
+    const REPLACE_ESCAPED_DOT: StringReplaceParams = {
+        searchValue: /\\\./g, replaceValue: '.'
     }
-    if (source.endsWith('$')) {
-        source = source.slice(0, -1);
+    const REPLACE_ESCAPED_WHITESPACE: StringReplaceParams = { // should trim afterwards
+        searchValue: /\\\s(\*|\+)?/g, replaceValue: ' '
     }
-    if (stringContainsAnyOf(source, /\\\./)) { // replace escaped dot with dot
-        source = source.replace(/\\\./g, '.');
+    const REMOVE_UNESCAPED_QUESTION_MARK: StringReplaceParams = {
+        searchValue: /(?<!\\)\?/g, replaceValue: ''
     }
-    if (stringContainsAnyOf(source, /\\\s(\*|\+)?/)) { // replace escaped whitespace with space 
-        source = source.replace(/\\\s/g, ' ');
-    }
-    if (stringContainsAnyOf(source, /(?<!\\)\?/)) { // remove unescaped question marks
-        source = source.replace(/(?<!\\)\?/g, '');
-    }
-    return clean(source);
+    let source = clean(regex.source, {
+        replace: [
+            REMOVE_ENDPOINT_CHARS,
+            REPLACE_ESCAPED_DOT,
+            REPLACE_ESCAPED_WHITESPACE,
+            REMOVE_UNESCAPED_QUESTION_MARK
+        ]
+    })
+    
+    return source.trim();
 }

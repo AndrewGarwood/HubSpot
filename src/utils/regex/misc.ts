@@ -1,9 +1,11 @@
 /**
  * @file src/utils/regex/misc.ts
  */
-import { isNonEmptyArray } from "../typeValidation";
-import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config";
 
+/**
+ * = `= /^[^/\\:*?"<>|]+(\.[^/\\:*?"<>|]+)$/`
+ */
+export const FILE_NAME_WITH_EXTENSION_PATTERN = /^[^/\\:*?"<>|]+(\.[^/\\:*?"<>|]+)$/; 
 /**
  * `re` = `/^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\s*$/`
  * 1. matches `YYYY-MM-DD` (ISO) format.
@@ -19,26 +21,39 @@ export const KOREA_ADDRESS_LATIN_TEXT_PATTERN = new RegExp(
 );
 
 /**
- * - checks if matches `skuPattern = /(?<=^.*:)(\w|-)*(?= .*$)/`
- * - checks if included in `skuExceptions = ['DISCOUNT (Discount)', 'S&H (Shipping)']`
- * @param skuValue `string` - the initial column value to extract SKU from
- * @returns **`sku`**: `string` - the extracted SKU or empty string if no valid SKU found
+ * @consideration `removeClasses` is unnecessary, can assume true if a value for 
+ * classDelimiter is provided -> have to remove default value for classDelimiter
+ * @param value `string` - the string value from which to extract `leaf`
+ * @param removeClasses `boolean` - remove string prefixes from result `leaf`
+ * - `Default` = `true` 
+ * - e.g. `'CLASSA:SKU-1'` -> `sku` with classes removed = `'SKU-1'`
+ * @param classDelimiter `string` - the character used to delimit the item's classes
+ * - `Default` = `':'` (colon character) 
+ * - e.g. `classDelimiter` of `'CLASSA:SKU-1'` = `':'`
+ * @returns **`leaf`**: `string` - the extracted `leaf` or the original value if no extraction performed
  */
-export function extractSku(skuValue: string): string {
-    const skuExceptions = ['DISCOUNT (Discount)', 'S&H (Shipping)'];
-    const skuPattern = new RegExp(/(?<=^.*:)(\w|-)*(?= .*$)/);
-    // e.g. skuValue: string = 'Miracu:3FX18101802GA (Miracu Thread Forte Fix 10 units  (18GX100mm))';
-    if (skuPattern.test(skuValue)) {
-        const match = skuValue.match(skuPattern);
-        if (match && isNonEmptyArray(match)) {
-            return match[0].trim();
-        } 
-    } else if (skuExceptions.includes(skuValue)) {
-        return skuValue.split(' ')[0]; // return the skuValue as is if it is an exception
+export function extractLeaf(
+    value: string, 
+    removeClasses: boolean = true, 
+    classDelimiter: string = ':',
+): string {
+    let result = value;
+    if (value.includes(' (')) { // remove description enclosed in parentheses
+        result = value.split(' (')[0];
+        // const match = skuValue.match(skuPattern);
+        // if (isNonEmptyArray(match)) {
+        //     return match[0].trim();
+        // } 
     }
-    mlog.warn(
-        'extractSku() - No valid SKU found in the provided value:', skuValue,
-    );
-    return '';
+    if (removeClasses && result.includes(classDelimiter)) { 
+        let classifierSplit = result.split(classDelimiter);
+        result = classifierSplit[classifierSplit.length - 1];
+    } 
+    // if (value.includes(':')) {mlog.debug([`[regex.misc.extractLeaf()]`,
+    //     `      initial value: '${value}'`,
+    //     `after removeClasses: '${result}'`,
+    //     ].join(TAB));
+    // STOP_RUNNING(0)}
+    return result || value;
 
 }

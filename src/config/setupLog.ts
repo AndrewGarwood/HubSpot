@@ -97,7 +97,7 @@ const PRETTY_LOG_STYLES: IPrettyLogStyles = {
         nameWithDelimiterPrefix: ["whiteBright", "bold", "bgBlackBright"],
         nameWithDelimiterSuffix: ["whiteBright", "bold", "bgBlack"],
         errorName: ["red", "bold"],
-        errorMessage: ["red", "bgBlackBright"],
+        errorMessage: ["redBright"],
 };   
 
 const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {

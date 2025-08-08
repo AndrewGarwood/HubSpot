@@ -90,17 +90,20 @@ export async function sortDealsChronologically(dealIds: Array<string>): Promise<
     for (let dealId of dealIds) {
         let deal = await getDealById({ 
             dealId: dealId, 
-            properties: ['createdate', 'dealstage'] 
+            properties: ['createdate', 'dealstage', 'closedate'] 
         });
-        if (!deal || !deal.properties || !deal.properties.createdate) {
-            mlog.warn(`sortDealsChronologically(): invalid deal (not sortable); dealId='${dealId}' `,
-                TAB + `             Boolean(deal): ${Boolean(deal)}`,
-                TAB + ` Boolean(deal?.properties): ${Boolean(deal?.properties)}`,
-                TAB + `deal.properties.createdate: ${deal?.properties?.createdate}`,
-                TAB + ` deal.properties.dealstage: ${deal?.properties?.dealstage}`);
+        if (!deal || !deal.properties 
+            || (!deal.properties.createdate && !deal.properties.closedate)) {
+            mlog.warn([`sortDealsChronologically(): invalid deal (not sortable); dealId='${dealId}' `,
+                `             Boolean(deal): ${Boolean(deal)}`,
+                ` Boolean(deal?.properties): ${Boolean(deal?.properties)}`,
+                `deal.properties.createdate: ${deal?.properties?.createdate}`,
+                ` deal.properties.dealstage: ${deal?.properties?.dealstage}`
+            ].join(TAB));
             continue;
         }
-        let dealDate = deal.properties.createdate;
+        let dealDate = deal.properties.createdate ?? deal.properties.closedate;
+        if (!dealDate) continue;
         dealsWithDates.push({dealId, dealDate});
     }
     let chronologicalDealIds = dealsWithDates

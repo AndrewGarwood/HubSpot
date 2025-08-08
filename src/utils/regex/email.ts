@@ -1,8 +1,8 @@
 /**
- * @file src/utils/io/regex/email.ts
+ * @file src/utils/regex/email.ts
  */
 import { stringContainsAnyOf } from "./stringOperations";
-import { RegExpFlagsEnum } from "./configureParameters";
+import { RegExpFlagsEnum } from "./types/StringOptions";
 
 /** `re` = `/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/` */
 export const EMAIL_REGEX = new RegExp(
