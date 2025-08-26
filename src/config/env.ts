@@ -35,7 +35,7 @@ export function isEnvironmentInitialized(): boolean {
 
 export const LOG_FILES: string[] = []
 
-/** `default:` `/HubSpot/{home}` = the directory where package.json and node_modules live */
+/** `default:` `/HubSpot/{home}` = **the directory where package.json and node_modules live** */
 export const NODE_HOME_DIR = process.cwd() as string;
 /** assume directory this file is located in is always NODE_HOME_DIR */
 const PROJECT_CONFIG_FILE_NAME = `project.config.json`;
@@ -73,23 +73,6 @@ const accountDictionary: HubSpotAccountDictionary = {
         )
     }
 }
-
-
-/**@TODO conceal these in getter functions ? */
-/** `default:` `'C:/Users/${USER}/OneDrive - ${ORGANIZATION}'` */
-// let ONE_DRIVE_DIR = `C:/Users/${USER}/OneDrive` 
-//     + ORGANIZATION ? `- ${ORGANIZATION}` : '';
-// /** `default:` `'C:/Users/${USER}/OneDrive - ${ORGANIZATION}/HubSpot'` */
-// let CLOUD_DIR = path.join(ONE_DRIVE_DIR, 'HubSpot');
-// /** `default:` `${`{@link CLOUD_DIR}`}/HubSpot/logs`*/
-// let LOG_DIR = path.join(CLOUD_DIR, 'logs') as string;
-// /** `default:` {@link NODE_HOME_DIR}`/src` = `process.cwd()/src`*/
-// let SRC_DIR = path.join(NODE_HOME_DIR, 'src') as string;
-
-// /** `default:` `${`{@link CLOUD_DIR}`}/data`*/
-// let DATA_DIR = path.join(CLOUD_DIR, 'data') as string;
-// /** `default:` `${`{@link CLOUD_DIR}`}/.output`*/
-// let OUTPUT_DIR = path.join(CLOUD_DIR, '.output') as string;
 
 /** 
  * `default:` `null`
