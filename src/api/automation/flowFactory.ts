@@ -1,10 +1,11 @@
 /**
  * @file src/automation/flowFactory.ts
  */
+
 import { 
-    mainLogger as mlog, INDENT_LOG_LINE as TAB, 
-    NEW_LINE as NL, DEBUG_LOGS as DEBUG 
-} from "../config";
+    mainLogger as mlog, INDENT_LOG_LINE as TAB, simpleLogger as slog, apiLogger as alog,
+    NEW_LINE as NL,
+} from "../../config";
 import { 
     FlowFilter, FilterBranchTypeEnum, FilterBranchOperatorEnum, FilterBranch, 
     NumericOperatorEnum, OperationTypeEnum, Operation, FlowFilterTypeEnum, 
@@ -117,7 +118,7 @@ export function numberIsBetweenFilterBranch(
         maximum
     );
     if (!numericFlowFilterPair || numericFlowFilterPair.length !== 2) {
-        DEBUG.push(NL + ` Error in numberIsBetweenFilterBranch() b/c numericFlowFilterPair was undefined or had length !== 2.`);
+        alog.debug(` Error in numberIsBetweenFilterBranch() b/c numericFlowFilterPair was undefined or had length !== 2.`);
         return null;
     }
     let inclusiveRangeFilterBranch = generateNumericFilterBranch(
@@ -144,19 +145,19 @@ export function generateNumericRangeFlowFilterPair(
     maximum: number
 ): Array<FlowFilter> {
     if (!numericTargetProperty || !minimum || !maximum) {
-        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
+        alog.debug(` Skipping generateNumericRangeFlowFilterPair() b/c one of the parameters was undefined.`);
         return [];
     }
     if (minimum > maximum) {
-        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c minimum > maximum.`);
+        alog.debug(` Skipping generateNumericRangeFlowFilterPair() b/c minimum > maximum.`);
         return [];
     }
     if (![NumericOperatorEnum.IS_GREATER_THAN, NumericOperatorEnum.IS_GREATER_THAN_OR_EQUAL_TO].includes(lowerBoundOperator)) {
-        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
+        alog.debug(` Skipping generateNumericRangeFlowFilterPair() b/c lowerBoundOperator was not IS_GREATER_THAN or IS_GREATER_THAN_OR_EQUAL_TO.`);
         return [];
     }
     if (![NumericOperatorEnum.IS_LESS_THAN, NumericOperatorEnum.IS_LESS_THAN_OR_EQUAL_TO].includes(upperBoundOperator)) {
-        DEBUG.push(NL + ` Skipping generateNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
+        alog.debug(` Skipping generateNumericRangeFlowFilterPair() b/c upperBoundOperator was not IS_LESS_THAN or IS_LESS_THAN_OR_EQUAL_TO.`);
         return [];
     }
     let lowerBoundFlowFilter = generateNumericComparisonFlowFilter(
@@ -170,7 +171,7 @@ export function generateNumericRangeFlowFilterPair(
         maximum,
     )
     if (!lowerBoundFlowFilter || !upperBoundFlowFilter) {
-        DEBUG.push(NL + `Skipping generateNumericRangeFlowFilterPair() b/c one of [lowerBoundFlowFilter, upperBoundFlowFilter] was undefined.`, lowerBoundFlowFilter, upperBoundFlowFilter);
+        alog.debug(`Skipping generateNumericRangeFlowFilterPair() b/c one of [lowerBoundFlowFilter, upperBoundFlowFilter] was undefined.`, lowerBoundFlowFilter, upperBoundFlowFilter);
         return [];
     }
     return [lowerBoundFlowFilter, upperBoundFlowFilter];
@@ -188,7 +189,7 @@ export function generateNumericComparisonFlowFilter(
     value: number,
 ): FlowFilter | null {
     if (!targetProperty || !operator || !value) {
-        DEBUG.push(NL + `Skipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
+        alog.debug(`Skipping generateNumericComparisonFlowFilter() b/c one of the parameters was undefined.`);
         return null;
     }
     let flowFilter = {
@@ -264,7 +265,7 @@ export function distributeFilterValuesOfListBranch(
             );
         }
     }
-    DEBUG.push(NL + `Number of filter branches after distribution: ${newFilterBranches.length}`);
+    alog.debug(`Number of filter branches after distribution: ${newFilterBranches.length}`);
     listBranch.filterBranch.filterBranches = newFilterBranches;
     return listBranch;
 }

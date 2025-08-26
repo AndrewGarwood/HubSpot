@@ -10,7 +10,7 @@
  */
 import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL, CRM_OBJECTS_URL } from "../../../config";
 import { CrmObjectTypeIdEnum, ObjectTypeIdEnumReverseMap } from ".";
-import * as validate from "../../../utils/argumentValidation";
+import * as validate from "typeshi:utils/argumentValidation";
 
 
 /**

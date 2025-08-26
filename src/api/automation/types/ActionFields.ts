@@ -2,7 +2,7 @@
  * @file src/utils/automation/types/ActionFields.ts
  */
 
-import { ObjectTypeIdEnum, PublicSubscriptionChannelEnum, PublicSubscriptionOptStateEnum, PublicSubscriptionStatusLegalBasisEnum } from "../../types/HubSpot";
+import { ObjectTypeIdEnum, PublicSubscriptionChannelEnum, PublicSubscriptionOptStateEnum, PublicSubscriptionStatusLegalBasisEnum } from "../../../types/HubSpot";
 import { ActionTypeIdEnum } from "./Action";
 
 /**

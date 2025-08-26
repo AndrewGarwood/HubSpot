@@ -1,18 +1,19 @@
 /**
- * @file src/CrmObjectManager.ts
+ * @file src/services/CrmObjectManager.ts
  */
 import { 
     getIndexedColumnValues,
     getRows,
     isValidCsv,
-    writeObjectToJson as write,
+    writeObjectToJsonSync as write,
     readJsonFileAsObject as read, 
-    indentedStringify, getFileNameTimestamp
-} from "./utils/io";
-import { DATA_DIR, ONE_DRIVE_DIR, STOP_RUNNING, DELAY, CLOUD_LOG_DIR,
+    indentedStringify, getFileNameTimestamp,
+    isDirectory
+} from "typeshi:utils/io";
+import { STOP_RUNNING, DELAY,
     mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL, 
     initializeData, DataDomainEnum
-} from "./config";
+} from "../config";
 import { searchObjectByProperty,
     updatePropertyByObjectId,
     batchUpdatePropertyByObjectId,
@@ -28,9 +29,8 @@ import { searchObjectByProperty,
     ApiObjectEnum,
     getDealByOrderNumber,
     PublicObjectSearchRequest,
-} from "./api/crm";
+} from "../api/crm";
 import path from "node:path";
-import { clearFile, trimFile } from './utils/io';
 import { parseAddress, cities, IParsedAddress, IStateCities } from "addresser";
 import { JOB_TITLE_SUFFIX_PATTERN, 
     COMPANY_KEYWORDS_PATTERN, COMPANY_ABBREVIATION_PATTERN,
@@ -41,9 +41,9 @@ import { JOB_TITLE_SUFFIX_PATTERN,
     clean,
     stringStartsWithAnyOf,
     extractSource
-} from "./utils/regex";
-import * as validate from "./utils/argumentValidation";
-import { isNonEmptyString, isNullLike } from "./utils/typeValidation";
+} from "typeshi:utils/regex";
+import * as validate from "typeshi:utils/argumentValidation";
+import { isNonEmptyString, isNullLike } from "typeshi:utils/typeValidation";
 
 export type Address = {
     zipCode: string;
@@ -72,13 +72,6 @@ function Filter(
     }
 }
 
-// function SearchRequest(
-//     properties: string[],
-//     filterGroups: FilterGroup[]
-// ): SearchRequest {
-//     return { properties, filterGroups }
-// }
-
 type EntitySearchMeta = {
     rowIndex: number;
     entity: string;
@@ -95,48 +88,15 @@ enum SourceColumnEnum {
 const MAX_NUM_FILTER_GROUPS = 5;
 const MAX_NUM_FILTERS = 18;
 
-async function main() {
-    const source = `[CrmObjectManager.main()]`;
-    try {
-        await initializeData(DataDomainEnum.REGEX, DataDomainEnum.CRM);
-        mlog.info(`${source} ✓ Application data initialized successfully`);
-    } catch (error) {
-        mlog.error(`${source} ✗ Failed to initialize application data:`, error);
-        STOP_RUNNING(1);
-    }
-    const resultsFilePath = path.join(CLOUD_LOG_DIR, `searches`,`apiSearch_entResults.json`);
-    const results = read(resultsFilePath) as {
-        [entity: string]: {
-            strict: { [searchLabel: string]: SearchResponseSummary },
-            lax: { [searchLabel: string]: SearchResponseSummary },
-        }
-    };
-    let contacts: { [entity: string]: string[] } = {}
-    for (const ent in results) {
-        for (const [label, res] of Object.entries(results[ent].strict)) {
-            if (res.objectIds.length === 0) { continue }
-            for (const id of res.objectIds) {
-                if (!contacts[ent].includes(id)) {
-                    contacts[ent].push(id);
-                }
-            }
-        }
-    }
-    // write(contacts, path.join(CLOUD_LOG_DIR, `searches`, `entity_match_contactIds.json`));
-    STOP_RUNNING(0);
-}
-main().catch((err) => {
-    mlog.error("[CrmObjectManager.main()] ERROR:", err);
-    STOP_RUNNING(1);
-});
-
-async function runSearch(): Promise<void> {
+async function runSearch(
+    entFilePath: string,
+    outDir?: string
+): Promise<void> {
     const source = `[CrmObjectManager.runSearch()]`;
-    const entFile = path.join(DATA_DIR, 'reports', 'client_entity_list.tsv');
-    if (!isValidCsv(entFile, Object.values(SourceColumnEnum))) {
+    if (!isValidCsv(entFilePath, Object.values(SourceColumnEnum))) {
         mlog.error([`${source} Error: invalid entity tsv file provided`]);
     }
-    const entRows = await getRows(entFile) as {
+    const entRows = await getRows(entFilePath) as {
         [SourceColumnEnum.ENTITY]: string;
         [SourceColumnEnum.ADDRESS]: string;
     }[];
@@ -274,7 +234,7 @@ async function runSearch(): Promise<void> {
         return acc;
     }, 0);
     mlog.debug(`numNonEmptyResults: ${numNonEmptyResults}`);
-    write(entResults, path.join(ONE_DRIVE_DIR, `apiSearch_entResults.json`));
+    if (isNonEmptyString(outDir) && isDirectory(outDir)) write(entResults, path.join(outDir, `apiSearch_entResults.json`));
 }
 
 async function generateNameFilters(

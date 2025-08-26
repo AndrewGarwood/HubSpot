@@ -2,22 +2,11 @@
  * @file src/config/setupLog.ts
  * @reference https://tslog.js.org/#/?id=pretty-templates-and-styles-color-settings
  */
-import { OUTPUT_DIR, CLOUD_LOG_DIR } from './env';
 import { 
     Logger, ISettingsParam, ISettings, ILogObj, 
     ILogObjMeta, IPrettyLogStyles, IMeta 
-} from 'tslog';
-import path from 'node:path';
-import { appendFileSync, existsSync } from 'node:fs';
-
-/** LOCAL_LOG_DIR (in onedrive) or `OUTPUT_DIR/logs` */
-export const LOCAL_LOG_DIR = path.join(OUTPUT_DIR, "logs");  
-/**`CLOUD_LOG_DIR/DEBUG.txt` */
-export const DEFAULT_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "DEBUG.txt");
-/** `CLOUD_LOG_DIR/API_LOG.txt` */
-export const API_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "API_LOG.txt");
-/**`CLOUD_LOG_DIR/ERROR.txt` */
-export const ERROR_LOG_FILEPATH = path.join(CLOUD_LOG_DIR, "ERROR.txt"); 
+} from "tslog";
+import path from "node:path";
 
 /** 
  * `TAB = INDENT_LOG_LINE =  '\n\t• '` = newLine + tab + bullet + space
@@ -55,9 +44,11 @@ const LOG_TEMPLATE = [
     fileInfoTemplate,
 ].join(' ') + NEW_LINE;
 
+const SIMPLE_LOG_TEMPLATE = ` > `
 /** `"{{errorName}}: {{errorMessage}}{INDENT_LOG_LINE}{{errorStack}}"` */
 const errorInfoTemplate = [
-    "{{errorName}}: {{errorMessage}}", "{{errorStack}}"
+    "{{errorName}}: {{errorMessage}}", 
+    "{{errorStack}}"
 ].join(INDENT_LOG_LINE);
 /** 
  * use as value for {@link ISettingsParam.prettyErrorTemplate} 
@@ -71,38 +62,35 @@ const ERROR_TEMPLATE = `${errorInfoTemplate}`; //`${timestampTemplate} ${logName
 const ERROR_STACK_TEMPLATE = `${fileInfoTemplate}:{{method}} {{stack}}`;
 
 const PRETTY_LOG_STYLES: IPrettyLogStyles = {
-        yyyy: "green",
-        mm: "green",
-        dd: "green",
-        hh: "greenBright",
-        MM: "greenBright",
-        ss: "greenBright",
-        ms: "greenBright",
-        dateIsoStr: ["redBright", "italic"], //dateIsoStr is = Shortcut for {{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}
-        logLevelName:  {
-            "*": ["bold", "black", "bgWhiteBright", "dim"],
-            SILLY: ["bold", "white"],
-            TRACE: ["bold", "whiteBright"],
-            DEBUG: ["bold", "green"],
-            INFO: ["bold", "cyan"],
-            WARN: ["bold", "yellow"],
-            ERROR: ["bold", "red"],
-            FATAL: ["bold", "redBright"],
-        },
-        fileName: "cyan",
-        filePath: "blue",
-        fileLine: ["cyanBright", "bold"],
-        filePathWithLine: ["blueBright", "italic"],
-        name: "blue",
-        nameWithDelimiterPrefix: ["whiteBright", "bold", "bgBlackBright"],
-        nameWithDelimiterSuffix: ["whiteBright", "bold", "bgBlack"],
-        errorName: ["red", "bold"],
-        errorMessage: ["redBright"],
+    yyyy: "green",
+    mm: "green",
+    dd: "green",
+    hh: "greenBright",
+    MM: "greenBright",
+    ss: "greenBright",
+    ms: "greenBright",
+    dateIsoStr: ["redBright", "italic"], //dateIsoStr is = Shortcut for {{yyyy}}.{{mm}}.{{dd}} {{hh}}:{{MM}}:{{ss}}:{{ms}}
+    logLevelName:  {
+        "*": ["bold", "black", "bgWhiteBright", "dim"],
+        SILLY: ["bold", "white"],
+        TRACE: ["bold", "whiteBright"],
+        DEBUG: ["bold", "green"],
+        INFO: ["bold", "cyan"],
+        WARN: ["bold", "yellow"],
+        ERROR: ["bold", "red"],
+        FATAL: ["bold", "redBright"],
+    },
+    fileName: "cyan",
+    filePath: "blue",
+    fileLine: ["cyanBright", "bold"],
+    filePathWithLine: ["blueBright", "italic"],
+    name: "blue",
+    nameWithDelimiterPrefix: ["whiteBright", "bold", "bgBlackBright"],
+    nameWithDelimiterSuffix: ["whiteBright", "bold", "bgBlack"],
+    errorName: ["red", "bold"],
+    errorMessage: ["redBright"],
 };   
-
-const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
-    type: "pretty",
-    name: "HS_Main",
+const COMMON_SETTINGS: { [settingsParamKey: string]: any } = {
     minLevel: 0,
     prettyLogTemplate: LOG_TEMPLATE,
     prettyErrorTemplate: ERROR_TEMPLATE,
@@ -111,45 +99,45 @@ const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
     prettyLogTimeZone: "local",
     prettyLogStyles: PRETTY_LOG_STYLES,
 }
+const MAIN_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
+    type: "pretty",
+    name: "HS_Main",
+    ...COMMON_SETTINGS
+}
 /**`type: "pretty"` */
 export const mainLogger = new Logger<ILogObj>(MAIN_LOGGER_SETTINGS);
-mainLogger.attachTransport((logObj: ILogObj & ILogObjMeta) => {
-    appendFileSync(
-        DEFAULT_LOG_FILEPATH, 
-        JSON.stringify(formatLogObj(logObj)) + "\n", 
-        { encoding: "utf-8" }
-    );
-});
+
+/** `type: "pretty"`, `template` = `" > {{logObjMeta}}"` */
+const SIMPLE_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
+    type: "pretty",
+    name: "HS_Simple",
+    minLevel: 0,
+    prettyLogTemplate: SIMPLE_LOG_TEMPLATE,
+    prettyErrorTemplate: ERROR_TEMPLATE,
+    prettyErrorStackTemplate: ERROR_STACK_TEMPLATE,
+    stylePrettyLogs: true,
+    prettyLogTimeZone: "local",
+    prettyLogStyles: PRETTY_LOG_STYLES,
+}
+/** `type: "pretty"`, `template` = `" > {{logObjMeta}}"` */
+export const simpleLogger = new Logger<ILogObj>(SIMPLE_LOGGER_SETTINGS);
 
 /** `type: hidden` -> suppress logs from being sent to console */
 const API_LOGGER_SETTINGS: ISettingsParam<ILogObj> = {
     type: "hidden", // "pretty" | "hidden" | "json"
     name: "HS_API",
-    minLevel: 0,
-    prettyLogTemplate: LOG_TEMPLATE,
-    prettyErrorTemplate: ERROR_TEMPLATE,
-    prettyErrorStackTemplate: ERROR_STACK_TEMPLATE,
-    stylePrettyLogs: true,
-    prettyLogTimeZone: "local",
-    prettyLogStyles: PRETTY_LOG_STYLES,
+    ...COMMON_SETTINGS
 }
 
 /** `type: "hidden"` */
 export const apiLogger = new Logger<ILogObj>(API_LOGGER_SETTINGS);
-apiLogger.attachTransport((logObj: ILogObj) => {
-    appendFileSync(
-        API_LOG_FILEPATH, 
-        JSON.stringify(formatLogObj(logObj), null, 4) + "\n",
-        { encoding: "utf-8" }
-    );
-});
 
 /**
- * compress metadata into `logObj['-1']` then return stringified `logObj`
+ * compress metadata
  * @param logObj {@link ILogObj}
  * @returns `string`
  */
-function formatLogObj(logObj: ILogObj | (ILogObj & ILogObjMeta)): string {
+export function formatLogObj(logObj: ILogObj | (ILogObj & ILogObjMeta)): string {
     const meta = logObj['_meta'] as IMeta;
     const { logLevelName, date, path } = meta;
     const timestamp = date ? date.toLocaleString() : '';
@@ -158,12 +146,5 @@ function formatLogObj(logObj: ILogObj | (ILogObj & ILogObjMeta)): string {
     delete logObj['_meta'];
     logObj['meta0'] = `[${logLevelName}] (${timestamp})`;
     logObj['meta1'] = `${fileInfo} @ ${methodInfo}`;
-    // logObj['-1'] = `[${logLevelName}] (${timestamp})`;
-    // logObj['-2'] = `${fileInfo} @ ${methodInfo}`;
     return JSON.stringify(logObj, null, 4) + "\n" 
 }
-
-/**suppress logs by putting them here (do not print to console) */
-export const SUPPRESSED_LOGS: any[] = []
-export const INFO_LOGS: any[] = []
-export const DEBUG_LOGS: any[] = [];

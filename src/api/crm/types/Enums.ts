@@ -253,14 +253,15 @@ export enum ApiObjectEnum {
 
 
 /**
- * @note redundant... except for LINE_ITEMS
+ * @note redundant... except for weird behavior with LINE_ITEMS_REQUEST & LINE_ITEMS_RESPONSE
  * @enum {string} **`CrmAssociationObjectEnum`**
  * @readonly
  * @property **`CONTACTS`** `'contacts'`
  * @property **`DEALS`** `'deals'`
  * @property **`COMPANIES`** `'companies'`
  * @property **`PRODUCTS`** `'products'`
- * @property **`LINE_ITEMS`** `line_items`
+ * @property **`LINE_ITEMS_REQUEST`** `line_items`
+ * @property **`LINE_ITEMS_RESPONSE`** `line items`
  * @property **`TICKETS`** `'tickets'`
  */
 export enum CrmAssociationObjectEnum {
@@ -268,7 +269,10 @@ export enum CrmAssociationObjectEnum {
     DEALS = 'deals',
     COMPANIES = 'companies',
     PRODUCTS = 'products',
-    LINE_ITEMS = 'line_items',
+    /** use in requests for associations param */
+    LINE_ITEMS_REQUEST = 'line_items',
+    /** use as to access associations in responses */
+    LINE_ITEMS_RESPONSE = 'line items',
     TICKETS = 'tickets'
 }
 

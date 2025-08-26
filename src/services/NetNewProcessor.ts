@@ -2,175 +2,186 @@
  * @file src/NetNewProcessor.ts
  */
 import path from "node:path";
-import { DATA_DIR, DELAY, OUTPUT_DIR, STOP_RUNNING } from "./config/env";
-import { getCategoryToSkuDict, getObjectPropertyDictionary, isDataInitialized, initializeData, DataDomainEnum } from "./config/dataLoader";
+import { DELAY, STOP_RUNNING, getResourceFolderConfiguration, isEnvironmentInitialized, } from "../config/env";
+import { getCategoryToSkuDict, getObjectPropertyDictionary, 
+    isDataInitialized, promptForFileSelection
+} from "../config/dataLoader";
 import { 
-    mainLogger as mlog, 
-    apiLogger as log, 
+    mainLogger as mlog, simpleLogger as slog,
+    apiLogger as alog, 
     INDENT_LOG_LINE as TAB, 
-    NEW_LINE as NL, 
-    DEBUG_LOGS as DEBUG, INFO_LOGS as INFO, 
-    DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH, SUPPRESSED_LOGS as SUP } from "./config/setupLog";
+    NEW_LINE as NL,
+} from "../config/setupLog";
 import { 
     getDealById, ApiObjectEnum, CrmAssociationObjectEnum, getContactById, 
     getLineItemById, getSkuFromLineItem, isValidLineItem, 
     DealCategorization, PurchaseHistory, NetNewValueEnum,
     SkuData, sortDealsChronologically, updateSkuHistory, batchUpdatePropertyByObjectId,
-    ProductCategoryEnum, SimplePublicObject,
+    SimplePublicObject,
     GetContactByIdParams,
-    SimplePublicObjectWithAssociations
-} from "./api/crm";
+    SimplePublicObjectWithAssociations, isSimplePublicObject, isSimplePublicObjectWithAssociations
+} from "../api/crm";
 import { 
     readJsonFileAsObject as read,
-    writeObjectToJson as write, 
+    writeObjectToJsonSync as write, 
     getCurrentPacificTime, toPacificTime,
-    clearFile,
-    trimFile,
-    indentedStringify, getFileNameTimestamp
-} from "./utils/io";
-import { getColumnValues, validatePath, isValidCsv } from "./utils/io/reading";
-import { isNonEmptyArray } from "./utils/typeValidation";
+    indentedStringify, getFileNameTimestamp, getSourceString,
+    isDirectory,
+    getDirectoryFiles,
+    isFile,
+    getColumnValues
+} from "typeshi:utils/io";
+import { extractFileName } from "@typeshi/regex";
+import { isNonEmptyArray, isNonEmptyString, isStringArray } from "typeshi:utils/typeValidation";
+import * as validate from "typeshi:utils/argumentValidation";
+
+const F = extractFileName(__filename);
 
 /**  */
-const NET_NEW_PROP = 'is_net_new';
 let NUMBER_OF_DEALS_PROCESSED = 0;
 let NUMBER_OF_LINE_ITEMS_PROCESSED = 0;
 const MISSING_SKUS: string[] = [];
+export function getMissingSkus(): string[] {
+    return MISSING_SKUS;
+}
 
-main().catch((error) => {
-    mlog.error('Error in NetNewProcessor.ts when executing main():', error);
-});
+/**
+ * @TODO allow first arg to be absolute filepath
+ * @param dataDir `string`
+ * @param contactIdColumn `string`
+ * @returns **`Promise<void>`**
+ */
+export async function runProcessor(
+    dataDir?: string,
+    contactIdColumn: string = 'Contact ID'
+): Promise<void> {
+    const source = getSourceString(F, runProcessor);
+    if (!isEnvironmentInitialized()) {
+        throw new Error(`${source} Application Environment is not initialized, call initializeEnvironment() first`)
+    }
+    if (!isDataInitialized()) {
+        throw new Error(`${source} Application Data is not initialized, call initializeData() first`)
+    }
+    if (!dataDir) dataDir = (await getResourceFolderConfiguration()).dataDir;
+    let dirFiles = getDirectoryFiles(dataDir, ...['.tsv', '.csv', '.xlsx']);
+    let selectedFilePath = await promptForFileSelection(dirFiles, dataDir);
+    if (!isFile(selectedFilePath)) {
+        mlog.error(`${source} No valid file selected, exiting...`);
+        return;
+    }
+    const contactIds = await getColumnValues(selectedFilePath, contactIdColumn);
+    await updateContactLineItems(contactIds);
+}
+
+
 /** 
- * main`()` -> {@link updateContactLineItems}`(contactIds)` ->
+ * main.ts -> {@link updateContactLineItems}`(contactIds)` ->
  * - {@link processContact}`(contactId)` 
  * - - {@link processLineItem}`(for all lineItems associated with contact)`
  * - {@link updateLineItems}`(Record<`{@link NetNewValueEnum}, `Array<string>>)`
  * - - {@link batchUpdatePropertyByObjectId}`(...)`
  * */
-async function main() {
-    clearFile(DEFAULT_LOG_FILEPATH, API_LOG_FILEPATH);
-    const startTime = new Date();
-    if (!isDataInitialized()) {
-        await initializeData();
-    }
-    const useSubset: boolean = false; // set to true to use a subset of contacts for testing
-    const filePath = path.join(DATA_DIR, `Contacts With July 2025 Deals.tsv`)
-    const EXPORT_CSV_CONTACT_ID_COLUMN = 'Contact ID';
-    validatePath(filePath)
-    if (!isValidCsv(filePath, [EXPORT_CSV_CONTACT_ID_COLUMN])) {
-        mlog.error(`[NetNewProcessor.main()]: Invalid input file at '${filePath}'`);
-        STOP_RUNNING(1);
-    }
-    const ALL_CONTACTS = await getColumnValues(filePath, EXPORT_CSV_CONTACT_ID_COLUMN);
-    const contactIds = useSubset ? ALL_CONTACTS.slice(3, 10) : ALL_CONTACTS;
-    mlog.info(`[START NetNewProcessor.main()]`,
-        TAB + `   filePath: '${filePath}'`,
-        TAB + `  useSubset:  ${useSubset}`,
-        TAB + `numContacts:  ${contactIds.length}`,
-        NL  + `calling await updateContactLineItems()`
-    );
-    await updateContactLineItems(contactIds);
-    const endTime = new Date();
-    mlog.info(`[END NetNewProcessor.main()]`,
-        TAB + `Elapsed Time: ${(endTime.getTime() - startTime.getTime()) / 1000} seconds`,
-        TAB + `     Number of Deals Processed: ${NUMBER_OF_DEALS_PROCESSED}`,
-        TAB + `Number of Line Items Processed: ${NUMBER_OF_LINE_ITEMS_PROCESSED}`,
-    );
-    if (isNonEmptyArray(MISSING_SKUS)) write({MISSING_SKUS}, path.join(OUTPUT_DIR, `${getFileNameTimestamp()}_missingSkus.json`));
-    MISSING_SKUS.length = 0;
-    trimFile(undefined, DEFAULT_LOG_FILEPATH);
-    STOP_RUNNING(0);
-}
 
 /**
  * For each contact, 
  * - identify the net new line items and recurring line items of their associated deals
  * - Then call the HubSpot API to batch update the `'is_net_new'` property of the line items
  * @param contactIds `Array<string>`
- * @returns {Promise<void>} 
- */
-export async function updateContactLineItems(
-    contactIds: Array<string>
+ * @returns **`Promise<void>`** 
+ * @consideration define a ContactBatch class 
+ * */
+async function updateContactLineItems(
+    contactIds: Array<string>,
+    batchSize: number = 50
 ): Promise<void> {
-    // mlog.info(`Start of updateContactLineItems()`);
-    let contactBatches = partitionArrayBySize(contactIds, 50) as string[][];
+    const source = getSourceString(F, updateContactLineItems);
+    try {
+        validate.arrayArgument(source, {contactIds, isStringArray});
+        validate.numberArgument(source, {batchSize});
+    } catch (error: any) {
+        mlog.error(`${source} Invalid parameter(s)`, 
+            error, NL+`exiting function...`
+        );
+        return;
+    }
+    contactIds = Array.from(new Set(contactIds)).filter(c=>isNonEmptyString(c));
+    let contactBatches = partitionArrayBySize(contactIds, batchSize) as string[][];
+    mlog.info([`${source} (START)`,
+        `contactIds.length: ${contactIds.length}`,
+        `batch size: ${batchSize} -> num batches: ${contactBatches.length}`
+    ].join(TAB));
     for (let [batchIndex, contactIdBatch] of contactBatches.entries()) {
         const batchStartTime = new Date();
-        INFO.push((INFO.length > 1 ? NL : '') + 
-        `[updateContactLineItems()] Starting batch ${batchIndex+1} of ${contactBatches.length}`,
-            TAB + `Batch Start Time: ${batchStartTime.toLocaleString()}`,
-            TAB + `      Batch Size: ${contactIdBatch.length}`,
-        );
+        slog.info([
+        `${source} Starting batch ${batchIndex+1} of ${contactBatches.length}`,
+            `Batch Start Time: ${batchStartTime.toLocaleString()}`,
+        ].join(TAB));
         const batchNetNewLineItems: string[] = [];
         const batchRecurringLineItems: string[] = [];
         for (let [subsetIndex, contactId] of contactIdBatch.entries()) {
-            let history =  await processContact(contactId) as PurchaseHistory;
-            INFO.push(
-                NL  + `Contact ${subsetIndex+1}/${contactIdBatch.length} of Batch ${batchIndex+1}/${contactBatches.length} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
-                TAB + `   netNewLineItems.length: ${history.netNewLineItems.length}`,
-                TAB + `recurringLineItems.length: ${history.recurringLineItems.length}`,
-                TAB + `        Categories Bought: ${JSON.stringify(Object.keys(history.categoriesBought))}`,
-                // TAB + `            SKUs Bought: ${JSON.stringify(Object.keys(history.skuHistory))}`,
-            );
+            let history = await processContact(contactId) as PurchaseHistory;
+            slog.info([`Contact ${subsetIndex+1}/${contactIdBatch.length} of Batch ${batchIndex+1}/${contactBatches.length} finished processContact(id: '${contactId}', name: '${history.contactName}')`,
+                `   netNewLineItems.length: ${history.netNewLineItems.length}`,
+                `recurringLineItems.length: ${history.recurringLineItems.length}`,
+                `        Categories Bought: ${JSON.stringify(Object.keys(history.categoriesBought))}`,
+            ].join(TAB));
             batchNetNewLineItems.push(...history.netNewLineItems);
             batchRecurringLineItems.push(...history.recurringLineItems);
         }
-        INFO.push(NL + `Batch ${batchIndex+1} of ${contactBatches.length} data processed.`,
-            TAB + `Time Elapsed: ${(new Date().getTime() - batchStartTime.getTime()) / 1000} seconds`
-        );
+        slog.info([`Batch ${batchIndex+1} of ${contactBatches.length} data processed.`,
+            `Time Elapsed: ${(new Date().getTime() - batchStartTime.getTime()) / 1000} seconds`
+        ].join(TAB));
         const updateBatchStartTime = new Date();
-        INFO.push(`calling updateLineItems() for Batch ${batchIndex+1} of ${contactBatches.length} with`,
-            TAB + `  batchNetNewLineItems.length: ${batchNetNewLineItems.length}`,
-            TAB + `batchRecurringLineItems.length: ${batchRecurringLineItems.length}`,
-        );
-        const updateRes: SimplePublicObject[] = await updateLineItems({
+        slog.info([`calling updateLineItems() for Batch ${batchIndex+1} of ${contactBatches.length} with`,
+            `   batchNetNewLineItems.length: ${batchNetNewLineItems.length}`,
+            `batchRecurringLineItems.length: ${batchRecurringLineItems.length}`,
+        ].join(TAB));
+        const updates: SimplePublicObject[] = await updateLineItems({
             [NetNewValueEnum.TRUE]: batchNetNewLineItems,
             [NetNewValueEnum.FALSE]: batchRecurringLineItems,
         } as Record<NetNewValueEnum, Array<string>>);
         const batchEndTime = new Date();
-        INFO.push(NL + `[updateContactLineItems()] Batch (${batchIndex+1}/${contactBatches.length}) finished at ${batchEndTime.toLocaleString()}`,
-            TAB + ` Update Time Elapsed: ${(batchEndTime.getTime() - updateBatchStartTime.getTime()) / 1000} seconds`,
-            TAB + `  Total Time Elapsed: ${(batchEndTime.getTime() - batchStartTime.getTime()) / 1000} seconds`,
-            TAB + `  Net New Line Items: ${batchNetNewLineItems.length}`,
-            TAB + `Recurring Line Items: ${batchRecurringLineItems.length}`,
-            TAB + `    updateRes.length: ${updateRes.length}`,
+        slog.info([`${source} Batch (${batchIndex+1}/${contactBatches.length}) finished at ${batchEndTime.toLocaleString()}`,
+            ` Update Time Elapsed: ${(batchEndTime.getTime() - updateBatchStartTime.getTime()) / 1000} seconds`,
+            `  Total Time Elapsed: ${(batchEndTime.getTime() - batchStartTime.getTime()) / 1000} seconds`,
+            `  Net New Line Items: ${batchNetNewLineItems.length}`,
+            `Recurring Line Items: ${batchRecurringLineItems.length}`,
+            `      updates.length: ${updates.length}`,
+        ].join(TAB),
             NL  + `Pausing for 1 second.`
         );
-        mlog.info(...INFO);
-        INFO.length = 0;
         await DELAY(1000, null);
     }
 }
 
 /**
  * @param contactId `string` 
- * @returns **`purchaseHistory`** — {@link PurchaseHistory}
+ * @returns **`purchaseHistory`** {@link PurchaseHistory}
  */
 async function processContact(
     contactId: string
 ): Promise<PurchaseHistory> {
-    if (!contactId) {
-        mlog.error(`Error in processContact({contactId}): contactId is undefined`);
+    const source = getSourceString(F, processContact);
+    if (!isNonEmptyString(contactId)) {
+        mlog.error(`${source} contactId is not a valid string`);
         return {} as PurchaseHistory;
     }
     let purchaseHistory = {
         contactId: contactId,
         contactName: '',
-        categoriesBought: {} as Record<string, string>,
+        categoriesBought: {},
         skuHistory: {} as Record<string, SkuData>,
-        netNewLineItems: [] as Array<string>,
-        recurringLineItems: [] as Array<string>
+        netNewLineItems: [],
+        recurringLineItems: []
     } as PurchaseHistory;
-    SUP.push(`[START processContact('${contactId}')]`);
+    alog.debug(`${source} START for contactId '${contactId}'`);
     try {
         const contact = await getContactById({ 
             contactId: contactId, 
             associations: [CrmAssociationObjectEnum.DEALS] 
         } as GetContactByIdParams) as SimplePublicObjectWithAssociations;
-        if (!contact || !contact.properties 
-            || !contact.associations || !contact.associations.deals
-        ) {
-            mlog.error(`contactResponse for ${contactId} is invalid, null, or undefined`);
+        if (!isSimplePublicObjectWithAssociations(contact) || !contact.associations.deals) {
+            mlog.error(`contactResponse for '${contactId}' is invalid`);
             return purchaseHistory;
         }
         purchaseHistory.contactName 
@@ -180,19 +191,17 @@ async function processContact(
         let chronologicalDealIds = associatedDealIds.length > 0 
             ? await sortDealsChronologically(associatedDealIds)
             : [];
-        NUMBER_OF_DEALS_PROCESSED += chronologicalDealIds.length;
         for (let dealId of chronologicalDealIds) {
             const deal = await getDealById(dealId) as SimplePublicObjectWithAssociations;
             if (!(await isValidDeal(dealId, deal))) {
                 continue;
             }   
             let lineItemAssociation = (deal.associations 
-                ? deal.associations['line items'] 
-                : { results: [] }
+                ? deal.associations[CrmAssociationObjectEnum.LINE_ITEMS_REQUEST] ?? deal.associations[CrmAssociationObjectEnum.LINE_ITEMS_RESPONSE]
+                : undefined
             );     
-            let lineItemIds = lineItemAssociation.results
+            let lineItemIds = (lineItemAssociation ?? { results: [] }).results
                 .map(associatedLineItem => associatedLineItem.id);
-            NUMBER_OF_LINE_ITEMS_PROCESSED += lineItemIds.length;
             for (let lineItemId of lineItemIds) {
                 const lineItem = await getLineItemById(
                     lineItemId
@@ -207,18 +216,18 @@ async function processContact(
                 );
                 const catsAfter = Object.keys(purchaseHistory.categoriesBought);
                 if (catsAfter.length > catsBefore.length) {
-                    SUP.push(NL + `New category added for contact '${purchaseHistory.contactName}'`,
-                        TAB + ` From: '${lineItem.properties.hs_sku}' in deal '${deal.properties.dealname}' on ${toPacificTime(deal.properties.closedate as string)}`,
-                        TAB + `Added: '${catsAfter.filter(cat => !catsBefore.includes(cat)).join(', ')}'`,
-                    );
+                    alog.debug([`New category added for contact '${purchaseHistory.contactName}'`,
+                        ` From: '${lineItem.properties.hs_sku}' in deal '${deal.properties.dealname}' on ${toPacificTime(deal.properties.closedate as string)}`,
+                        `Added: '${catsAfter.filter(cat => !catsBefore.includes(cat)).join(', ')}'`,
+                    ].join(TAB));
                 }
             }
-        }        
-    } catch (e) {
+            NUMBER_OF_LINE_ITEMS_PROCESSED += lineItemIds.length;
+        }
+        NUMBER_OF_DEALS_PROCESSED += chronologicalDealIds.length;        
+    } catch (e: any) {
         mlog.error('Error in processContact():', indentedStringify(e as any));
     }
-    if (DEBUG.length > 0) mlog.debug(...DEBUG);
-    DEBUG.length = 0; // clear the infoLogs array
     return purchaseHistory;
 }
 
@@ -226,7 +235,7 @@ async function processContact(
  * @param lineItem {@link SimplePublicObjectWithAssociations}
  * @param deal {@link SimplePublicObjectWithAssociations}
  * @param history {@link PurchaseHistory}
- * @returns **`history`** — {@link PurchaseHistory}
+ * @returns **`history`** {@link PurchaseHistory}
  */
 function processLineItem(
     lineItem: SimplePublicObjectWithAssociations, 
@@ -257,13 +266,15 @@ function processLineItem(
     } = categorizeDeal(sku, history.categoriesBought, dealId);
     if (isFirstDealWithCategory) {
         history.netNewLineItems.push(lineItemId);
-        history.categoriesBought[category as ProductCategoryEnum] = dealId;
+        history.categoriesBought[category] = dealId;
     } else if (isStillFirstDealWithNewCategory) {
         history.netNewLineItems.push(lineItemId);
     } else if (isRecurringDeal) {
         history.recurringLineItems.push(lineItemId);
     } else {
-        log.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${Object.keys(getCategoryToSkuDict())}`);
+        alog.warn(`Deal ${dealProps.dealname} has SKU '${sku}' not found in any category from ${
+            Object.keys(getCategoryToSkuDict()).join(', ')
+        }`);
         if (!MISSING_SKUS.includes(sku)){ MISSING_SKUS.push(sku); }
     }
     
@@ -273,7 +284,7 @@ function processLineItem(
 /**
  * calls the HubSpot API via {@link batchUpdatePropertyByObjectId} to update the 'is_net_new' property of line items
  * @param lineItemDict `Record<`{@link NetNewValueEnum}, `Array<string>>`
- * @returns **`responses`** — `Array<SimplePublicObject>`
+ * @returns **`responses`** `Array<SimplePublicObject>`
  */
 async function updateLineItems(
     lineItemDict: Record<NetNewValueEnum, Array<string>>, 
@@ -284,21 +295,20 @@ async function updateLineItems(
     }
     const responses = [];
     let keyIndex = 0;
-    for (let [enumValKey, lineItemIds] of Object.entries(lineItemDict)) {
+    for (let [enumVal, lineItemIds] of Object.entries(lineItemDict)) {
         if (!lineItemIds || lineItemIds.length === 0) {
-            mlog.warn(`No line items to update for netNewValue: ${enumValKey}`);
+            mlog.warn(`No line items to update for netNewValue: ${enumVal}`);
             continue;
         }
         responses.push(...await batchUpdatePropertyByObjectId(
             ApiObjectEnum.LINE_ITEMS,
             lineItemIds,
-            { [NET_NEW_PROP]: enumValKey }
+            { is_net_new: enumVal }
         ));
-        await DELAY(1000, 
-            NL + `(${new Date().toLocaleString()}) updateLineItems() finished lineItemDict key ${keyIndex+1}/${Object.keys(lineItemDict).length}`,
-            TAB + `Updated ${lineItemIds.length} lineItems with netNewValue: '${enumValKey}'`,
-            NL + `Pausing for 1 second after updating `
-        );
+        mlog.info([`updateLineItems() finished lineItemDict key ${keyIndex+1}/${Object.keys(lineItemDict).length}`,
+            `Updated ${lineItemIds.length} lineItems with netNewValue: '${enumVal}'`,
+        ].join(TAB))
+        await DELAY(1000);
         keyIndex++;
     }
     return responses;
@@ -309,7 +319,7 @@ async function updateLineItems(
  * @param sku `string`
  * @param categoriesBought `Record<string, string>`;
  * @param dealId `string` 
- * @returns **`categoryInfo`** — {@link DealCategorization} 
+ * @returns **`categoryInfo`** {@link DealCategorization} 
  */
 function categorizeDeal(
     sku: string, 
@@ -342,10 +352,10 @@ function categorizeDeal(
     let categoryInfo: DealCategorization = { 
         category, isFirstDealWithCategory, isStillFirstDealWithNewCategory, isRecurringDeal 
     };
-    SUP.push(NL + `categorizeDeal() called`,
-        TAB + `             sku: "${sku}"`,
-        TAB + `        category: "${category}", dealId: "${dealId}"`,
-        TAB + `categoriesBought:`, JSON.stringify(categoriesBought),
+    alog.debug([`categorizeDeal() called`,
+        `sku: '${sku}', category: '${category}', dealId: '${dealId}'`,
+        `categoriesBought: ${JSON.stringify(categoriesBought)}`,
+    ].join(TAB),
         NL  + `return categoryInfo:`, indentedStringify(categoryInfo)
     )
     // DEBUG_LOGS.push(...categorizeDealLogs);
@@ -355,43 +365,41 @@ function categorizeDeal(
 /**
  * @param dealId `string`
  * @param deal {@link SimplePublicObjectWithAssociations}
- * @returns **`Promise<boolean>`** — `true` if the deal response is valid, `false` otherwise.
+ * @returns **`Promise<boolean>`** `true` if the deal response is valid, `false` otherwise.
  */
 async function isValidDeal(
     dealId: string,
     deal: SimplePublicObjectWithAssociations
 ): Promise<boolean> {
     if (!deal || !deal.properties || !deal.associations) {
-        log.warn(`the response from getDealById('${dealId}') is invalid`,
-            TAB + `Object.keys(deal):`, indentedStringify(Object.keys(deal)),
-            TAB + 'Object.keys(deal.properties).length:', Object.keys(deal.properties).length,
-            TAB + ' > deal.properties.dealstage:', deal.properties.dealstage,
-            TAB + `deal.associations:`, deal.associations
-        );
+        alog.warn([`isValidDeal() the response from getDealById('${dealId}') is invalid`,
+            `Object.keys(deal):`, indentedStringify(Object.keys(deal)),
+            'Object.keys(deal.properties).length:', Object.keys(deal.properties).length,
+            ' > deal.properties.dealstage:', deal.properties.dealstage,
+            `deal.associations:`, deal.associations
+        ].join(TAB));
         // STOP_RUNNING(1);
         return false;
     }
-    let isMissingLineItems = Boolean(
-        deal 
-        && deal.associations 
-        && (!Object.keys(deal.associations).includes('line items') 
-            || !deal.associations['line items'])
+    let isMissingLineItems = (
+        !deal.associations[CrmAssociationObjectEnum.LINE_ITEMS_RESPONSE]
+        && !deal.associations[CrmAssociationObjectEnum.LINE_ITEMS_REQUEST]
     );
     let isValidDealStage = Boolean(
         deal.properties.dealstage 
         && (getObjectPropertyDictionary().VALID_DEAL_STAGES.includes(deal.properties.dealstage) 
             || !getObjectPropertyDictionary().INVALID_DEAL_STAGES.includes(deal.properties.dealstage))
     );
-    SUP.push(NL + `dealResponseIsValid() dealId: ${dealId}`,
-        TAB + ` deal.properties.dealname: ${deal.properties.dealname}`,
-        TAB + `deal.properties.dealstage: ${deal.properties.dealstage}`,
-        TAB + `       isMissingLineItems: ${isMissingLineItems}`,
-        TAB + `         isValidDealStage: ${isValidDealStage}`,
-    );
+    alog.info([`isValidDeal() dealId: ${dealId}`,
+        ` deal.properties.dealname: ${deal.properties.dealname}`,
+        `deal.properties.dealstage: ${deal.properties.dealstage}`,
+        `       isMissingLineItems: ${isMissingLineItems}`,
+        `         isValidDealStage: ${isValidDealStage}`,
+    ].join(TAB));
     if (isMissingLineItems) {
-        mlog.error(`Deal '${deal.properties.dealname}' has no line items`, 
-            TAB + 'dealRes.associations:', deal.associations
-        );
+        mlog.error([`isValidDeal() Deal '${deal.properties.dealname}' has no line items`, 
+            'dealRes.associations:', deal.associations
+        ].join(TAB));
         return false;
     }
     if (!isValidDealStage) {
@@ -403,7 +411,7 @@ async function isValidDeal(
 /**
  * @param arr `Array<any>`
  * @param batchSize `number`
- * @returns **`batches`** — `Array<Array<any>>`
+ * @returns **`batches`** `Array<Array<any>>`
  */
 function partitionArrayBySize(arr: Array<any>, batchSize: number): Array<Array<any>> {
     let batches: Array<Array<any>> = [];

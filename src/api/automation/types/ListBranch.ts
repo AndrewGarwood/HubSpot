@@ -2,8 +2,8 @@
  * @file src/utils/automation/types/ListBranch.ts
  */
 
-import { FilterBranch } from './FilterBranch';
-import { Connection } from './Automation';
+import { FilterBranch } from "./FilterBranch";
+import { Connection } from "./Automation";
 
 /**
  * @interface ListBranch

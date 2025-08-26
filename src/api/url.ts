@@ -1,5 +1,5 @@
 /**
- * @file src/utils/api/url.ts
+ * @file src/api/url.ts
  */
 
 export type SearchParamValue = string | number | boolean;

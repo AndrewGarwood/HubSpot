@@ -1,12 +1,12 @@
 /**
- * @file src/crm/objects/objects.ts
+ * @file src/api/crm/objects/objects.ts
  */
 import axios from "axios";
 import { mainLogger as mlog, apiLogger as alog, 
     INDENT_LOG_LINE as TAB, NEW_LINE as NL 
 } from "../../../config/setupLog";
 import { 
-    hubspotClient, STOP_RUNNING, PERSONAL_ACCESS_KEY as ACCESS_KEY, DELAY 
+    hubspotClient, STOP_RUNNING, getAccountDetails, DELAY 
 } from "../../../config/env";
 import { 
     ApiObjectEnum, CrmAssociationObjectEnum, 
@@ -18,15 +18,15 @@ import {
     SimplePublicObjectWithAssociations as HS_SimplePublicObjectWithAssociations, 
     CollectionResponseSimplePublicObjectWithAssociationsForwardPaging as HS_CollectionResponseSimplePublicObjectWithAssociationsForwardPaging 
 } from "@hubspot/api-client/lib/codegen/crm/objects";
-import { indentedStringify } from "../../../utils/io/writing";
-import * as validate from "../../../utils/argumentValidation";
-import { isEmptyArray, isNonEmptyString } from "../../../utils/typeValidation";
+import { indentedStringify } from "typeshi:utils/io/writing";
+import * as validate from "typeshi:utils/argumentValidation";
+import { isEmptyArray, isNonEmptyString } from "typeshi:utils/typeValidation";
 import { CrmObjectEndpoint } from "../types/Endpoints";
 import { FieldValue, 
     UpsertObjectRequest, 
     CrmObjectOptions, CrmObjectAssociationEntry, 
     CrmObjectAssociationOptions, isUpsertObjectRequest 
-} from "./types";
+} from "../types";
 import { AxiosCallEnum as HTTP, AxiosContentTypeEnum, AxiosHeader } from "../../types";
 /**
  * @param objectType see {@link ApiObjectEnum}
@@ -49,9 +49,9 @@ export async function getObjectById(
     try {
         validate.stringArgument(source, {objectType});
         validate.numericStringArgument(source, {objectId});
-        if (properties) validate.arrayArgument(source, {properties}, 'string', isNonEmptyString);
-        if (propertiesWithHistory) validate.arrayArgument(source, {propertiesWithHistory}, 'string', isNonEmptyString);
-        if (associations) validate.arrayArgument(source, {associations}, 'string', isNonEmptyString);
+        if (properties) validate.arrayArgument(source, {properties, isNonEmptyString});
+        if (propertiesWithHistory) validate.arrayArgument(source, {propertiesWithHistory, isNonEmptyString});
+        if (associations) validate.arrayArgument(source, {associations, isNonEmptyString});
     } catch (e) {
         mlog.error(`${source} Invalid arguments:`, JSON.stringify(e as any, null, 4));
         return;
@@ -114,6 +114,7 @@ function AxiosHeader(
 const BATCH_SIZE = 100;
 const TWO_SECONDS = 2000;
 /**
+ * @incomplete
  * @description
  * - batch create and update records at the same time 
  * using the upsert endpoint. For this endpoint, you can use a custom unique 
@@ -134,7 +135,7 @@ export async function upsertObjectPayload(
     objectTypeId: CrmObjectTypeIdEnum
 ): Promise<any> {
     const source = `objects.upsertObjectPayload`;
-    validate.objectArgument(source, {request}, 'UpsertObjectRequest', isUpsertObjectRequest);
+    validate.objectArgument(source, {request, isUpsertObjectRequest});
     validate.stringArgument(source, {objectTypeId});
     let endpoint = new CrmObjectEndpoint(objectTypeId);
     // let url = endpoint.batchUpsert;
@@ -150,10 +151,11 @@ export async function upsertObjectPayload(
     //     mlog.error(message);
     //     throw error;
     // }
+    const accessKey = (await getAccountDetails()).accessKey;
     const upsertObjectArray: CrmObjectOptions[] = request.inputs || [];
     const batches: CrmObjectOptions[][] = partitionArrayBySize(upsertObjectArray, BATCH_SIZE);
     const headers = AxiosHeader(
-        `Bearer ${ACCESS_KEY}`, 
+        `Bearer ${accessKey}`, 
         AxiosContentTypeEnum.JSON
     );
     const result: {

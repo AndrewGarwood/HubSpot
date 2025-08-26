@@ -3,8 +3,9 @@
  */
 
 export * from "./Crm";
+export * from "./Crm.TypeGuards";
 export * from "./Enums";
 export * from "./Endpoints"
 export * from "./Requests";
-export * from "./typeGuards";
+export * from "./Requests.TypeGuards";
 export * from "./NetNew";

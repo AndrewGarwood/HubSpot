@@ -1,12 +1,12 @@
 /**
- * @file src/crm/types/NetNew.ts
+ * @file src/api/crm/types/NetNew.ts
  */
 
 // SkuData ----------------
 /**
  * @typedefn **`SkuData`**
  * @property {string} sku `string` `hs_sku` of the product
- * @property {string} [name] `string` name of the product, optional
+ * @property {string} name `string` name of the product, optional
  * @property {number} dealCount `number` unique dealId count == associatedDeals.size 
  * @property {number} quantity `number` total product quantity purchased
  * @property {number} amount `number` total dollar amount for sku
@@ -26,27 +26,17 @@ export type SkuData = {
 }
 
 // PurchaseHistory ----------------
-/**
- * @typedefn **`PurchaseHistory`**
- * @property {string} [contactId] `string` = `hs_object_id`
- * @property {string} [contactName] `string`
- * @property {Partial<Record<ProductCategoryEnum, string>>} categoriesBought `Partial<Record<`{@link ProductCategoryEnum}, `string>>` dict mapping category to dealId in which category was first bought
- * @property {Record<string, SkuData>} skuHistory `Record<string, `{@link SkuData}`>`
- */
 export type PurchaseHistory = {
     contactId?: string;
     contactName?: string;
-    /** dict mapping {@link ProductCategoryEnum} to dealId in which category was first bought */
-    categoriesBought: Partial<Record<ProductCategoryEnum, string>>;
+    /** dict mapping `productCategory: string` to `dealId: string` in which category was first bought */
+    categoriesBought: { [category: string]: string };
     skuHistory: Record<string, SkuData>;
     netNewLineItems: Array<string>;
     recurringLineItems: Array<string>;  
 }
 /**
  * @enum {string} **`NetNewValueEnum`**
- * @property {string} TRUE `'True'`
- * @property {string} FALSE `'False'`
- * @property {string} NOT_APPLICABLE `'Not Applicable'`
  */
 export enum NetNewValueEnum {
     TRUE = 'True',
@@ -57,10 +47,6 @@ export enum NetNewValueEnum {
 // DealCategorization ----------------
 /**
  * @typedefn **`DealCategorization`**
- * @property {string} category `string`
- * @property {boolean} isFirstDealWithCategory `boolean`
- * @property {boolean} isStillFirstDealWithNewCategory `boolean`
- * @property {boolean} isRecurringDeal `boolean`
  * */
 export type DealCategorization = {
     category: string;
@@ -68,10 +54,3 @@ export type DealCategorization = {
     isStillFirstDealWithNewCategory: boolean;
     isRecurringDeal: boolean;
 };
-
-/**
- * @enum {string} **`ProductCategoryEnum`**
- */
-export enum ProductCategoryEnum {
-    CATEGORY_A = 'CATEGORY_A',
-}

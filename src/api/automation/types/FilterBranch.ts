@@ -2,7 +2,7 @@
  * @file src/utils/automation/types/FilterBranch.ts
  */
 
-import { FlowFilter } from './FlowFilter';
+import { FlowFilter } from "./FlowFilter";
 
 
 /**

@@ -2,7 +2,7 @@
  * @file src/api/crm/objects/types/Requests.ts
  * @reference https://developers.hubspot.com/docs/guides/api/crm/using-object-apis#upsert-records
  */
-import { RowSourceMetaData } from "../../../utils/io";
+import { RowSourceMetaData } from "typeshi:utils/io";
 import { 
     AssociationCategoryEnum, 
     ContactAssociationTypeIdEnum, 

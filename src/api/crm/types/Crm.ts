@@ -1,7 +1,7 @@
 /**
  * @file src/api/crm/types/Crm.ts
  */
-import { FilterOperatorEnum } from "./Enums";
+import { CrmAssociationObjectEnum, FilterOperatorEnum } from "./Enums";
 
 /**
  * @interface **`Filter`**
@@ -142,7 +142,7 @@ export interface CollectionResponseWithTotalSimplePublicObjectForwardPaging {
 
 /**
  * @interface **`SimplePublicObjectWithAssociations`** `extends` {@link SimplePublicObject}
- * @property **`associations`** {@link CollectionResponseAssociatedId}
+ * @property **`associations`** `{ [key in CrmAssociationObjectEnum]?: `{@link CollectionResponseAssociatedId}` }`
  * @property **`createdAt`** `Date`
  * @property **`archived`** `boolean`
  * @property **`archivedAt`** `Date`
@@ -152,7 +152,7 @@ export interface CollectionResponseWithTotalSimplePublicObjectForwardPaging {
  * @property **`updatedAt`** `Date`
  */
 export interface SimplePublicObjectWithAssociations extends SimplePublicObject {
-    associations?: Record<string, CollectionResponseAssociatedId>;
+    associations: { [key in CrmAssociationObjectEnum]?: CollectionResponseAssociatedId } // Record<string, CollectionResponseAssociatedId>;
     createdAt: Date;
     archived?: boolean;
     archivedAt?: Date;

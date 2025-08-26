@@ -8,6 +8,11 @@
         "baseUrl": ".",
         "paths": {
             "src/*": ["./src/*"],
+            "@typeshi/*": ["./node_modules/typeshi/dist/utils/*"],
+            "@typeshi": ["./node_modules/typeshi/dist/index"],
+            "typeshi:utils/*": ["./node_modules/typeshi/dist/utils/*"],
+            "@regex/*": ["./node_modules/typeshi/dist/utils/regex/*"],
+            "@io/*": ["./node_modules/typeshi/dist/utils/io/*"]
         }
     }
 }

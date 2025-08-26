@@ -1,7 +1,7 @@
 /**
  * @file src/utils/automation/types/FlowFilter.ts
  */
-import { Operation } from './Operation';
+import { Operation } from "./Operation";
 
 
 export const MAX_VALUES_PER_FILTER = 5000;

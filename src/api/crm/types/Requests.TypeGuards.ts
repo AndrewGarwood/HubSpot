@@ -2,7 +2,7 @@
  * @file src/api/crm/objects/types/typeGuards.ts
  */
 
-import { hasKeys, isNonEmptyArray } from "../../../utils/typeValidation";
+import { hasKeys, isNonEmptyArray, isNonEmptyString, isObject } from "typeshi:utils/typeValidation";
 import { CrmObjectOptions, UpsertObjectRequest } from "./Requests";
 
 /**
@@ -15,11 +15,11 @@ import { CrmObjectOptions, UpsertObjectRequest } from "./Requests";
  * - **`false`** `otherwise`
  */
 export function isCrmObjectOptions(value: any): value is CrmObjectOptions {
-    return (value && typeof value === 'object'
+    return (isObject(value)
         && hasKeys(value, ['properties', 'id', 'idProperty'], true, false) 
         // hasKeys 'associations' // optional
-        && typeof value.properties === 'object'
-        && typeof value.idProperty === 'string'
+        && isObject(value.properties)
+        && isNonEmptyString(value.idProperty)
         && (typeof value.id === 'string' || typeof value.id === 'number')
     );
 }
@@ -32,8 +32,8 @@ export function isCrmObjectOptions(value: any): value is CrmObjectOptions {
  * - **`false`** `otherwise`
  */
 export function isUpsertObjectRequest(value: any): value is UpsertObjectRequest {
-    return (value && typeof value === 'object'
-        && hasKeys(value, 'inputs')
+    return (isObject(value)
+        // && hasKeys(value, 'inputs')
         && isNonEmptyArray(value.inputs)
         && (value.inputs as any[]).every(element => isCrmObjectOptions(element))
     );

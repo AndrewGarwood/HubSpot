@@ -1,5 +1,5 @@
 /**
- * @file src/crm/objects/lineItems.ts
+ * @file src/api/crm/objects/lineItems.ts
  */
 import { 
     ApiObjectEnum as CrmObjectEnum, 
@@ -10,7 +10,7 @@ import {
 import { getObjectById } from "./objects";
 import { mainLogger as mlog, apiLogger as log, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../../config/setupLog";
 import { STOP_RUNNING } from "../../../config/env";
-import { isNullLike } from "../../../utils/typeValidation";
+import { isNullLike } from "typeshi:utils/typeValidation";
 import { getCategoryToSkuDict, getObjectPropertyDictionary } from "../../../config";
 /**
  * @property {string} lineItemId `string` = `lineItem.hs_object_id`
@@ -176,7 +176,7 @@ export function isValidLineItem(
         const lineItem = arg1 as SimplePublicObjectWithAssociations;
         const deal = arg2 as SimplePublicObjectWithAssociations;
         sku = getSkuFromLineItem(lineItem);
-        price = Number(deal.properties.price || 0);
+        price = Number(lineItem.properties.price || 0);
         dealStage = String(deal.properties.dealstage || '');
     } else if (paramsAreValidPrimitives) {
         sku = arg1 as string;

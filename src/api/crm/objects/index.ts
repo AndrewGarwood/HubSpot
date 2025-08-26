@@ -1,5 +1,5 @@
 /**
- * @file src/utils/crm/objects/index.ts
+ * @file src/api/crm/objects/index.ts
  */
 export * from "./objects";
 export * from "./contacts";

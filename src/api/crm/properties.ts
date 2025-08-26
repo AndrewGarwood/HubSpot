@@ -5,8 +5,7 @@ import { hubspotClient, DELAY } from "../../config/env";
 import { 
     mainLogger as mlog, apiLogger as alog,
     INDENT_LOG_LINE as TAB, 
-    NEW_LINE as NL, 
-    INFO_LOGS as INFO 
+    NEW_LINE as NL,
 } from "../../config/setupLog";
 import { 
     ApiObjectEnum,
@@ -25,7 +24,7 @@ import {
     SimplePublicObjectInput as HS_SimplePublicObjectInput,
     CollectionResponseWithTotalSimplePublicObjectForwardPaging as HS_CollectionResponse 
 } from "@hubspot/api-client/lib/codegen/crm/objects";
-import * as validate from "../../utils/argumentValidation";
+import * as validate from "typeshi:utils/argumentValidation";
 
 let NUMBER_OF_CHANGES = 0;
 
@@ -47,7 +46,7 @@ export async function updatePropertyByObjectId(
     idProperty: string | undefined = undefined
 ): Promise<SimplePublicObject> {
     const source = `${__filename}.updatePropertyByObjectId`;
-    validate.enumArgument(source, {ApiObjectEnum}, {objectType});
+    validate.enumArgument(source, {ApiObjectEnum, objectType});
     validate.numericStringArgument(source, {objectId});
     validate.objectArgument(source, {propDict});
     let updateRes = {} as SimplePublicObject;

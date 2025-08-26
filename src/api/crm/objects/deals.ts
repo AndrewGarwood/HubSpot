@@ -1,8 +1,8 @@
 /**
  * @file src/crm/objects/deals.ts
  */
-import { ApiObjectEnum as BasicCrmObjects, 
-    CrmAssociationObjectEnum as Associations,
+import { ApiObjectEnum, 
+    CrmAssociationObjectEnum,
     FilterOperatorEnum, FilterGroup, Filter, 
     PublicObjectSearchResponseSummary, PublicObjectSearchRequest,
     SimplePublicObject, SimplePublicObjectWithAssociations 
@@ -17,14 +17,14 @@ import { searchObjectByProperty } from "../properties";
  * @property {string} dealId `string` = `hs_object_id`
  * @property {string[]} properties `string[]` defaults to {@link DEFAULT_DEAL_PROPERTIES}.
  * @property {string[]} propertiesWithHistory `string[]` 
- * @property {Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>} associations `Array<`{@link Associations.LINE_ITEMS} | {@link Associations.CONTACTS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.LINE_ITEMS}]
+ * @property {Array<CrmAssociationObjectEnum.LINE_ITEMS_REQUEST | CrmAssociationObjectEnum.CONTACTS | CrmAssociationObjectEnum.PRODUCTS>} associations `Array<`{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST} | {@link CrmAssociationObjectEnum.CONTACTS} | {@link CrmAssociationObjectEnum.PRODUCTS}`>`defaults to [{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST}]
  * @property {boolean} archived `boolean` defaults to `false`.
  */
 export type GetDealByIdParams = {
     dealId: string | number;
     properties?: string[];
     propertiesWithHistory?: string[];
-    associations?: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>;
+    associations?: Array<CrmAssociationObjectEnum.LINE_ITEMS_REQUEST | CrmAssociationObjectEnum.CONTACTS | CrmAssociationObjectEnum.PRODUCTS>;
     archived?: boolean;
 }
 
@@ -32,7 +32,7 @@ export type GetDealByIdParams = {
  * @param dealId `string` = `hs_object_id`
  * @param properties `string[]` defaults to {@link DEFAULT_DEAL_PROPERTIES}.
  * @param propertiesWithHistory `string[]`
- * @param associations `Array<`{@link Associations.LINE_ITEMS} | {@link Associations.CONTACTS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.LINE_ITEMS}]
+ * @param associations `Array<`{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST} | {@link CrmAssociationObjectEnum.CONTACTS} | {@link CrmAssociationObjectEnum.PRODUCTS}`>`defaults to [{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST}]
  * @param archived `boolean` defaults to `false`.
  * @returns **`response`** = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
  * - The deal with the specified ID, or undefined if not found.
@@ -41,7 +41,7 @@ export async function getDealById(
     dealId: string | number,
     properties?: string[],
     propertiesWithHistory?: string[],
-    associations?: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>,
+    associations?: Array<CrmAssociationObjectEnum.LINE_ITEMS_REQUEST | CrmAssociationObjectEnum.CONTACTS | CrmAssociationObjectEnum.PRODUCTS>,
     archived?: boolean
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined>;
 
@@ -50,7 +50,7 @@ export async function getDealById(
  * @param params.dealId `string` = `hs_object_id`
  * @param params.properties `string[]` defaults to {@link DEFAULT_DEAL_PROPERTIES}.
  * @param params.propertiesWithHistory `string[]` 
- * @param params.associations `Array<`{@link Associations.LINE_ITEMS} | {@link Associations.CONTACTS} | {@link Associations.PRODUCTS}`>`defaults to [{@link Associations.LINE_ITEMS}].
+ * @param params.associations `Array<`{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST} | {@link CrmAssociationObjectEnum.CONTACTS} | {@link CrmAssociationObjectEnum.PRODUCTS}`>`defaults to [{@link CrmAssociationObjectEnum.LINE_ITEMS_REQUEST}].
  * @param params.archived `boolean` defaults to `false`.
  * @returns **`response`** = `Promise<`{@link SimplePublicObject} | {@link SimplePublicObjectWithAssociations} | `undefined>` 
  * - The deal with the specified ID, or undefined if not found.
@@ -64,7 +64,7 @@ export async function getDealById(
     arg1: string | number | GetDealByIdParams,
     properties: string[] = getCrmConstants().DEFAULT_DEAL_PROPERTIES ?? [],
     propertiesWithHistory?: string[],
-    associations: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>=[Associations.LINE_ITEMS],
+    associations: Array<CrmAssociationObjectEnum.LINE_ITEMS_REQUEST | CrmAssociationObjectEnum.CONTACTS | CrmAssociationObjectEnum.PRODUCTS>=[CrmAssociationObjectEnum.LINE_ITEMS_REQUEST],
     archived: boolean=false
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
     // Normalize parameters into GetDealByIdParams
@@ -74,13 +74,13 @@ export async function getDealById(
             dealId: arg1 as string,
             properties: properties ?? getCrmConstants().DEFAULT_DEAL_PROPERTIES ?? [],
             propertiesWithHistory: propertiesWithHistory || undefined,
-            associations: associations || [Associations.LINE_ITEMS],
+            associations: associations || [CrmAssociationObjectEnum.LINE_ITEMS_REQUEST],
             archived: archived || false
         } as GetDealByIdParams;
 
     try {
         const response = await getObjectById(
-            BasicCrmObjects.DEALS,
+            ApiObjectEnum.DEALS,
             params.dealId,
             params.properties,
             params.propertiesWithHistory,
@@ -100,7 +100,7 @@ export async function getDealByOrderNumber(
     orderNumber: string | number,
     properties?: string[],
     propertiesWithHistory?: string[],
-    associations?: Array<Associations.LINE_ITEMS | Associations.CONTACTS | Associations.PRODUCTS>,
+    associations?: Array<CrmAssociationObjectEnum.LINE_ITEMS_REQUEST | CrmAssociationObjectEnum.CONTACTS | CrmAssociationObjectEnum.PRODUCTS>,
     archived?: boolean
 ): Promise<SimplePublicObject | SimplePublicObjectWithAssociations | undefined> {
     const filterGroups: FilterGroup[] = [
@@ -123,7 +123,7 @@ export async function getDealByOrderNumber(
         filterGroups: filterGroups,
     }
     const searchRes = await searchObjectByProperty(
-        BasicCrmObjects.DEALS, 
+        ApiObjectEnum.DEALS, 
         searchRequest
     ) as PublicObjectSearchResponseSummary;
     await DELAY(1000);

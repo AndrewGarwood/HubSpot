@@ -3,10 +3,11 @@
  */
 import { 
     parseExcelForOneToMany, 
-    writeObjectToJson as write, 
-    ParseOneToManyOptions, 
-} from "../../utils/io";
-import { DATA_DIR, ONE_DRIVE_DIR, STOP_RUNNING, DELAY, OUTPUT_DIR } from "../../config/env";
+    writeObjectToJsonSync as write, 
+    ParseOneToManyOptions,
+    isDirectory, 
+} from "typeshi:utils/io";
+import { STOP_RUNNING, DELAY } from "../../config/env";
 import { mainLogger as mlog, INDENT_LOG_LINE as TAB, NEW_LINE as NL } from "../../config/setupLog";
 import { searchObjectByProperty,
     updatePropertyByObjectId,
@@ -24,7 +25,8 @@ import { searchObjectByProperty,
 } from "../../api/crm";
 import { PublicObjectSearchRequest as HS_PublicObjectSearchRequest } from "@hubspot/api-client/lib/codegen/crm/objects";
 import path from "node:path";
-import { StringCaseOptions } from "../../utils/regex";
+import { StringCaseOptions } from "typeshi:utils/regex";
+import { isNonEmptyString } from "@typeshi/typeValidation";
 const COUPON_COLUMN = "Coupon Code";
 const ORDER_NUMBER_COLUMN = "Order #";
 const ORDER_STATUS_COLUMN = "Status";
@@ -35,8 +37,6 @@ const makeKeysUpperCase: StringCaseOptions = {
     toUpper: true
 };
 async function main() {
-    const filePath = path.join(ONE_DRIVE_DIR, "Orders With Coupons This Year.xlsx");
-    const sheetName = "Orders_With_Coupons_This_Year3";//"Sheet2", 
     STOP_RUNNING(0, 'couponResolution.ts end of main()');
 }
 
@@ -55,7 +55,8 @@ export async function updateDealCouponCodes(
     filePath: string, 
     sheetName: string, 
     couponColumn: string=COUPON_COLUMN, 
-    orderNumberColumn: string=ORDER_NUMBER_COLUMN
+    orderNumberColumn: string=ORDER_NUMBER_COLUMN,
+    outDir?: string
 ): Promise<void> {
     const couponToOrderNums = parseExcelForOneToMany(
         filePath, 
@@ -127,5 +128,7 @@ export async function updateDealCouponCodes(
         entryIndex++;
         continue;
     }
-    write(dealsMissingFromHubSpot, `${OUTPUT_DIR}/dealsMissingFromHubSpot.json`)
+    if (isNonEmptyString(outDir) && isDirectory(outDir)) {
+        write(dealsMissingFromHubSpot, path.join(outDir, `dealsMissingFromHubSpot.json`))
+    }
 }
